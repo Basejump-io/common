@@ -1,0 +1,75 @@
+<!--
+Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+-->
+<status_block xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <offset>0</offset>
+  <status name="ER_OK" comment="Success."/>
+  <status name="ER_FAIL" comment="Generic failure."/>
+  <status name="ER_UTF_CONVERSION_FAILED" comment="Conversion between UTF bases failed."/>
+  <status name="ER_BUFFER_TOO_SMALL" comment="Not enough space in buffer for operation."/>
+  <status name="ER_OS_ERROR" comment="Underlying OS has indicated an error."/>
+  <status name="ER_OUT_OF_MEMORY" comment="Failed to allocate memory."/>
+  <status name="ER_SOCKET_BIND_ERROR" comment="Bind to IP address failed."/>
+  <status name="ER_INIT_FAILED" comment="Initialization failed."/>
+  <status name="ER_WOULDBLOCK" comment="An I/O attempt on non-blocking resource would block"/>
+  <status name="ER_NOT_IMPLEMENTED" comment="Feature not implemented"/>
+  <status name="ER_TIMEOUT" comment="Operation timed out"/>
+  <status name="ER_SOCK_OTHER_END_CLOSED" comment="Other end closed the socket"/>
+  <status name="ER_BAD_ARG_1" comment="Function call argument 1 is invalid"/>
+  <status name="ER_BAD_ARG_2" comment="Function call argument 2 is invalid"/>
+  <status name="ER_BAD_ARG_3" comment="Function call argument 3 is invalid"/>
+  <status name="ER_BAD_ARG_4" comment="Function call argument 4 is invalid"/>
+  <status name="ER_BAD_ARG_5" comment="Function call argument 5 is invalid"/>
+  <status name="ER_BAD_ARG_6" comment="Function call argument 6 is invalid"/>
+  <status name="ER_BAD_ARG_7" comment="Function call argument 7 is invalid"/>
+  <status name="ER_BAD_ARG_8" comment="Function call argument 8 is invalid"/>
+  <status name="ER_INVALID_ADDRESS" comment="Address is NULL or invalid"/>
+
+  <offset>0x1000</offset>
+  <status name="ER_COMMON_ERRORS" comment="Error code block for the Common subsystem."/>
+  <status name="ER_STOPPING_THREAD" comment="Operation interrupted by ERThread stop signal."/>
+  <status name="ER_ALERTED_THREAD" comment="Operation interrupted by ERThread alert signal."/>
+  <status name="ER_XML_MALFORMED" comment="Cannot parse malformed XML"/>
+  <status name="ER_AUTH_FAIL" comment="Authentication failed"/>
+  <status name="ER_AUTH_USER_REJECT" comment="Authentication was rejected by user"/>
+  <status name="ER_NO_SUCH_ALARM" comment="Attempt to reference non-existent timer alarm"/>
+  <status name="ER_TIMER_FALLBEHIND" comment="A timer thread is missing scheduled alarm times"/>
+  <status name="ER_SSL_ERRORS" comment="Error code block for SSL subsystem"/>
+  <status name="ER_SSL_INIT" comment="SSL initialization failed."/>
+  <status name="ER_SSL_CONNECT" comment="Failed to connect to remote host using SSL"/>
+  <status name="ER_SSL_VERIFY" comment="Failed to verify identity of SSL destination"/>
+  <status name="ER_EXTERNAL_THREAD" comment="Operation not supported on external thread wrapper"/>
+  <status name="ER_CRYPTO_ERROR" comment="Non-specific error in the crypto subsystem"/>
+  <status name="ER_CRYPTO_TRUNCATED" comment="Not enough room for key"/>
+  <status name="ER_CRYPTO_KEY_UNAVAILABLE" comment="No key to return"/>
+  <status name="ER_BAD_HOSTNAME" comment="Cannot lookup hostname"/>
+  <status name="ER_CRYPTO_KEY_UNUSABLE" comment="Key cannot be used"/>
+  <status name="ER_EMPTY_KEY_BLOB" comment="Key blob is empty"/>
+  <status name="ER_CORRUPT_KEYBLOB" comment="Key blob is corrupted"/>
+  <status name="ER_INVALID_KEY_ENCODING" comment="Encoded key is not valid"/>
+  <status name="ER_DEAD_THREAD" comment="Operation not allowed thread is dead"/>
+  <status name="ER_THREAD_RUNNING" comment="Cannot start a thread that is already running"/>
+  <status name="ER_THREAD_STOPPING" comment="Cannot start a thread that is already stopping"/>
+  <status name="ER_BAD_STRING_ENCODING" comment="Encoded string did not have the expected format or contents"/>
+  <status name="ER_CRYPTO_INSUFFICIENT_SECURITY" comment="Crypto algorithm parameters do not provide sufficient security"/>
+  <status name="ER_CRYPTO_ILLEGAL_PARAMETERS" comment="Crypto algorithm parameter value is illegal"/>
+  <status name="ER_CRYPTO_HASH_UNINITIALIZED" comment="Cryptographic hash function must be initialized"/>
+  <status name="ER_THREAD_NO_WAIT" comment="Thread cannot be blocked by a WAIT or SLEEP call"/>
+
+  <offset>0xFFFF</offset>
+  <status name="ER_NONE" comment="No error code to report"/>
+</status_block>
