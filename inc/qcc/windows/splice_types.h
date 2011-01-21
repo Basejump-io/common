@@ -7,6 +7,8 @@
  */
 
 /******************************************************************************
+ * $Revision: 14/1 $
+ *
  * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +34,6 @@ typedef signed long int32_t;          ///< 32-bit signed integer.
 typedef unsigned long uint32_t;       ///< 32-bit unsigned integer.
 typedef signed long long int64_t;     ///< 64-bit signed integer.
 typedef unsigned long long uint64_t;  ///< 64-bit unsigned integer.
-
 
 /* Some windows header files define min and max as macros. use STL instead */
 #undef min

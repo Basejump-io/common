@@ -88,7 +88,7 @@ class Event {
     /**
      * Constructor used by Linux specific I/O sources/sinks
      * (This constructor should only be used within Linux platform specific code.)
-     *
+     ***>
      * @param ioFd        I/O file descriptor associated with this event.
      * @param genPurpose  true if event should act as both an I/O event and a gen purpose event.
      */

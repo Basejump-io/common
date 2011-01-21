@@ -45,11 +45,6 @@ class GUID {
     static const size_t SIZE = 16;
 
     /**
-     * Size of string returned by ToShortString() in bytes.
-     */
-    static const size_t SHORT_SIZE = 8;
-
-    /**
      * Compare two GUIDs for equality
      */
     bool operator==(const GUID& other) const { return memcmp(other.guid, guid, SIZE) == 0; }

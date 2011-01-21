@@ -34,6 +34,8 @@ using namespace qcc;
 
 namespace qcc {
 
+static const size_t SHORT_STRING_SIZE = 8;
+
 GUID::GUID() : value(), shortValue()
 {
     Crypto_BigNum val;
@@ -78,9 +80,9 @@ const qcc::String& GUID::ToString() const
 const qcc::String& GUID::ToShortString() const
 {
     if (shortValue.empty()) {
-        char outBytes[SHORT_SIZE + 1];
-        outBytes[SHORT_SIZE] = '\0';
-        for (size_t i = 0; i < SHORT_SIZE; ++i) {
+        char outBytes[SHORT_STRING_SIZE + 1];
+        outBytes[SHORT_STRING_SIZE] = '\0';
+        for (size_t i = 0; i < SHORT_STRING_SIZE; ++i) {
             uint8_t cur = (guid[i] & 0x3F); /* gives a number between 0 and 63 */
             if (cur < 10) {
                 outBytes[i] = (cur + '0');

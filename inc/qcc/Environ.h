@@ -60,7 +60,7 @@ class Environ {
     /**
      * Return a specific environment variable
      */
-    qcc::String Find(const char* key, const char* defaultValue = NULL) { return Find(qcc::String(key), defaultValue); }
+    qcc::String Find(const char* key) { return Find(qcc::String(key)); }
 
     /**
      * Preload environment variables with the specified prefix

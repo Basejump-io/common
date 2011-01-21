@@ -28,15 +28,6 @@
 #include <list>
 #include <Status.h>
 
-
-/*
- * Platform util.h will define QCC_TARGET_ENDIAN to one of these.  This will
- * allow for compile time determination of the target system's endianness.
- */
-#define QCC_LITTLE_ENDIAN 1234
-#define QCC_BIG_ENDIAN    4321
-
-
 /*
  * Include platform-specific utility macros
  */
@@ -49,10 +40,30 @@
 #endif
 
 
-/**
+/*
  * Returns the size of a statically allocated array
  */
 #define ArraySize(a)  (sizeof(a) / sizeof(a[0]))
+
+
+/*
+ * Swap bytes to convert endianness of a 16 bit integer
+ */
+#define EndianSwap16(i) (i) = (((i) >> 8) | ((i) << 8))
+
+/*
+ * Swap bytes to convert endianness of a 32 bit integer
+ */
+#define EndianSwap32(i) (i) = (((i) >> 24) | (((i) >> 8) & 0x0000FF00) | (((i) << 8) & 0x00FF0000) | ((i) << 24))
+
+/*
+ * Swap bytes to convert endianness of a 64 bit integer
+ */
+#define EndianSwap64(i) (i) = (((i) >> 56) | \
+                               (((i) >> 8)  & 0x00000000FF000000ULL) | (((i) << 8)  & 0x000000FF00000000ULL) | \
+                               (((i) >> 24) & 0x0000000000FF0000ULL) | (((i) << 24) & 0x0000FF0000000000ULL) | \
+                               (((i) >> 40) & 0x000000000000FF00ULL) | (((i) << 40) & 0x00FF000000000000ULL) | \
+                               ((i) << 56))
 
 
 /**
@@ -77,7 +88,7 @@ namespace qcc {
 /**
  * Return an 8 bit random number.
  *
- * @return An 8 bit random number
+ * @return A 8 bit random number
  */
 uint8_t Rand8();
 

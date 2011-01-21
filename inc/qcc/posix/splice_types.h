@@ -7,6 +7,8 @@
  */
 
 /******************************************************************************
+ * $Revision: 14/2 $
+ *
  * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +34,7 @@
 typedef long ptrdiff_t;
 #endif
 #endif
+
 
 #include <unistd.h>
 
