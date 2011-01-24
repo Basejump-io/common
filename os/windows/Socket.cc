@@ -41,6 +41,7 @@
 
 
 namespace qcc {
+static int32_t socketCount = 0;
 
 static void MakeSockAddr(const IPAddress& addr, uint16_t port,
                          sockaddr_in* addrBuf, socklen_t& addrSize)
@@ -59,6 +60,44 @@ static void MakeSockAddr(const IPAddress& addr, uint16_t port,
         sa->sin6_flowinfo = 0;  // TODO: What should go here???
         addr.RenderIPv6Binary(sa->sin6_addr.s6_addr, sizeof(sa->sin6_addr.s6_addr));
         sa->sin6_scope_id = 0;  // TODO: What should go here???
+    }
+}
+
+QStatus CallWSAStartup(){
+    QStatus status = ER_OK;
+    /*
+     * each time Socket is called add that to a counter.
+     * if this is the first time Socket has been called call WSAStartup to
+     * initiate use of the Winsock DLL by this process
+     */
+    IncrementAndFetch(&socketCount);
+    if(socketCount == 1){
+        WSADATA wsaData;
+        WORD version = MAKEWORD(2, 0);
+        int error = WSAStartup(version, &wsaData);
+        if(error != 0){
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("WSAStartup failed with error: %d", error));
+            DecrementAndFetch(&socketCount);
+            return status;
+        }
+    }
+    return status;
+}
+
+void CallWSACleanup(){
+    DecrementAndFetch(&socketCount);
+    /*
+     * If the socketCallCount is zero no more sockets should be using the
+     * Winsock 2 DLL.  Call WSACleanup to terminate use of the Winsock 2 DLL.
+     */
+    if(socketCount <= 0){
+        /* socketCallCount should never go bellow zero */
+        if(socketCount < 0){
+            QCC_LogError(ER_OS_ERROR, ("Calling WSACleanup more times than WSAStartup"));
+            socketCount = 0;
+        }
+        WSACleanup();
     }
 }
 
@@ -93,6 +132,11 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
     QStatus status = ER_OK;
     uint32_t ret;
 
+    status = CallWSAStartup();
+    if(status != ER_OK){
+    	return status;
+    }
+
     QCC_DbgTrace(("Socket(addrFamily = %d, type = %d, sockfd = <>)", addrFamily, type));
 
     if (addrFamily == QCC_AF_UNIX) {
@@ -103,6 +147,7 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
         int err = WSAGetLastError();
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Opening socket: %d - %s", err, strerror(err)));
+        CallWSACleanup();
     } else {
         sockfd = static_cast<SocketFd>(ret);
     }
@@ -207,8 +252,14 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
 
     QCC_DbgTrace(("Accept(sockfd = %d, remoteAddr = <>, remotePort = <>)", sockfd));
 
+    CallWSAStartup();
+    if(status != ER_OK){
+    	return status;
+    }
+
     ret = accept(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), &addrLen);
     if (ret == SOCKET_ERROR) {
+        CallWSACleanup();
         int err = WSAGetLastError();
         if (WSAEWOULDBLOCK == err) {
             status = ER_WOULDBLOCK;
@@ -237,6 +288,7 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
         uint32_t mode = 1; // Non-blocking
         ret = ioctlsocket(newSockfd, FIONBIO, &mode);
         if (ret == SOCKET_ERROR) {
+            CallWSACleanup();
             int err = WSAGetLastError();
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Failed to set socket non-blocking %d - %s", err, strerror(err)));
@@ -284,6 +336,8 @@ void Close(SocketFd sockfd)
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
         QCC_LogError(ER_OS_ERROR, ("Close socket: %d - %s", err, strerror(err)));
+    }else{
+        CallWSACleanup();
     }
 }
 
