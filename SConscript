@@ -18,8 +18,10 @@ if env['OS'] == 'windows':
         env.AppendUnique(LIBS = ['setupapi', 'user32', 'winmm', 'ws2_32', 'iphlpapi', 'secur32', 'Advapi32'])
 elif env['OS'] == 'linux':
     env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto'])
-elif env['OS'] == 'android':
+elif env['OS'] == 'android' and env['CPU'] == 'arm':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log'])
+elif env['OS'] == 'android' and env['CPU'] == 'arm5':
+    env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc'])
 elif env['OS'] == 'android_donut':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log'])
 elif env['OS'] == 'maemo':
