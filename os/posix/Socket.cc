@@ -5,8 +5,6 @@
  */
 
 /******************************************************************************
- * $Revision: 30/2 $
- *
  * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +36,7 @@
 
 #include <qcc/IPAddress.h>
 #include <qcc/ScatterGatherList.h>
+#include <qcc/Util.h>
 #include <qcc/Thread.h>
 
 #include <Status.h>
@@ -45,6 +44,8 @@
 #define QCC_MODULE "NETWORK"
 
 namespace qcc {
+
+const SocketFd INVALID_SOCKET_FD = -1;
 
 static void MakeSockAddr(const char* path,
                          struct sockaddr_storage* addrBuf, socklen_t& addrSize)
@@ -342,6 +343,17 @@ void Close(SocketFd sockfd)
     close(static_cast<int>(sockfd));
 }
 
+QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
+{
+    QStatus status = ER_OK;
+
+    dupSock = dup(sockfd);
+    if (dupSock < 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("SocketDup of %d failed %d - %s", sockfd, errno, strerror(errno)));
+    }
+    return status;
+}
 
 QStatus GetLocalAddress(SocketFd sockfd, IPAddress& addr, uint16_t& port)
 {
@@ -638,6 +650,112 @@ QStatus RecvFromSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
         QCC_DbgTrace(("RecvFromSG(sockfd = %d, remoteAddr = %s, remotePort = %u, sg = <>, sent = <>)",
                       sockfd, remoteAddr.ToString().c_str(), remotePort));
     }
+    return status;
+}
+
+QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, SocketFd* fdList, size_t maxFds, size_t& recvdFds)
+{
+    QStatus status = ER_OK;
+
+    if (!fdList) {
+        return ER_BAD_ARG_5;
+    }
+    if (!maxFds) {
+        return ER_BAD_ARG_6;
+    }
+    QCC_DbgHLPrintf(("RecvWithFds"));
+
+    recvdFds = 0;
+    maxFds = std::min(maxFds, SOCKET_MAX_FILE_DESCRIPTORS);
+
+    struct iovec iov[] = { { buf, len } };
+
+    static const size_t sz = CMSG_SPACE(sizeof(struct ucred)) + CMSG_SPACE(SOCKET_MAX_FILE_DESCRIPTORS * sizeof(SocketFd));
+    char cbuf[sz];
+
+    struct msghdr msg;
+    memset(&msg, 0, sizeof(msg));
+
+    msg.msg_iov = iov;
+    msg.msg_iovlen = ArraySize(iov);
+    msg.msg_control = cbuf;
+    msg.msg_controllen = CMSG_LEN(sz);
+
+    ssize_t ret = recvmsg(sockfd, &msg, 0);
+    if (ret == -1) {
+        if (errno == EWOULDBLOCK) {
+            status = ER_WOULDBLOCK;
+        } else {
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("Receiving file descriptors: %d - %s", errno, strerror(errno)));
+        }
+    } else {
+        struct cmsghdr* cmsg;
+        for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+            if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SCM_RIGHTS)) {
+                recvdFds = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(SocketFd);
+                /* 
+                 * Check we have enough room to return the file descriptors. 
+                 */
+                if (recvdFds > maxFds) {
+                    status = ER_OS_ERROR;
+                    QCC_LogError(status, ("Too many handles: %d implementation limit is %d", recvdFds, maxFds));
+                } else {
+                    memcpy(fdList, CMSG_DATA(cmsg), recvdFds * sizeof(SocketFd));
+                    QCC_DbgHLPrintf(("Received %d handles %d...", recvdFds, fdList[0]));
+                }
+                break;
+            }
+        }
+        received = static_cast<size_t>(ret);
+    }
+    return status;
+}
+
+QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, SocketFd* fdList, size_t numFds, uint32_t pid)
+{
+    QStatus status = ER_OK;
+
+    if (!fdList) {
+        return ER_BAD_ARG_5;
+    }
+    if (!numFds || (numFds > SOCKET_MAX_FILE_DESCRIPTORS)) {
+        return ER_BAD_ARG_6;
+    }
+
+    QCC_DbgHLPrintf(("SendWithFds"));
+
+    struct iovec iov[] = { { const_cast<void*>(buf), len } };
+    size_t sz = numFds * sizeof(SocketFd);
+    char* cbuf = new char[CMSG_SPACE(sz)];
+
+    struct msghdr msg;
+    memset(&msg, 0, sizeof(msg));
+
+    msg.msg_iov = iov;
+    msg.msg_iovlen = ArraySize(iov);
+    msg.msg_control = cbuf;
+    msg.msg_controllen = CMSG_SPACE(sz);
+
+    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(sz);
+
+    QCC_DbgHLPrintf(("Sending %d file descriptors %d...", numFds, fdList[0]));
+
+    memcpy(CMSG_DATA(cmsg), fdList, sz);
+
+    ssize_t ret = sendmsg(sockfd, &msg, 0);
+    if (ret == -1) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Sending file descriptor: %d - %s", errno, strerror(errno)));
+    } else {
+        sent = static_cast<size_t>(ret);
+    }
+
+    delete []cbuf;
+
     return status;
 }
 

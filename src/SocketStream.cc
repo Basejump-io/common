@@ -139,6 +139,33 @@ QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes,
     return status;
 }
 
+QStatus SocketStream::PullBytesAndFds(void* buf, size_t reqBytes, size_t& actualBytes, SocketFd* fdList, size_t& numFds, uint32_t timeout)
+{
+    QStatus status;
+    size_t recvdFds = 0;
+    while (true) {
+        /*
+         * There will only be one set of file descriptors read in each call to this function
+         * so once we have received file descriptors we revert to the standard Recv call.
+         */
+        if (recvdFds) {
+            status = Recv(sock, buf, reqBytes, actualBytes);
+        } else {
+            status = RecvWithFds(sock, buf, reqBytes, actualBytes, fdList, numFds, recvdFds);
+        }
+        if (ER_WOULDBLOCK == status) {
+            status = Event::Wait(sourceEvent, timeout);
+            if (ER_OK != status) {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    numFds = recvdFds;
+    return status;
+}
+
 QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
 {
     if (!isConnected) {
@@ -161,6 +188,32 @@ QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSen
         }
     }
 
+    return status;
+}
+
+QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& numSent, SocketFd* fdList, size_t numFds, uint32_t pid)
+{
+    if (!isConnected) {
+        return ER_FAIL;
+    }
+    if (numBytes == 0) {
+        return ER_BAD_ARG_2;
+    }
+    if (numFds == 0) {
+        return ER_BAD_ARG_5;
+    }
+    QStatus status;
+    while (true) {
+        status = qcc::SendWithFds(sock, buf, numBytes, numSent, fdList, numFds, pid);
+        if (ER_WOULDBLOCK == status) {
+            status = Event::Wait(sinkEvent);
+            if (ER_OK != status) {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
     return status;
 }
 

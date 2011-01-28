@@ -24,10 +24,10 @@
  ******************************************************************************/
 
 #if defined(QCC_OS_GROUP_POSIX)
-#include <qcc/posix/splice_types.h>
+#include <qcc/posix/platform_types.h>
 #include <qcc/posix/unicode.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
-#include <qcc/windows/splice_types.h>
+#include <qcc/windows/platform_types.h>
 #include <qcc/windows/unicode.h>
 #include <qcc/windows/mapping.h>
 #else

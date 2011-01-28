@@ -5,8 +5,6 @@
  */
 
 /******************************************************************************
- * $Revision: 15/1 $
- *
  * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,9 +46,6 @@ struct IOVec {
 };
 
 #define QCC_MAX_SG_ENTRIES (IOV_MAX)  /**< Maximum number of scatter-gather list entries. */
-
-
-typedef int SocketFd;  /**< Abstraction of the socket file descriptor type. */
 
 typedef socklen_t SockAddrSize;  /**< Abstraction of the socket address length type. */
 

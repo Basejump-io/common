@@ -5,8 +5,6 @@
  */
 
 /******************************************************************************
- * $Revision: 14/2 $
- *
  * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,11 +27,18 @@
 #include <qcc/IPAddress.h>
 #include <qcc/ScatterGatherList.h>
 #include <qcc/SocketTypes.h>
-#include <qcc/Thread.h>
+#include <qcc/SocketWrapper.h>
 
 #include <Status.h>
 
 namespace qcc {
+
+
+/**
+ * The maixmum number of files descriptors that can be sent or received by this implementations.
+ * See SendWithFds() and RecvWithFds().
+ */
+static const size_t SOCKET_MAX_FILE_DESCRIPTORS = 16;
 
 /**
  * Open a socket.
@@ -123,7 +128,6 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
  */
 QStatus Accept(SocketFd sockfd, SocketFd& newSockfd);
 
-
 /**
  * Shutdown a connection.
  *
@@ -133,7 +137,6 @@ QStatus Accept(SocketFd sockfd, SocketFd& newSockfd);
  */
 QStatus Shutdown(SocketFd sockfd);
 
-
 /**
  * Close a socket descriptor.  This releases the bound port number.
  *
@@ -141,6 +144,15 @@ QStatus Shutdown(SocketFd sockfd);
  */
 void Close(SocketFd sockfd);
 
+/**
+ * Duplicate a socket descriptor.
+ *
+ * @param sockfd   The socket descriptor to duplicate
+ * @param dupSock  [OUT] The duplicated socket descriptor.
+ *
+ * @return  Indication of success of failure.
+ */
+QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock);
 
 /**
  * Get the local address of the socket.
@@ -207,8 +219,7 @@ QStatus SendToSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
 
 /**
  * Receive a buffer of data from a remote host on a socket.
- * This call will block until data is available, the socket is closed or the thread
- * (if specified) becomes signaled.
+ * This call will block until data is available, the socket is closed.
  *
  * @param sockfd        Socket descriptor.
  * @param buf           Pointer to the buffer where received data will be stored.
@@ -263,6 +274,38 @@ QStatus RecvSG(SocketFd sockfd, ScatterGatherList& sg, size_t& received);
 QStatus RecvFromSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
                    ScatterGatherList& sg, size_t& received);
 
+
+/**
+ * Receive a buffer of data from a remote host on a socket and any file descriptors accompanying the
+ * data.  This call will block until data is available, the socket is closed.
+ *
+ * @param sockfd     Socket descriptor.
+ * @param buf        Pointer to the buffer where received data will be stored.
+ * @param len        Size of the buffer in octets.
+ * @param received   OUT: Number of octets received.
+ * @param fdList     The file descriptors received.
+ * @param maxFds     The maximum number of file descriptors (size of fdList)
+ * @param recvdFds   The number of file descriptors received.
+ *
+ * @return  Indication of success of failure.
+ */
+QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, SocketFd* fdList, size_t maxFds, size_t& recvdFds);
+
+/**
+ * Send a buffer of data with file descriptors to a socket. Depending on the transport this may may use out-of-band
+ * or in-band data or some mix of the two.
+ *
+ * @param sockfd    Socket descriptor.
+ * @param buf       Pointer to the buffer containing the data to send.
+ * @param len       Number of octets in the buffer to be sent.
+ * @param sent      [OUT] Number of octets sent.
+ * @param fdList    Array of file descriptors to send.
+ * @param numFds    Number of files descriptors.
+   @param pid       Process id required on some platforms.
+ *
+ * @return  Indication of success of failure.
+ */
+QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, SocketFd* fdList, size_t numFds, uint32_t pid);
 
 }
 

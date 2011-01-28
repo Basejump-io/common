@@ -5,8 +5,6 @@
  */
 
 /******************************************************************************
- * $Revision: 26/1 $
- *
  * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
