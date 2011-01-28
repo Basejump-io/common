@@ -41,9 +41,6 @@ class String {
     /** String index constant indicating "past the end" */
     static const size_t npos = static_cast<size_t>(-1);
 
-    /** Empty string constant */
-    static char emptyString[];
-
     /** String iterator type */
     typedef char* iterator;
 
@@ -242,10 +239,7 @@ class String {
      * @param pos    Position offset into string.
      * @return  Reference to character at pos.
      */
-    char& operator[](size_t pos)
-    {
-        return context ? *(reinterpret_cast<char*>(&context[1]) + pos) : *emptyString;
-    }
+    char& operator[](size_t pos);
 
     /**
      * Get a const reference to the character at a given position.
@@ -406,6 +400,9 @@ class String {
     int compare(const char* str) const { return ::strcmp(context ? reinterpret_cast<const char*>(&context[1]) : emptyString, str); }
 
   private:
+
+    /** Empty string constant */
+    static char emptyString[];
 
     typedef struct {
         int32_t refCount;

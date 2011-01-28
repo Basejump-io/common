@@ -116,6 +116,14 @@ String& String::operator=(const String& assignFromMe)
     return *this;
 }
 
+char& String::operator[](size_t pos)
+{
+    if (context && (1 != context->refCount)) {
+        NewContext(reinterpret_cast<const uint8_t*>(&context[1]), size(), context->mallocSize);
+    }
+    return context ? *(reinterpret_cast<char*>(&context[1]) + pos) : *emptyString;
+}
+
 bool String::operator<(const String& str) const
 {
     /* Include the null in the compare to catch case when two strings have different lengths */
