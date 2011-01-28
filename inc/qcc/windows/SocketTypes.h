@@ -42,10 +42,6 @@ struct IOVec {
 
 #define ER_MAX_SG_ENTRIES (IOV_MAX)  /**< Maximum number of scatter-gather list entries. */
 
-
-typedef SOCKET SocketFd;  ///< TODO: verify this is correct for the socket descriptor for windows.
-
-
 typedef int SockAddrSize;  /**< Abstraction of the socket address length type. */
 
 /**

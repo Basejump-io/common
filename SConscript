@@ -42,9 +42,10 @@ hdrs = { 'qcc': env.File(['inc/qcc/Log.h',
                           'inc/qcc/ManagedObj.h',
                           'inc/qcc/String.h',
                           'inc/qcc/atomic.h',
+                          'inc/qcc/SocketWrapper.h',
                           'inc/qcc/platform.h']),
          'qcc/${OS_GROUP}': env.File(['inc/qcc/${OS_GROUP}/atomic.h',
-                                      'inc/qcc/${OS_GROUP}/splice_types.h',
+                                      'inc/qcc/${OS_GROUP}/platform_types.h',
                                       'inc/qcc/${OS_GROUP}/unicode.h']) }
 
 if env['OS'] == 'windows':

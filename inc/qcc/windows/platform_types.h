@@ -1,9 +1,9 @@
-#ifndef _SPLICE_TYPES_H
-#define _SPLICE_TYPES_H
+#ifndef _PLATFORM_TYPES_H
+#define _PLATFORM_TYPES_H
 /**
  * @file
  *
- * This file defines basic types for SPLICE.
+ * This file defines basic platform-specific types for Windows
  */
 
 /******************************************************************************
@@ -23,6 +23,7 @@
  ******************************************************************************/
 
 #include <stddef.h>
+#include <windows.h>
 
 typedef signed char int8_t;           ///< 8-bit signed integer.
 typedef unsigned char uint8_t;        ///< 8-bit unsigned integer.
@@ -33,8 +34,11 @@ typedef unsigned long uint32_t;       ///< 32-bit unsigned integer.
 typedef signed long long int64_t;     ///< 64-bit signed integer.
 typedef unsigned long long uint64_t;  ///< 64-bit unsigned integer.
 
+namespace qcc {
+    typedef UINT_PTR SocketFd;            ///< Socket file descriptor type. */
+}
 
-/* Some windows header files define min and max as macros. use STL instead */
+/* Some windows header files define min and max as macros */
 #undef min
 #undef max
 

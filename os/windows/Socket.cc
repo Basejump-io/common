@@ -30,6 +30,8 @@
 #include <qcc/IPAddress.h>
 #include <qcc/ScatterGatherList.h>
 #include <qcc/Socket.h>
+#include <qcc/Util.h>
+#include <qcc/Thread.h>
 #include <qcc/windows/utility.h>
 
 #include <Status.h>
@@ -41,6 +43,9 @@
 
 
 namespace qcc {
+
+const SocketFd INVALID_SOCKET_FD = INVALID_SOCKET;
+
 static int32_t socketCount = 0;
 
 static void MakeSockAddr(const IPAddress& addr, uint16_t port,
@@ -63,41 +68,39 @@ static void MakeSockAddr(const IPAddress& addr, uint16_t port,
     }
 }
 
-QStatus CallWSAStartup(){
+static QStatus WSAIncRefCount()
+{
     QStatus status = ER_OK;
     /*
      * each time Socket is called add that to a counter.
      * if this is the first time Socket has been called call WSAStartup to
      * initiate use of the Winsock DLL by this process
      */
-    IncrementAndFetch(&socketCount);
-    if(socketCount == 1){
+    if (IncrementAndFetch(&socketCount) == 1) {
         WSADATA wsaData;
         WORD version = MAKEWORD(2, 0);
         int error = WSAStartup(version, &wsaData);
-        if(error != 0){
+        if (error != 0) {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("WSAStartup failed with error: %d", error));
             DecrementAndFetch(&socketCount);
-            return status;
         }
     }
     return status;
 }
 
-void CallWSACleanup(){
-    DecrementAndFetch(&socketCount);
+static void WSADecRefCount()
+{
     /*
      * If the socketCallCount is zero no more sockets should be using the
      * Winsock 2 DLL.  Call WSACleanup to terminate use of the Winsock 2 DLL.
      */
-    if(socketCount <= 0){
-        /* socketCallCount should never go bellow zero */
-        if(socketCount < 0){
-            QCC_LogError(ER_OS_ERROR, ("Calling WSACleanup more times than WSAStartup"));
-            socketCount = 0;
-        }
+    if (DecrementAndFetch(&socketCount) == 0) {
         WSACleanup();
+    } else if (socketCount < 0) {
+        /* socketCallCount should never go bellow zero */
+        QCC_LogError(ER_OS_ERROR, ("Calling WSACleanup more times than WSAStartup"));
+        IncrementAndFetch(&socketCount);
     }
 }
 
@@ -132,8 +135,8 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
     QStatus status = ER_OK;
     uint32_t ret;
 
-    status = CallWSAStartup();
-    if(status != ER_OK){
+    status = WSAIncRefCount();
+    if (status != ER_OK) {
     	return status;
     }
 
@@ -147,7 +150,7 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
         int err = WSAGetLastError();
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Opening socket: %d - %s", err, strerror(err)));
-        CallWSACleanup();
+        WSADecRefCount();
     } else {
         sockfd = static_cast<SocketFd>(ret);
     }
@@ -252,14 +255,14 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
 
     QCC_DbgTrace(("Accept(sockfd = %d, remoteAddr = <>, remotePort = <>)", sockfd));
 
-    CallWSAStartup();
-    if(status != ER_OK){
+    WSAIncRefCount();
+    if (status != ER_OK) {
     	return status;
     }
 
     ret = accept(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), &addrLen);
     if (ret == SOCKET_ERROR) {
-        CallWSACleanup();
+        WSADecRefCount();
         int err = WSAGetLastError();
         if (WSAEWOULDBLOCK == err) {
             status = ER_WOULDBLOCK;
@@ -288,7 +291,7 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
         uint32_t mode = 1; // Non-blocking
         ret = ioctlsocket(newSockfd, FIONBIO, &mode);
         if (ret == SOCKET_ERROR) {
-            CallWSACleanup();
+            WSADecRefCount();
             int err = WSAGetLastError();
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Failed to set socket non-blocking %d - %s", err, strerror(err)));
@@ -337,10 +340,42 @@ void Close(SocketFd sockfd)
         int err = WSAGetLastError();
         QCC_LogError(ER_OS_ERROR, ("Close socket: %d - %s", err, strerror(err)));
     }else{
-        CallWSACleanup();
+        WSADecRefCount();
     }
 }
 
+QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
+{
+    QStatus status;
+    WSAPROTOCOL_INFO protocolInfo;
+
+    status = WSAIncRefCount();
+    if (status != ER_OK) {
+    	return status;
+    }
+    int ret = WSADuplicateSocket(sockfd, qcc::GetPid(), &protocolInfo);
+    if (ret == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        QCC_LogError(ER_OS_ERROR, ("SocketDup: %d - %s", err, strerror(err)));
+        status = ER_OS_ERROR;
+    } else {
+        dupSock = WSASocket(protocolInfo.iAddressFamily,
+                            protocolInfo.iSocketType,
+                            protocolInfo.iProtocol,
+                            &protocolInfo,
+                            0,
+                            WSA_FLAG_OVERLAPPED);
+        if (dupSock == INVALID_SOCKET ) {
+            int err = WSAGetLastError();
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("SocketDup WSASocket: %d - %s", err, strerror(err)));
+        }
+    }
+    if (status != ER_OK) {
+        WSADecRefCount();
+    }
+    return status;
+}
 
 QStatus GetLocalAddress(SocketFd sockfd, IPAddress& addr, uint16_t& port)
 {
@@ -551,7 +586,6 @@ QStatus Recv(SocketFd sockfd, void* buf, size_t len, size_t& received)
         int err = WSAGetLastError();
         if (WSAEWOULDBLOCK == err) {
             status = ER_WOULDBLOCK;
-            QCC_DbgPrintf(("Recv WOULDBLOCK")); // TODO remove me
         } else {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Receive: %d - %s", err, strerror(err)));
@@ -777,12 +811,160 @@ const char* InetNtoP(int af, const void* src, char* dst, socklen_t size)
     return NULL;
 }
 
+QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, SocketFd* fdList, size_t maxFds, size_t& recvdFds)
+{
+    QStatus status = ER_OK;
+    size_t recvd;
+
+    if (!fdList) {
+        return ER_BAD_ARG_5;
+    }
+    if (!maxFds) {
+        return ER_BAD_ARG_6;
+    }
+    QCC_DbgHLPrintf(("RecvWithFds"));
+
+    recvdFds = 0;
+    maxFds = std::min(maxFds, SOCKET_MAX_FILE_DESCRIPTORS);
+
+    /*
+     * Check if the next read will return OOB data
+     */
+    u_long marked = 0;
+    int ret = ioctlsocket(sockfd, SIOCATMARK, &marked);
+    if (ret == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("RecvWithFds ioctlsocket: %d - %s", err, strerror(err)));
+    }
+    if ((status == ER_OK) && !marked) {
+        char fdCount;
+        ret = recv(sockfd, &fdCount, 1, MSG_OOB);
+        if (ret == SOCKET_ERROR) {
+            int err = WSAGetLastError();
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("RecvWithFds recv (MSG_OOB): %d - %s", err, strerror(err)));
+        } else {
+            recvdFds = fdCount;
+            QCC_DbgHLPrintf(("RecvWithFds OOB %d handles", recvdFds));
+            /* 
+             * Check we have enough room to return the file descriptors. 
+             */
+            if (recvdFds > recvdFds) {
+                status = ER_OS_ERROR;
+                QCC_LogError(status, ("Too many handles: %d implementation limit is %d", recvdFds, maxFds));
+            }
+        }
+        /*
+         * The actual file descriptors are all inband and must be read atomically.
+         */
+        for (size_t i = 0; (i < recvdFds) && (status == ER_OK); ++i) {
+            WSAPROTOCOL_INFO protocolInfo;
+            uint8_t* buf = reinterpret_cast<uint8_t*>(&protocolInfo);
+            size_t sz = sizeof(protocolInfo);
+            uint32_t maxSleeps = 100;
+            /*
+             * The poll/sleep loop is a little cheesy but file descriptors are small and
+             * rare so this is highly unlikely to have any impact on performance.
+             */
+            while (sz && (status == ER_OK)) {
+                status = Recv(sockfd, buf, sz, recvd);
+                if (status == ER_WOULDBLOCK) {
+                    if (--maxSleeps) {
+                        qcc::Sleep(1);
+                        status = ER_OK;
+                        continue;
+                    }
+                    status = ER_TIMEOUT;
+                }
+                buf += recvd;
+                sz -= recvd;
+            }
+            if (status == ER_OK) {
+                SocketFd fd = WSASocket(protocolInfo.iAddressFamily,
+                                        protocolInfo.iSocketType,
+                                        protocolInfo.iProtocol,
+                                        &protocolInfo,
+                                        0,
+                                        WSA_FLAG_OVERLAPPED);
+                if (fd == INVALID_SOCKET ) {
+                    int err = WSAGetLastError();
+                    status = ER_OS_ERROR;
+                    QCC_LogError(status, ("RecvWithFds WSASocket: %d - %s", err, strerror(err)));
+                } else {
+                    QCC_DbgHLPrintf(("RecvWithFds got handle %u", fd));
+                    *fdList++ = fd;
+                    WSAIncRefCount();
+                }
+            }
+        }
+    }
+    if (status == ER_OK) {
+        status = Recv(sockfd, buf, len, recvd);
+    }
+    return status;
+}
+
+QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, SocketFd* fdList, size_t numFds, uint32_t pid)
+{
+    QStatus status = ER_OK;
+
+    if (!fdList) {
+        return ER_BAD_ARG_5;
+    }
+    if (!numFds || (numFds > SOCKET_MAX_FILE_DESCRIPTORS)) {
+        return ER_BAD_ARG_6;
+    }
+
+    QCC_DbgHLPrintf(("SendWithFds"));
+
+    /*
+     * We send the file descriptor count as OOB data.
+     */
+    char oob = static_cast<char>(numFds);
+    int ret = send(sockfd, &oob, 1, MSG_OOB);
+    if (ret == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("RecvWithFds recv (MSG_OOB): %d - %s", err, strerror(err)));
+    } else {
+        QCC_DbgHLPrintf(("SendWithFds OOB %d handles", oob));
+    }
+    while (numFds-- && (status == ER_OK)) {
+        WSAPROTOCOL_INFO protocolInfo;
+        ret = WSADuplicateSocket(*fdList++, pid, &protocolInfo);
+        if (ret) {
+            int err = WSAGetLastError();
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("SendFd WSADuplicateSocket: %d - %s", err, strerror(err)));
+        } else {
+            uint8_t* buf = reinterpret_cast<uint8_t*>(&protocolInfo);
+            size_t sz = sizeof(protocolInfo);
+            uint32_t maxSleeps = 100;
+            /*
+             * The poll/sleep loop is a little cheesy but file descriptors are small and
+             * rare so this is highly unlikely to have any impact on performance.
+             */
+            while (sz && (status == ER_OK)) {
+                status = Send(sockfd, buf, sz, sent);
+                if (status == ER_WOULDBLOCK) {
+                    if (--maxSleeps) {
+                        qcc::Sleep(1);
+                        status = ER_OK;
+                        continue;
+                    }
+                    status = ER_TIMEOUT;
+                }
+                buf += sent;
+                sz -= sent;
+            }
+        }
+    }
+    if (status == ER_OK) {
+        status = Send(sockfd, buf, len, sent);
+    }
+    return status;
+}
+
+
 }   /* namespace */
-
-
-
-
-
-
-
-

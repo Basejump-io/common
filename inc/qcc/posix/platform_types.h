@@ -1,9 +1,9 @@
-#ifndef _QCC_TYPES_H
-#define _QCC_TYPES_H
+#ifndef _QCC_PLATFORM_TYPES_H
+#define _QCC_PLATFORM_TYPES_H
 /**
  * @file
  *
- * This file defines basic types.
+ * This file defines basic types for posix platforms.
  */
 
 /******************************************************************************
@@ -24,15 +24,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
-/* Weird things about bionic when gcc version is < 4.4.0 */
-#if 0
-#ifdef QCC_OS_ANDROID
-#include <sys/types.h>
-typedef long ptrdiff_t;
-#endif
-#endif
-
 #include <unistd.h>
+
+namespace qcc {
+    typedef int SocketFd;  /**< Socket file descriptor type. */
+}
 
 #endif
