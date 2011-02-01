@@ -22,6 +22,8 @@ elif env['OS'] == 'android' and env['CPU'] == 'arm':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log'])
 elif env['OS'] == 'android' and env['CPU'] == 'arm5':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc'])
+elif env['OS'] == 'android' and env['CPU'] == 'arm6':
+    env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log'])
 elif env['OS'] == 'android_donut':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log'])
 elif env['OS'] == 'maemo':
