@@ -137,7 +137,7 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
 
     status = WSAIncRefCount();
     if (status != ER_OK) {
-    	return status;
+        return status;
     }
 
     QCC_DbgTrace(("Socket(addrFamily = %d, type = %d, sockfd = <>)", addrFamily, type));
@@ -257,7 +257,7 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
 
     WSAIncRefCount();
     if (status != ER_OK) {
-    	return status;
+        return status;
     }
 
     ret = accept(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), &addrLen);
@@ -339,7 +339,7 @@ void Close(SocketFd sockfd)
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
         QCC_LogError(ER_OS_ERROR, ("Close socket: %d - %s", err, strerror(err)));
-    }else{
+    } else  {
         WSADecRefCount();
     }
 }
@@ -351,7 +351,7 @@ QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
 
     status = WSAIncRefCount();
     if (status != ER_OK) {
-    	return status;
+        return status;
     }
     int ret = WSADuplicateSocket(sockfd, qcc::GetPid(), &protocolInfo);
     if (ret == SOCKET_ERROR) {
@@ -365,7 +365,7 @@ QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
                             &protocolInfo,
                             0,
                             WSA_FLAG_OVERLAPPED);
-        if (dupSock == INVALID_SOCKET ) {
+        if (dupSock == INVALID_SOCKET) {
             int err = WSAGetLastError();
             status = ER_OS_ERROR;
             QCC_LogError(status, ("SocketDup WSASocket: %d - %s", err, strerror(err)));
@@ -846,8 +846,8 @@ QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, So
         } else {
             recvdFds = fdCount;
             QCC_DbgHLPrintf(("RecvWithFds OOB %d handles", recvdFds));
-            /* 
-             * Check we have enough room to return the file descriptors. 
+            /*
+             * Check we have enough room to return the file descriptors.
              */
             if (recvdFds > recvdFds) {
                 status = ER_OS_ERROR;
@@ -887,7 +887,7 @@ QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, So
                                         &protocolInfo,
                                         0,
                                         WSA_FLAG_OVERLAPPED);
-                if (fd == INVALID_SOCKET ) {
+                if (fd == INVALID_SOCKET) {
                     int err = WSAGetLastError();
                     status = ER_OS_ERROR;
                     QCC_LogError(status, ("RecvWithFds WSASocket: %d - %s", err, strerror(err)));

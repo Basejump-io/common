@@ -33,7 +33,7 @@ namespace qcc {
 extern const SocketFd INVALID_SOCKET_FD;
 
 /**
- * Close a socket descriptor. 
+ * Close a socket descriptor.
  *
  * @param sockfd        Socket descriptor.
  */

@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 namespace qcc {
-    typedef int SocketFd;  /**< Socket file descriptor type. */
+typedef int SocketFd;      /**< Socket file descriptor type. */
 }
 
 #endif

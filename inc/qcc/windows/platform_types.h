@@ -35,7 +35,7 @@ typedef signed long long int64_t;     ///< 64-bit signed integer.
 typedef unsigned long long uint64_t;  ///< 64-bit unsigned integer.
 
 namespace qcc {
-    typedef UINT_PTR SocketFd;            ///< Socket file descriptor type. */
+typedef UINT_PTR SocketFd;                ///< Socket file descriptor type. */
 }
 
 /* Some windows header files define min and max as macros */

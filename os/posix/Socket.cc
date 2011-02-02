@@ -694,8 +694,8 @@ QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, So
         for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
             if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SCM_RIGHTS)) {
                 recvdFds = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(SocketFd);
-                /* 
-                 * Check we have enough room to return the file descriptors. 
+                /*
+                 * Check we have enough room to return the file descriptors.
                  */
                 if (recvdFds > maxFds) {
                     status = ER_OS_ERROR;
@@ -754,7 +754,7 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
         sent = static_cast<size_t>(ret);
     }
 
-    delete []cbuf;
+    delete [] cbuf;
 
     return status;
 }

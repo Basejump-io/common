@@ -63,7 +63,7 @@ class Source {
     virtual QStatus PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout = Event::WAIT_FOREVER) { return ER_NONE; }
 
     /**
-     * Pull bytes and any accompanying file/socket descriptors from the source. 
+     * Pull bytes and any accompanying file/socket descriptors from the source.
      * The source is exhausted when ER_NONE is returned.
      *
      * @param buf          Buffer to store pulled bytes
