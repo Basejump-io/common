@@ -339,7 +339,7 @@ void Close(SocketFd sockfd)
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
         QCC_LogError(ER_OS_ERROR, ("Close socket: %d - %s", err, strerror(err)));
-    } else  {
+    } else {
         WSADecRefCount();
     }
 }
