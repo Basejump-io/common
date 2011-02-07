@@ -99,48 +99,146 @@ static QStatus testString()
     TEST_ASSERT(0 == ::strcmp(testStr, s.c_str()));
     TEST_ASSERT(::strlen(testStr) == s.size());
 
+    /* Test find_first_of */
     TEST_ASSERT(3 == s.find_first_of('d'));
     TEST_ASSERT(3 == s.find_first_of('d', 3));
     TEST_ASSERT(3 == s.find_first_of("owed", 3));
     TEST_ASSERT(qcc::String::npos == s.find_first_of('d', 8));
 
+    /* Test find_last_of */
     TEST_ASSERT(7 == s.find_last_of('d'));
     TEST_ASSERT(3 == s.find_last_of('d', 7));
     TEST_ASSERT(qcc::String::npos == s.find_last_of('d', 2));
 
+    /* Test find_*_not_of */
     qcc::String ss = "xyxyxyx" + s + "xy";
     TEST_ASSERT(ss.find_first_not_of("xy") == 7);
     TEST_ASSERT(ss.find_last_not_of("xy") == 17);
 
+    /* Test empty */
     TEST_ASSERT(false == s.empty());
     s.clear();
     TEST_ASSERT(true == s.empty());
     TEST_ASSERT(0 == s.size());
+    
+    /* Test operator= */
+    s = "123456";
+    TEST_ASSERT(::strcmp(s.c_str(), "123456") == 0);
+           
+    /* test copy constructor and char& operator[] */
+    String s2 = "abcdefg";
+    String t2 = s2;
+    TEST_ASSERT(t2.c_str() == s2.c_str());
+    TEST_ASSERT(t2 == "abcdefg");
+    t2[1] = 'B';
+    TEST_ASSERT(0 == ::strcmp(s2.c_str(), "abcdefg"));
+    TEST_ASSERT(0 == ::strcmp(t2.c_str(), "aBcdefg"));
+    
+    /* Test append */
+    String pre = "abcd";
+    String post = "efgh";
+    pre.append(post);
+    TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdefgh"));
+    TEST_ASSERT(pre.size() == ::strlen("abcdefgh"));
+    TEST_ASSERT(0 == ::strcmp(post.c_str(), "efgh"));
+    TEST_ASSERT(post.size() == ::strlen("efgh"));
+
+    pre.append("ijklm", 4);
+    TEST_ASSERT(pre.size() == ::strlen("abcdefghijkl"));
+    TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdefghijkl"));
+
+    /* Test erase */
+    pre.erase(4, 2);
+    TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdghijkl"));
+                
+    /* Test resize */
+    pre.resize(4, 'x');
+    TEST_ASSERT(pre.size() == 4);
+    TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcd"));
+    
+    pre.resize(8, 'x');
+    TEST_ASSERT(pre.size() == 8);
+    TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdxxxx"));
+
+    /* Test reserve */
+    pre.reserve(100);
+    const char* preAppend = pre.c_str();
+    pre.append("y", 92);
+    TEST_ASSERT(preAppend == pre.c_str());
+
+    /* Test insert */
+    String s5 = "abcdijkl";
+    s5.insert(4, "efgh");
+    TEST_ASSERT(::strcmp(s5.c_str(), "abcdefghijkl") == 0);
+
+    /* Test operator== and operator!= */
+    String s6 = "abcdefghijkl";
+    TEST_ASSERT(s5 == s6);
+    TEST_ASSERT(!(s5 != s6));
+
+    /* Test operator< */
+    TEST_ASSERT(!(s5 < s6));
+    TEST_ASSERT(!(s6 < s5));
+    s6.append('m');
+    TEST_ASSERT(s5 < s6);
+    TEST_ASSERT(!(s6 < s5));
+    
+    /* Test String(size_t, char, size_t) */
+    String s3(8, 's', 8);
+    TEST_ASSERT(0 == ::strcmp(s3.c_str(), "ssssssss"));
+    TEST_ASSERT(s3.size() == ::strlen("ssssssss"));
+    
+    /* Test const char& operator[] */
+    const qcc::String sconst = "abcdefg";
+    const char* orig = sconst.c_str();
+    TEST_ASSERT(sconst.size() == ::strlen("abcdefg"));
+    for (size_t i = 0; i < sconst.size(); ++i) {
+         const char c = sconst[i];
+         TEST_ASSERT(c == sconst[i]);
+    }
+    TEST_ASSERT(orig == sconst.c_str());
+
+    /* Test iterators */
+    String s4 = "";
+    char c2 = 'a';
+    String::iterator it = s4.begin();
+    for (int i = 0; i < 26; ++i) {
+        *it++ = c2++;
+    }
+#if 0
+    String::const_iterator cit = s4.begin();
+    c2 = 'a';
+    TEST_ASSERT(26 == s4.size());
+    while (cit != s4.end()) {
+        TEST_ASSERT(*it++ == c2++);
+    }
+#endif
 
     s = testStr;
 
     TEST_ASSERT(s[0] == 'a');
     TEST_ASSERT(s[11] == '\0');
 
-    qcc::String s2 = s.substr(0, 4) + "1234";
+    /* Test substr */
+    s2 = s.substr(0, 4) + "1234";
     TEST_ASSERT(s2 == "abcd1234");
     TEST_ASSERT(s2.substr(4, 1) == "1");
     TEST_ASSERT(s2.substr(1000, 1) == "");
     TEST_ASSERT(s.compare(1, 2, s2, 1, 2) == 0);
 
+    /* Test += */
     s = "";
     for (size_t i = 0; i < 1000; ++i) {
         s += "foo";
         TEST_ASSERT(s.size() == 3 * (i + 1));
     }
+
+    /* Test resize */
     s.erase(3, s.size() - 6);
     TEST_ASSERT(s.size() == 6);
     TEST_ASSERT(s == "foofoo");
     s.resize(s.size() + 3, 'x');
     TEST_ASSERT(s == "foofooxxx");
-
-    s.insert(3, "xxx");
-    TEST_ASSERT(s == "fooxxxfooxxx");
 
     return ER_OK;
 }
