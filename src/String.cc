@@ -84,8 +84,9 @@ String::String(const char* str, size_t strLen, size_t sizeHint)
 String::String(size_t n, char c, size_t sizeHint)
 {
     NewContext(NULL, 0, MAX(n, sizeHint));
-    ::memset(reinterpret_cast<void*>(context->c_str), c, n);
+    ::memset(context->c_str, c, n);
     context->offset += n;
+    context->c_str[context->offset] = '\0';
 }
 
 String::String(const String& copyMe)
