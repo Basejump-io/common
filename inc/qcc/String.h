@@ -248,7 +248,7 @@ class String {
      * @param pos    Position offset into string.
      * @return  Reference to character at pos.
      */
-    const char& operator[](size_t pos) const
+    char operator[](size_t pos) const
     {
         return context ? context->c_str[pos] : *emptyString;
     }

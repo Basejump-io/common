@@ -189,33 +189,31 @@ static QStatus testString()
     TEST_ASSERT(s3.size() == ::strlen("ssssssss"));
     
     /* Test const char& operator[] */
-    const qcc::String sconst = "abcdefg";
-    const char* orig = sconst.c_str();
-    TEST_ASSERT(sconst.size() == ::strlen("abcdefg"));
-    for (size_t i = 0; i < sconst.size(); ++i) {
-         const char c = sconst[i];
-         TEST_ASSERT(c == sconst[i]);
+    const char* testChars = "abcdefgh";
+    qcc::String s7 = testChars;
+    const char* orig = s7.c_str();
+    TEST_ASSERT(s7.size() == ::strlen(testChars));
+    for (size_t i = 0; i < s7.size(); ++i) {
+         char c = s7[i];
+         TEST_ASSERT(c == testChars[i]);
     }
-    TEST_ASSERT(orig == sconst.c_str());
+    TEST_ASSERT(orig == s7.c_str());
 
     /* Test iterators */
-    String s4 = "";
-    char c2 = 'a';
+    String s4(strlen(testChars), 'x');
     String::iterator it = s4.begin();
-    for (int i = 0; i < 26; ++i) {
-        *it++ = c2++;
+    for (size_t i = 0; i < s4.size(); ++i) {
+        *it++ = testChars[i];
     }
-#if 0
     String::const_iterator cit = s4.begin();
-    c2 = 'a';
-    TEST_ASSERT(26 == s4.size());
+    TEST_ASSERT(strlen(testChars) == s4.size());
+    size_t i = 0;
     while (cit != s4.end()) {
-        TEST_ASSERT(*it++ == c2++);
+        TEST_ASSERT(*cit++ == testChars[i++]);
     }
-#endif
+    TEST_ASSERT(i == strlen(testChars));
 
     s = testStr;
-
     TEST_ASSERT(s[0] == 'a');
     TEST_ASSERT(s[11] == '\0');
 
