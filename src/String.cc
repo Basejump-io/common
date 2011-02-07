@@ -69,13 +69,13 @@ String::String()
 
 String::String(char c, size_t sizeHint)
 {
-    NewContext(reinterpret_cast<const uint8_t*>(&c), 1, sizeHint);
+    NewContext(&c, 1, sizeHint);
 }
 
 String::String(const char* str, size_t strLen, size_t sizeHint)
 {
     if ((str && *str) || sizeHint) {
-        NewContext(reinterpret_cast<const uint8_t*>(str), strLen, sizeHint);
+        NewContext(str, strLen, sizeHint);
     } else {
         context = NULL;
     }
@@ -84,7 +84,7 @@ String::String(const char* str, size_t strLen, size_t sizeHint)
 String::String(size_t n, char c, size_t sizeHint)
 {
     NewContext(NULL, 0, MAX(n, sizeHint));
-    ::memset(reinterpret_cast<void*>(&context[1]), c, n);
+    ::memset(reinterpret_cast<void*>(context->c_str), c, n);
     context->offset += n;
 }
 
@@ -119,17 +119,17 @@ String& String::operator=(const String& assignFromMe)
 char& String::operator[](size_t pos)
 {
     if (context && (1 != context->refCount)) {
-        NewContext(reinterpret_cast<const uint8_t*>(&context[1]), size(), context->mallocSize);
+        NewContext(context->c_str, size(), context->capacity);
     }
-    return context ? *(reinterpret_cast<char*>(&context[1]) + pos) : *emptyString;
+    return context ? context->c_str[pos] : *emptyString;
 }
 
 bool String::operator<(const String& str) const
 {
     /* Include the null in the compare to catch case when two strings have different lengths */
     if (context && str.context) {
-        return 0 > ::memcmp(reinterpret_cast<const char*>(context + 1),
-                            reinterpret_cast<const char*>(str.context + 1),
+        return 0 > ::memcmp(context->c_str,
+                            str.context->c_str,
                             MIN(context->offset, str.context->offset) + 1);
     } else {
         return size() < str.size();
@@ -142,7 +142,7 @@ int String::compare(size_t pos, size_t n, const String& s) const
     if (context && s.context) {
         size_t subStrLen = MIN(context->offset - pos, n);
         size_t sLen = s.context->offset;
-        ret = ::memcmp(reinterpret_cast<const char*>(context + 1) + pos, reinterpret_cast<const char*>(s.context + 1), MIN(subStrLen, sLen));
+        ret = ::memcmp(context->c_str + pos, s.context->c_str, MIN(subStrLen, sLen));
         if ((0 == ret) && (subStrLen < sLen)) {
             ret = -1;
         } else if ((0 == ret) && (subStrLen > sLen)) {
@@ -166,8 +166,7 @@ int String::compare(size_t pos, size_t n, const String& s, size_t sPos, size_t s
     if (context && s.context) {
         size_t subStrLen = MIN(context->offset - pos, n);
         size_t sSubStrLen = MIN(s.context->offset - sPos, sn);
-        ret = ::memcmp(reinterpret_cast<const char*>(context + 1) + pos,
-                       reinterpret_cast<const char*>(s.context + 1) + sPos, MIN(subStrLen, sSubStrLen));
+        ret = ::memcmp(context->c_str + pos, s.context->c_str + sPos, MIN(subStrLen, sSubStrLen));
         if ((0 == ret) && (subStrLen < sSubStrLen)) {
             ret = -1;
         } else if ((0 == ret) && (subStrLen > sSubStrLen)) {
@@ -201,19 +200,16 @@ String& String::append(const char* str, size_t strLen)
         NewContext(NULL, 0, strLen + 8);
     }
 
-    size_t totalLen = strLen + context->offset + sizeof(ManagedCtx) + 1;
-    uint8_t* ptr = reinterpret_cast<uint8_t*>(&context[1]);
-    if ((1 != context->refCount) || (totalLen > context->mallocSize)) {
+    size_t totalLen = strLen + context->offset;
+    if ((1 != context->refCount) || (totalLen > context->capacity)) {
         /* Append wont fit in existing allocation or modifying a context with other refs */
         ManagedCtx* oldContext = context;
-        totalLen -= sizeof(ManagedCtx);
-        NewContext(reinterpret_cast<const uint8_t*>(&oldContext[1]), oldContext->offset, totalLen + totalLen / 2);
+        NewContext(oldContext->c_str, oldContext->offset, totalLen + totalLen / 2);
         DecRef(oldContext);
-        ptr = reinterpret_cast<uint8_t*>(&context[1]);
     }
-    ::memcpy(ptr + context->offset, str, strLen);
+    ::memcpy(context->c_str + context->offset, str, strLen);
     context->offset += strLen;
-    ptr[context->offset] = '\0';
+    context->c_str[context->offset] = '\0';
     return *this;
 }
 
@@ -223,12 +219,11 @@ String& String::erase(size_t pos, size_t n)
         if (context->refCount != 1) {
             /* Need a new context */
             ManagedCtx* oldContext = context;
-            NewContext(reinterpret_cast<const uint8_t*>(&context[1]), context->offset, context->mallocSize - sizeof(ManagedCtx) - 1);
+            NewContext(context->c_str, context->offset, context->capacity);
             DecRef(oldContext);
         }
-        char* ptr = reinterpret_cast<char*>(&context[1]);
         n = MIN(n, size() - pos);
-        ::memmove(ptr + pos, ptr + pos + n, size() - pos - n + 1);
+        ::memmove(context->c_str + pos, context->c_str + pos + n, size() - pos - n + 1);
         context->offset -= n;
     }
     return *this;
@@ -240,26 +235,25 @@ void String::resize(size_t n, char c)
         NewContext(NULL, 0, n);
     }
 
-    uint8_t* ptr = reinterpret_cast<uint8_t*>(&context[1]);
     size_t curSize = size();
     if (n < curSize) {
         if (context->refCount == 1) {
             context->offset = n;
-            ptr[n] = '\0';
+            context->c_str[n] = '\0';
         } else {
             ManagedCtx* oldContext = context;
-            NewContext(ptr, n, n);
+            NewContext(context->c_str, n, n);
             DecRef(oldContext);
-            ptr = reinterpret_cast<uint8_t*>(&context[1]);
         }
     } else if (n > curSize) {
-        if (n >= context->mallocSize) {
+        if (n >= context->capacity) {
             ManagedCtx* oldContext = context;
-            NewContext(ptr, curSize, n);
+            NewContext(context->c_str, curSize, n);
             DecRef(oldContext);
-            ptr = reinterpret_cast<uint8_t*>(&context[1]);
         }
-        ::memset(ptr + curSize, c, n - curSize);
+        ::memset(context->c_str + curSize, c, n - curSize);
+        context->offset = n;
+        context->c_str[n] = '\0';
     }
 }
 
@@ -270,10 +264,10 @@ void String::reserve(size_t newCapacity)
     }
 
     newCapacity = MAX(newCapacity, size());
-    if (newCapacity != (context->mallocSize - sizeof(ManagedCtx) - 1)) {
+    if (newCapacity != context->capacity) {
         size_t sz = size();
         ManagedCtx* oldContext = context;
-        NewContext(reinterpret_cast<uint8_t*>(&context[1]), sz, newCapacity);
+        NewContext(context->c_str, sz, newCapacity);
         DecRef(oldContext);
     }
 }
@@ -289,17 +283,15 @@ String& String::insert(size_t pos, const char* str, size_t strLen)
 
     pos = MIN(pos, context->offset);
 
-    size_t totalLen = strLen + context->offset + sizeof(ManagedCtx) + 1;
-    uint8_t* ptr = reinterpret_cast<uint8_t*>(&context[1]);
-    if ((1 != context->refCount) || (totalLen > context->mallocSize)) {
+    size_t totalLen = strLen + context->offset;
+    if ((1 != context->refCount) || (totalLen > context->capacity)) {
         /* insert wont fit in existing allocation or modifying a context with other refs */
         ManagedCtx* oldContext = context;
-        NewContext(reinterpret_cast<const uint8_t*>(&oldContext[1]), oldContext->offset, totalLen + totalLen / 2);
+        NewContext(oldContext->c_str, oldContext->offset, totalLen + totalLen / 2);
         DecRef(oldContext);
-        ptr = reinterpret_cast<uint8_t*>(&context[1]);
     }
-    ::memmove(ptr + pos + strLen, ptr + pos, context->offset - pos + 1);
-    ::memcpy(ptr + pos, str, strLen);
+    ::memmove(context->c_str + pos + strLen, context->c_str + pos, context->offset - pos + 1);
+    ::memcpy(context->c_str + pos, str, strLen);
     context->offset += strLen;
     return *this;
 }
@@ -308,7 +300,7 @@ size_t String::find(const char* str, size_t pos) const
 {
     if (NULL == context) return npos;
 
-    const char* base = reinterpret_cast<const char*>(&context[1]);
+    const char* base = context->c_str;
     const char* p = static_cast<const char*>(::memmem(base + pos, context->offset - pos, str, ::strlen(str)));
     return p ? p - base : npos;
 }
@@ -318,10 +310,10 @@ size_t String::find(const String& str, size_t pos) const
     if (NULL == context) return npos;
     if (0 == str.size()) return 0;
 
-    const char* base = reinterpret_cast<const char*>(&context[1]);
+    const char* base = context->c_str;
     const char* p = static_cast<const char*>(::memmem(base + pos,
                                                       context->offset - pos,
-                                                      reinterpret_cast<const char*>(&str.context[1]),
+                                                      str.context->c_str,
                                                       str.context->offset));
     return p ? p - base : npos;
 }
@@ -330,19 +322,17 @@ size_t String::find_first_of(const char c, size_t pos) const
 {
     if (NULL == context) return npos;
 
-    const char* ptr = reinterpret_cast<const char*>(&context[1]);
-    const char* ret = ::strchr(ptr + pos, (int) c);
-    return ret ? (ret - ptr) : npos;
+    const char* ret = ::strchr(context->c_str + pos, (int) c);
+    return ret ? (ret - context->c_str) : npos;
 }
 
 size_t String::find_last_of(const char c, size_t pos) const
 {
     if (NULL == context) return npos;
 
-    const char* ptr = reinterpret_cast<const char*>(&context[1]);
     size_t i = MIN(pos, size());
     while (i-- > 0) {
-        if (c == ptr[i]) {
+        if (c == context->c_str[i]) {
             return i;
         }
     }
@@ -353,12 +343,11 @@ size_t String::find_first_of(const char* set, size_t pos) const
 {
     if (NULL == context) return npos;
 
-    const char* ptr = reinterpret_cast<const char*>(&context[1]);
     size_t i = pos;
     size_t endIdx = size();
     while (i < endIdx) {
         for (const char* c = set; *c != '\0'; ++c) {
-            if (*c == ptr[i]) {
+            if (*c == context->c_str[i]) {
                 return i;
             }
         }
@@ -371,13 +360,12 @@ size_t String::find_first_not_of(const char* set, size_t pos) const
 {
     if (NULL == context) return npos;
 
-    const char* ptr = reinterpret_cast<const char*>(&context[1]);
     size_t i = pos;
     size_t endIdx = size();
     while (i < endIdx) {
         bool found = false;
         for (const char* c = set; *c != '\0'; ++c) {
-            if (*c == ptr[i]) {
+            if (*c == context->c_str[i]) {
                 found = true;
                 break;
             }
@@ -394,12 +382,11 @@ size_t String::find_last_not_of(const char* set, size_t pos) const
 {
     if (NULL == context) return npos;
 
-    const char* ptr = reinterpret_cast<const char*>(&context[1]);
     size_t i = MIN(pos, size());
     while (i-- > 0) {
         bool found = false;
         for (const char* c = set; *c != '\0'; ++c) {
-            if (*c == ptr[i]) {
+            if (*c == context->c_str[i]) {
                 found = true;
                 break;
             }
@@ -413,8 +400,8 @@ size_t String::find_last_not_of(const char* set, size_t pos) const
 
 String String::substr(size_t pos, size_t n) const
 {
-    if (context) {
-        return String(reinterpret_cast<const char*>(&context[1]) + pos, MIN(n, size() - pos));
+    if (pos <= size()) {
+        return String(context->c_str + pos, MIN(n, size() - pos));
     } else {
         return String();
     }
@@ -427,33 +414,31 @@ bool String::operator==(const String& other) const
         if (context->offset != other.context->offset) {
             return false;
         }
-        return (0 == ::memcmp(reinterpret_cast<uint8_t*>(&context[1]),
-                              reinterpret_cast<uint8_t*>(&other.context[1]),
-                              context->offset));
+        return (0 == ::memcmp(context->c_str, other.context->c_str, context->offset));
     } else {
         /* Both strings must be empty or they aren't equal */
         return (size() == other.size());
     }
 }
 
-void String::NewContext(const uint8_t* str, size_t strLen, size_t sizeHint)
+void String::NewContext(const char* str, size_t strLen, size_t sizeHint)
 {
     if (NULL == str) {
         strLen = 0;
     } else if (0 == strLen) {
-        strLen = ::strlen(reinterpret_cast<const char*>(str));
+        strLen = ::strlen(str);
     }
-    size_t mallocSz = MAX(strLen, sizeHint) + 1 + sizeof(ManagedCtx);
+    size_t capacity = MAX(MinCapacity, MAX(strLen, sizeHint));
+    size_t mallocSz = capacity + 1 + sizeof(ManagedCtx) - MinCapacity;
     context = new (malloc(mallocSz))ManagedCtx();
     context->refCount = 1;
 
-    context->mallocSize = static_cast<uint32_t>(mallocSz);
+    context->capacity = static_cast<uint32_t>(capacity);
     context->offset = static_cast<uint32_t>(strLen);
-    uint8_t* ptr = reinterpret_cast<uint8_t*>(&context[1]);
     if (str) {
-        ::memcpy(ptr, str, strLen);
+        ::memcpy(context->c_str, str, strLen);
     }
-    ptr[strLen] = '\0';
+    context->c_str[strLen] = '\0';
 }
 
 void String::IncRef()

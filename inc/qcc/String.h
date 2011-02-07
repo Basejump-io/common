@@ -58,7 +58,7 @@ class String {
      * @param c         Initial value for string
      * @param sizeHint  Optional size hint for initial allocation.
      */
-    String(char c, size_t sizeHint = 16);
+    String(char c, size_t sizeHint = MinCapacity);
 
     /**
      * Construct a String with n copies of char.
@@ -67,7 +67,7 @@ class String {
      * @param c         Character used to fill string.
      * @param sizeHint  Optional size hint for initial allocation.
      */
-    String(size_t n, char c, size_t sizeHint = 16);
+    String(size_t n, char c, size_t sizeHint = MinCapacity);
 
     /**
      * Construct a string from a const char*
@@ -76,7 +76,7 @@ class String {
      * @param strLen     Length of string or 0 if str is null terminated
      * @param sizeHint   Optional size hint used for initial malloc if larger than str length.
      */
-    String(const char* str, size_t strLen = 0, size_t sizeHint = 16);
+    String(const char* str, size_t strLen = 0, size_t sizeHint = MinCapacity);
 
     /**
      * Copy Constructor
@@ -96,42 +96,42 @@ class String {
      *
      * @return  Amount of storage allocated to this string.
      */
-    size_t capacity() const { return context ? (context->mallocSize - sizeof(ManagedCtx) - 1) : 0; }
+    size_t capacity() const { return context ? context->capacity : 0; }
 
     /**
      * Get an iterator to the beginning of the string.
      *
      * @return iterator to start of string
      */
-    iterator begin() { return context ? reinterpret_cast<char*>(&context[1]) : emptyString; }
+    iterator begin() { return context ? context->c_str : emptyString; }
 
     /**
      * Get an iterator to the end of the string.
      *
      * @return iterator to end of string.
      */
-    iterator end() { return context ? reinterpret_cast<char*>(&context[1]) + context->offset : emptyString; }
+    iterator end() { return context ? context->c_str + context->offset : emptyString; }
 
     /**
      * Get a const_iterator to the beginning of the string.
      *
      * @return iterator to start of string
      */
-    const_iterator begin() const { return context ? reinterpret_cast<const char*>(&context[1]) : emptyString; }
+    const_iterator begin() const { return context ? context->c_str : emptyString; }
 
     /**
      * Get an iterator to the end of the string.
      *
      * @return iterator to end of string.
      */
-    const_iterator end() const { return context ? reinterpret_cast<const char*>(&context[1]) + context->offset : emptyString; }
+    const_iterator end() const { return context ? context->c_str + context->offset : emptyString; }
 
     /**
      * Clear contents of string.
      *
      * @param sizeHint   Allocation size hint used if string must be realloced.
      */
-    void clear(size_t sizeHint = 16);
+    void clear(size_t sizeHint = MinCapacity);
 
     /**
      * Append to string.
@@ -250,7 +250,7 @@ class String {
      */
     const char& operator[](size_t pos) const
     {
-        return context ? *(reinterpret_cast<const char*>(&context[1]) + pos) : *(const_cast<const char*>(emptyString));
+        return context ? context->c_str[pos] : *emptyString;
     }
 
     /**
@@ -272,7 +272,7 @@ class String {
      *
      * @return Null terminated string.
      */
-    const char* c_str() const { return context ? reinterpret_cast<const char*>(&context[1]) : emptyString; }
+    const char* c_str() const { return context ? context->c_str : emptyString; }
 
     /**
      * Get the not-necessarily null termination char* representation for this String.
@@ -397,17 +397,20 @@ class String {
      * @param str   Null terminated array of chars to comapare against this string.
      * @return  &lt;0 if this string is less than str, &gt;0 if this string is greater than str, 0 if equal.
      */
-    int compare(const char* str) const { return ::strcmp(context ? reinterpret_cast<const char*>(&context[1]) : emptyString, str); }
+    int compare(const char* str) const { return ::strcmp(context ? context->c_str : emptyString, str); }
 
   private:
 
     /** Empty string constant */
     static char emptyString[];
 
+    static const size_t MinCapacity = 16;
+
     typedef struct {
         int32_t refCount;
         uint32_t offset;
-        uint32_t mallocSize;
+        uint32_t capacity;
+        char c_str[MinCapacity];
     } ManagedCtx;
 
     ManagedCtx* context;
@@ -416,7 +419,7 @@ class String {
 
     void DecRef(ManagedCtx* context);
 
-    void NewContext(const uint8_t* str, size_t strLen, size_t sizeHint);
+    void NewContext(const char* str, size_t strLen, size_t sizeHint);
 };
 
 }
