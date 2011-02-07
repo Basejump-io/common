@@ -108,12 +108,40 @@ static QStatus testString()
     TEST_ASSERT(3 == s.find_last_of('d', 7));
     TEST_ASSERT(qcc::String::npos == s.find_last_of('d', 2));
 
+    qcc::String ss = "xyxyxyx" + s + "xy";
+    TEST_ASSERT(ss.find_first_not_of("xy") == 7);
+    TEST_ASSERT(ss.find_last_not_of("xy") == 17);
+
     TEST_ASSERT(false == s.empty());
     s.clear();
     TEST_ASSERT(true == s.empty());
     TEST_ASSERT(0 == s.size());
 
     s = testStr;
+
+    TEST_ASSERT(s[0] == 'a');
+    TEST_ASSERT(s[11] == '\0');
+
+    qcc::String s2 = s.substr(0, 4) + "1234";
+    TEST_ASSERT(s2 == "abcd1234");
+    TEST_ASSERT(s2.substr(4, 1) == "1");
+    TEST_ASSERT(s2.substr(1000, 1) == "");
+    TEST_ASSERT(s.compare(1, 2, s2, 1, 2) == 0);
+
+    s = "";
+    for (size_t i = 0; i < 1000; ++i) {
+        s += "foo";
+        TEST_ASSERT(s.size() == 3 * (i + 1));
+    }
+    s.erase(3, s.size() - 6);
+    TEST_ASSERT(s.size() == 6);
+    TEST_ASSERT(s == "foofoo");
+    s.resize(s.size() + 3, 'x');
+    TEST_ASSERT(s == "foofooxxx");
+
+    s.insert(3, "xxx");
+    TEST_ASSERT(s == "fooxxxfooxxx");
+
     return ER_OK;
 }
 
