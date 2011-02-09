@@ -120,11 +120,11 @@ static QStatus testString()
     s.clear();
     TEST_ASSERT(true == s.empty());
     TEST_ASSERT(0 == s.size());
-    
+
     /* Test operator= */
     s = "123456";
     TEST_ASSERT(::strcmp(s.c_str(), "123456") == 0);
-           
+
     /* test copy constructor and char& operator[] */
     String s2 = "abcdefg";
     String t2 = s2;
@@ -133,7 +133,7 @@ static QStatus testString()
     t2[1] = 'B';
     TEST_ASSERT(0 == ::strcmp(s2.c_str(), "abcdefg"));
     TEST_ASSERT(0 == ::strcmp(t2.c_str(), "aBcdefg"));
-    
+
     /* Test append */
     String pre = "abcd";
     String post = "efgh";
@@ -150,12 +150,12 @@ static QStatus testString()
     /* Test erase */
     pre.erase(4, 2);
     TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdghijkl"));
-                
+
     /* Test resize */
     pre.resize(4, 'x');
     TEST_ASSERT(pre.size() == 4);
     TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcd"));
-    
+
     pre.resize(8, 'x');
     TEST_ASSERT(pre.size() == 8);
     TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdxxxx"));
@@ -182,20 +182,20 @@ static QStatus testString()
     s6.append('m');
     TEST_ASSERT(s5 < s6);
     TEST_ASSERT(!(s6 < s5));
-    
+
     /* Test String(size_t, char, size_t) */
     String s3(8, 's', 8);
     TEST_ASSERT(0 == ::strcmp(s3.c_str(), "ssssssss"));
     TEST_ASSERT(s3.size() == ::strlen("ssssssss"));
-    
+
     /* Test const char& operator[] */
     const char* testChars = "abcdefgh";
     qcc::String s7 = testChars;
     const char* orig = s7.c_str();
     TEST_ASSERT(s7.size() == ::strlen(testChars));
     for (size_t i = 0; i < s7.size(); ++i) {
-         char c = s7[i];
-         TEST_ASSERT(c == testChars[i]);
+        char c = s7[i];
+        TEST_ASSERT(c == testChars[i]);
     }
     TEST_ASSERT(orig == s7.c_str());
 
