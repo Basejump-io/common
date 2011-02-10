@@ -5,8 +5,6 @@
  */
 
 /******************************************************************************
- * $Revision: 14/5 $
- *
  * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +49,14 @@ class AlarmListener {
     virtual ~AlarmListener() { }
 
   private:
-    virtual void AlarmTriggered(const Alarm& alarm) = 0;
+
+    /**
+     * @param alarm  The alarm that was triggered.
+     * @param status The reason the alarm was triggered. This will be either:
+     *               #ER_OK               The normal case.
+     *               #ER_TIMER_EXITING    The timer thread is exiting.
+     */
+    virtual void AlarmTriggered(const Alarm& alarm, QStatus reason) = 0;
 };
 
 class Alarm {
@@ -144,16 +149,17 @@ class Timer : public Thread {
     /**
      * Constructor
      *
-     * @param name  Optional name for the thread.
+     * @param name          Name for the thread.
+     * @param expireOnExit  If true call all pending alarms when this thread exits.
      */
-    Timer(const char* name = "timer") : Thread(name), inUserCallback(false) { }
+    Timer(const char* name = "timer", bool expireOnExit = false) : Thread(name), inUserCallback(false), expireOnExit(expireOnExit) { }
 
     /**
      * Associate an alarm with a timer.
      *
      * @param alarm     Alarm to add.
      */
-    void AddAlarm(const Alarm& alarm);
+    QStatus AddAlarm(const Alarm& alarm);
 
     /**
      * Disassociate an alarm from a timer.
@@ -176,6 +182,7 @@ class Timer : public Thread {
     Mutex lock;
     std::set<Alarm, std::less<Alarm> >  alarms;
     bool inUserCallback;
+    bool expireOnExit;
 };
 
 }

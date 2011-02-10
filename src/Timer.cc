@@ -32,15 +32,21 @@
 using namespace std;
 using namespace qcc;
 
-void Timer::AddAlarm(const Alarm& alarm)
+QStatus Timer::AddAlarm(const Alarm& alarm)
 {
     lock.Lock();
-    bool alertThread = alarms.empty() || (alarm < *alarms.begin());
-    alarms.insert(alarm);
-    lock.Unlock();
+    if (!IsStopping()) {
+        bool alertThread = alarms.empty() || (alarm < *alarms.begin());
+        alarms.insert(alarm);
+        lock.Unlock();
 
-    if (alertThread && !inUserCallback) {
-        Alert();
+        if (alertThread && !inUserCallback) {
+            Alert();
+        }
+        return ER_OK;
+    } else {
+        lock.Unlock();
+        return ER_TIMER_EXITING;
     }
 }
 
@@ -54,10 +60,10 @@ void Timer::RemoveAlarm(const Alarm& alarm)
 ThreadReturn STDCALL Timer::Run(void* arg)
 {
     /* Wait for first entry on (sorted) alarm list to expire */
+    lock.Lock();
     while (!IsStopping()) {
         Timespec now;
         GetTimeNow(&now);
-        lock.Lock();
         if (!alarms.empty()) {
             const Alarm& topAlarm = *alarms.begin();
             int64_t delay = topAlarm.alarmTime - now;
@@ -76,7 +82,7 @@ ThreadReturn STDCALL Timer::Run(void* arg)
                 if (FALLBEHIND_WARNING_MS < -delay) {
                     QCC_LogError(ER_TIMER_FALLBEHIND, ("Timer has fallen behind by %d ms", -delay));
                 }
-                (top.listener->AlarmTriggered)(top);
+                (top.listener->AlarmTriggered)(top, ER_OK);
                 inUserCallback = false;
                 if (0 != top.periodMs) {
                     top.alarmTime += top.periodMs;
@@ -92,7 +98,24 @@ ThreadReturn STDCALL Timer::Run(void* arg)
             Event::Wait(evt);
             stopEvent.ResetEvent();
         }
+        lock.Lock();
     }
+    if (expireOnExit) {
+        /* Call all alarms */
+        while (!alarms.empty()) {
+            /*
+             * Note it is possible that the callback will call RemoveAlarm()
+             */
+            set<Alarm>::iterator it = alarms.begin();
+            Alarm alarm = *it;
+            alarms.erase(it);
+            lock.Unlock();
+            it->listener->AlarmTriggered(*it, ER_TIMER_EXITING);
+            lock.Lock();
+        }
+    }
+    lock.Unlock();
+
     return (ThreadReturn) 0;
 }
 

@@ -67,6 +67,7 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_CRYPTO_ILLEGAL_PARAMETERS" value="0x101a" comment="Crypto algorithm parameter value is illegal"/>
   <status name="ER_CRYPTO_HASH_UNINITIALIZED" value="0x101b" comment="Cryptographic hash function must be initialized"/>
   <status name="ER_THREAD_NO_WAIT" value="0x101c" comment="Thread cannot be blocked by a WAIT or SLEEP call"/>
+  <status name="ER_TIMER_EXITING" value="0x101d" comment="Cannot add an alarm to a timer that is exiting"/>
 
   <status name="ER_NONE" value="0xffff" comment="No error code to report"/>
 </status_block>
