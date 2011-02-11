@@ -161,7 +161,6 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     thread->stopEvent.ResetEvent();
 
     if (thread->listener) {
-        thread->isStopping = false;
         thread->listener->ThreadExit(thread);
     }
 
@@ -217,13 +216,10 @@ QStatus Thread::Stop(void)
     if (isExternal) {
         QCC_LogError(ER_EXTERNAL_THREAD, ("Cannot stop an external thread"));
         return ER_EXTERNAL_THREAD;
-    }
-    QCC_DbgTrace(("Thread::Stop() [%s run: %s]", funcName.c_str(), IsRunning() ? "true" : "false"));
-    if (IsRunning()) {
+    } else {
+        QCC_DbgTrace(("Thread::Stop() %x [%s]", handle, funcName.c_str()));
         isStopping = true;
         return stopEvent.SetEvent();
-    } else {
-        return ER_OK;
     }
 }
 
