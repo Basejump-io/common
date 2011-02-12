@@ -216,6 +216,10 @@ String& String::append(const char* str, size_t strLen)
 
 String& String::erase(size_t pos, size_t n)
 {
+    /* Trying to erase past the end of the string, do nothing. */
+    if (pos >= size())
+        return *this;
+
     if (context) {
         if (context->refCount != 1) {
             /* Need a new context */
