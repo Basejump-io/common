@@ -151,6 +151,19 @@ static QStatus testString()
     pre.erase(4, 2);
     TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdghijkl"));
 
+    /* Test erasing past the end of the string. It should stop
+       at the string size. */
+    pre.erase(pre.size() - 1, 100);
+    TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdghijk"));
+
+    /* Test erasing after the end of the string. It should be
+       a no-op and should not trigger any crash. */
+    pre.erase(pre.size(), 2);
+    TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdghijk"));
+
+    pre.erase(pre.size() + 1, 100);
+    TEST_ASSERT(0 == ::strcmp(pre.c_str(), "abcdghijk"));
+
     /* Test resize */
     pre.resize(4, 'x');
     TEST_ASSERT(pre.size() == 4);
