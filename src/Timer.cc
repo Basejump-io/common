@@ -38,9 +38,10 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     if (!IsStopping()) {
         bool alertThread = alarms.empty() || (alarm < *alarms.begin());
         alarms.insert(alarm);
-        lock.Unlock();
 
-        if (alertThread && !inUserCallback) {
+        bool localInUserCallback = inUserCallback;
+        lock.Unlock();
+        if (alertThread && !localInUserCallback) {
             Alert();
         }
         return ER_OK;
@@ -78,6 +79,7 @@ ThreadReturn STDCALL Timer::Run(void* arg)
                 Alarm top = *it;
                 alarms.erase(it);
                 inUserCallback = true;
+                stopEvent.ResetEvent();
                 lock.Unlock();
                 if (FALLBEHIND_WARNING_MS < -delay) {
                     QCC_LogError(ER_TIMER_FALLBEHIND, ("Timer has fallen behind by %d ms", -delay));
