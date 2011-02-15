@@ -149,6 +149,13 @@ class SocketStream : public Stream {
      */
     bool IsConnected() { return isConnected; }
 
+    /**
+     * Return the socketFd for this SocketStream.
+     *
+     * @return socketFd
+     */
+    SocketFd GetSocketFd() { return sock; }
+
   private:
 
     /** Private default constructor */
