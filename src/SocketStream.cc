@@ -46,19 +46,22 @@ static int MakeSock(AddressFamily family, SocketType type)
     return sock;
 }
 
-SocketStream::SocketStream(SocketFd sock)
-    : isConnected(true),
+SocketStream::SocketStream(SocketFd sock) :
+    isConnected(true),
     sock(sock),
     sourceEvent(sock, Event::IO_READ, false),
-    sinkEvent(sock, Event::IO_WRITE, false) {
+    sinkEvent(sock, Event::IO_WRITE, false),
+    isDetached(false)
+{
 }
 
 
-SocketStream::SocketStream(AddressFamily family, SocketType type)
-    : isConnected(false),
+SocketStream::SocketStream(AddressFamily family, SocketType type) :
+    isConnected(false),
     sock(MakeSock(family, type)),
     sourceEvent(sock, Event::IO_READ, false),
-    sinkEvent(sourceEvent, Event::IO_WRITE, false)
+    sinkEvent(sourceEvent, Event::IO_WRITE, false),
+    isDetached(false)
 {
 }
 
@@ -100,7 +103,9 @@ QStatus SocketStream::Connect(qcc::String& path)
 void SocketStream::Close()
 {
     if (isConnected) {
-        Shutdown(sock);
+        if (!isDetached) {
+            Shutdown(sock);
+        }
         isConnected = false;
     }
     if (SOCKET_ERROR != sock) {

@@ -156,6 +156,13 @@ class SocketStream : public Stream {
      */
     SocketFd GetSocketFd() { return sock; }
 
+    /**
+     * Detach this SocketStream from the underlying socket.
+     * Calling this method will cause the underlying socket descriptor to not be shutdown when
+     * the SocketStream is closed or destroyed. The socket descriptor will, however, be closed.
+     */
+    void DetachSocketFd() { isDetached = true; }
+
   private:
 
     /** Private default constructor */
@@ -167,6 +174,7 @@ class SocketStream : public Stream {
     SocketFd sock;                   /**< Socket file descriptor */
     Event sourceEvent;               /**< Event signaled when data is available */
     Event sinkEvent;                 /**< Event signaled when sink can accept data */
+    bool isDetached;                 /**< Detached socket streams do not shutdown the underlying socket when closing */
 };
 
 }
