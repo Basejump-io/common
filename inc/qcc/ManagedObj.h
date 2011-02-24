@@ -24,6 +24,13 @@
 #define _QCC_MANAGEDOBJ_H
 
 #include <qcc/platform.h>
+
+#if defined(QCC_OS_ANDROID)
+// This must be included before #include <new> for building on Froyo with
+// certain versions of STLPort.
+#include <stdlib.h>
+#endif
+
 #include <new>
 
 #include <stdlib.h>
