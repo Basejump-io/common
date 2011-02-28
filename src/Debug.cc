@@ -36,6 +36,7 @@
 #include <qcc/Mutex.h>
 #include <qcc/String.h>
 #include <qcc/StringUtil.h>
+#include <qcc/Thread.h>
 #include <qcc/time.h>
 
 
@@ -140,8 +141,9 @@ class DebugControl {
     void* context;
     uint32_t allLevel;
     map<const qcc::String, uint32_t> modLevels;
+    bool printThread;
 
-    DebugControl(void) : cb(WriteMsg), context(stderr), allLevel(0)
+    DebugControl(void) : cb(WriteMsg), context(stderr), allLevel(0), printThread(false)
     {
         Init();
     }
@@ -166,7 +168,11 @@ class DebugControl {
 
         for (iter = env->Begin(); iter != env->End(); ++iter) {
             qcc::String var(iter->first);
-            if (var.compare(0, varPrefixLen, varPrefix) == 0) {
+            if (var.compare("ER_DEBUG_THREADNAME") == 0) {
+                printThread = ((iter->second.compare("0") != 0) &&
+                               (iter->second.compare("off") != 0) &&
+                               (iter->second.compare("OFF") != 0));
+            } else if (var.compare(0, varPrefixLen, varPrefix) == 0) {
                 uint32_t level = StringToU32(iter->second, 0, 0);
                 if (var.compare("ER_DEBUG_ALL") == 0) {
                     allLevel = level;
@@ -202,6 +208,8 @@ class DebugControl {
     }
 
     bool Check(DbgMsgType type, const char* module);
+
+    bool PrintThread() const { return printThread; }
 };
 
 DebugControl* DebugControl::self = NULL;
@@ -255,15 +263,15 @@ static const char* Type2Str(DbgMsgType type)
         break;
 
     case DBG_GEN_MESSAGE:
-        typeStr = "DEBUG   ";
+        typeStr = "DEBUG";
         break;
 
     case DBG_API_TRACE:
-        typeStr = "TRACE   ";
+        typeStr = "TRACE";
         break;
 
     case DBG_HIGH_LEVEL:
-        typeStr = "HL_DBG  ";
+        typeStr = "HL_DBG";
         break;
 
     case DBG_REMOTE_DATA:
@@ -282,47 +290,103 @@ static const char* Type2Str(DbgMsgType type)
 }
 
 
-static void GenPrefix(qcc::String& oss, DbgMsgType type, const char* module, const char* filename, int lineno)
+static void GenPrefix(qcc::String& oss, DbgMsgType type, const char* module, const char* filename, int lineno, bool printThread)
 {
     uint32_t timestamp = GetTimestamp();
+    static const size_t timeTypeWidth = 18;
+    static const size_t moduleWidth = 12;
+    static const size_t threadWidth = 18;
+    static const size_t bonusWidth = 8;
+    static const size_t fileLineWidth = 32;
+    size_t colStop = timeTypeWidth;
 
+    // Timestamp - col 0
     oss.append(U32ToString((timestamp / 1000) % 10000, 10, 4, ' '));
     oss.push_back('.');
     oss.append(U32ToString(timestamp % 1000, 10, 3, '0'));
     oss.push_back(' ');
+
+    // Output type - col 9
     oss.append(Type2Str(type));
-    oss.push_back(' ');
+    do {
+        oss.push_back(' ');
+    } while (oss.size() < colStop);
+
+    // Subsystem module - col 18
+    colStop += moduleWidth;
     oss.append(module);
-    oss.push_back(' ');
-    oss.append(filename);
+    do {
+        oss.push_back(' ');
+    } while (oss.size() < colStop);
+
+    if (printThread) {
+        // Thread name - col 30
+        colStop += threadWidth;
+        oss.append(Thread::GetThreadName());
+        do {
+            oss.push_back(' ');
+        } while (oss.size() < colStop);
+    } else {
+        // Extra space for file name
+        colStop += bonusWidth;
+    }
+
+    // File name - col 30 or 48
+    colStop += fileLineWidth;
+    size_t fnSize = strlen(filename);
+    qcc::String line = U32ToString(lineno, 10);
+    size_t fileWidth = colStop - (oss.size() + line.size() + 4);  // Figure out how much room for filename
+    if (fnSize > fileWidth) {
+        // Filename is too long so chop off the first part (which should just be leading directories).
+        oss.append("...");
+        oss.append(filename + (fnSize - (fileWidth - 3)));
+    } else {
+        oss.append(filename);
+    }
     oss.push_back(':');
-    oss.append(U32ToString(lineno, 10, 4, ' '));
-    oss.append(": ");
+    oss.append(line);
+    do {
+        oss.push_back(' ');
+    } while (oss.size() < (colStop - 2));
+
+    oss.append("| ");
+
+    // Msg at col 70 or 80
 }
 
 
 class DebugContext {
   private:
-    char msg[2000];  // Just allocate a buffer thats 'big enough'.
+    char msg[2000];  // Just allocate a buffer that's 'big enough'.
     size_t msgLen;
+    static int ctxCnt;
+    bool suppress;
 
   public:
     DebugContext(void) : msgLen(0)
     {
         msg[0] = '\0';
+        suppress = IncrementAndFetch(&ctxCnt) > 1;
+    }
+
+    ~DebugContext(void)
+    {
+        DecrementAndFetch(&ctxCnt);
     }
 
     void Process(DbgMsgType type, const char* module, const char* filename, int lineno);
     void Vprintf(const char* fmt, va_list ap);
+    bool IsSuppressed() const { return suppress; }
 };
 
+int DebugContext::ctxCnt = 0;
 
 void DebugContext::Process(DbgMsgType type, const char* module, const char* filename, int lineno)
 {
     DebugControl* control = DebugControl::GetDebugControl();
     qcc::String oss;
 
-    GenPrefix(oss, type, module, filename, lineno);
+    GenPrefix(oss, type, module, filename, lineno, control->PrintThread());
 
     if (msg != NULL) {
         oss.append(msg);
@@ -337,9 +401,9 @@ void DebugContext::Vprintf(const char* fmt, va_list ap)
 {
     int mlen;
 
-    mlen = vsnprintf(msg + msgLen, 2000 - msgLen, fmt, ap);
+    mlen = vsnprintf(msg + msgLen, sizeof(msg) - msgLen, fmt, ap);
 
-    if ((mlen > 0) && ((mlen + msgLen) <= 2000)) {
+    if ((mlen > 0) && ((mlen + msgLen) <= sizeof(msg))) {
         msgLen += mlen;
     }
 }
@@ -354,12 +418,13 @@ void QCC_InitializeDebugControl(void)
 void* _QCC_DbgPrintContext(const char* fmt, ...)
 {
     DebugContext* context = new DebugContext();
-    va_list ap;
+    if (!context->IsSuppressed()) {
+        va_list ap;
 
-    va_start(ap, fmt);
-    context->Vprintf(fmt, ap);
-    va_end(ap);
-
+        va_start(ap, fmt);
+        context->Vprintf(fmt, ap);
+        va_end(ap);
+    }
     return context;
 }
 
@@ -367,19 +432,22 @@ void* _QCC_DbgPrintContext(const char* fmt, ...)
 void _QCC_DbgPrintAppend(void* ctx, const char* fmt, ...)
 {
     DebugContext* context = reinterpret_cast<DebugContext*>(ctx);
-    va_list ap;
+    if (!context->IsSuppressed()) {
+        va_list ap;
 
-    va_start(ap, fmt);
-    context->Vprintf(fmt, ap);
-    va_end(ap);
+        va_start(ap, fmt);
+        context->Vprintf(fmt, ap);
+        va_end(ap);
+    }
 }
 
 
 void _QCC_DbgPrintProcess(void* ctx, DbgMsgType type, const char* module, const char* filename, int lineno)
 {
     DebugContext* context = reinterpret_cast<DebugContext*>(ctx);
-
-    context->Process(type, module, filename, lineno);
+    if (!context->IsSuppressed()) {
+        context->Process(type, module, filename, lineno);
+    }
     delete context;
 }
 
@@ -412,69 +480,73 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
 {
     DebugContext* context;
 
-
     if (_QCC_DbgPrintCheck(type, module)) {
         if (data == NULL) {
             context = new DebugContext();
-            _QCC_DbgPrintAppend(context, "<null>");
-            _QCC_DbgPrintProcess(context, type, module, filename, lineno);
-        } else {
-            DebugControl* control = DebugControl::GetDebugControl();
-            const uint8_t* pos(reinterpret_cast<const uint8_t*>(data));
-            static const size_t LINE_LEN = 16;
-            size_t i;
-            qcc::String oss;
-
-            GenPrefix(oss, type, module, filename, lineno);
-
-            oss.append(dataStr);
-            oss.push_back('[');
-            oss.append(U32ToString(dataLen, 16, 4, '0'));
-            oss.append("]:\n");
-
-            while (dataLen > 0) {
-                size_t dumpLen = (std::min)(dataLen, LINE_LEN);
-
-                oss.append("         ");
-                oss.append(Type2Str(type));
-                oss.push_back(' ');
-                oss.append(module);
-                oss.append("    ");
-                oss.append(U32ToString(pos - reinterpret_cast<const uint8_t*>(data), 16, 4, '0'));
-                oss.append(" | ");
-
-                for (i = 0; i < LINE_LEN; ++i) {
-                    if (i == (LINE_LEN / 2)) {
-                        oss.append("- ");
-                    }
-                    if (i < dumpLen) {
-                        oss.append(U32ToString(static_cast<uint32_t>(pos[i]), 16, 2, '0'));
-                        oss.push_back(' ');
-                    } else {
-                        oss.append("   ");
-                    }
-                }
-
-                oss.append(" |  ");
-
-                for (i = 0; i < LINE_LEN; ++i) {
-                    if (i == (LINE_LEN / 2)) {
-                        oss.append(" - ");
-                    }
-                    if (i < dumpLen) {
-                        oss.push_back(isprint(pos[i]) ? pos[i] : '.');
-                    } else {
-                        oss.push_back(' ');
-                    }
-                }
-
-                oss.push_back('\n');
-
-                pos += dumpLen;
-                dataLen -= dumpLen;
+            if (!context->IsSuppressed()) {
+                _QCC_DbgPrintAppend(context, "<null>");
+                _QCC_DbgPrintProcess(context, type, module, filename, lineno);
             }
+        } else {
+            DebugContext ctx;
+            if (!ctx.IsSuppressed()) {
+                DebugControl* control = DebugControl::GetDebugControl();
+                const uint8_t* pos(reinterpret_cast<const uint8_t*>(data));
+                static const size_t LINE_LEN = 16;
+                size_t i;
+                qcc::String oss;
 
-            control->WriteDebugMessage(type, module, oss);
+                GenPrefix(oss, type, module, filename, lineno, control->PrintThread());
+
+                oss.append(dataStr);
+                oss.push_back('[');
+                oss.append(U32ToString(dataLen, 16, 4, '0'));
+                oss.append("]:\n");
+
+                while (dataLen > 0) {
+                    size_t dumpLen = (std::min)(dataLen, LINE_LEN);
+
+                    oss.append("         ");
+                    oss.append(Type2Str(type));
+                    oss.push_back(' ');
+                    oss.append(module);
+                    oss.append("    ");
+                    oss.append(U32ToString(pos - reinterpret_cast<const uint8_t*>(data), 16, 4, '0'));
+                    oss.append(" | ");
+
+                    for (i = 0; i < LINE_LEN; ++i) {
+                        if (i == (LINE_LEN / 2)) {
+                            oss.append("- ");
+                        }
+                        if (i < dumpLen) {
+                            oss.append(U32ToString(static_cast<uint32_t>(pos[i]), 16, 2, '0'));
+                            oss.push_back(' ');
+                        } else {
+                            oss.append("   ");
+                        }
+                    }
+
+                    oss.append(" |  ");
+
+                    for (i = 0; i < LINE_LEN; ++i) {
+                        if (i == (LINE_LEN / 2)) {
+                            oss.append(" - ");
+                        }
+                        if (i < dumpLen) {
+                            oss.push_back(isprint(pos[i]) ? pos[i] : '.');
+                        } else {
+                            oss.push_back(' ');
+                        }
+                    }
+
+                    oss.push_back('\n');
+
+                    pos += dumpLen;
+                    dataLen -= dumpLen;
+                }
+
+                control->WriteDebugMessage(type, module, oss);
+            }
         }
     }
 }
