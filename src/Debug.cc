@@ -300,6 +300,8 @@ static void GenPrefix(qcc::String& oss, DbgMsgType type, const char* module, con
     static const size_t fileLineWidth = 32;
     size_t colStop = timeTypeWidth;
 
+    oss.reserve(timeTypeWidth + moduleWidth + threadWidth + fileLineWidth + oss.capacity());
+
     // Timestamp - col 0
     oss.append(U32ToString((timestamp / 1000) % 10000, 10, 4, ' '));
     oss.push_back('.');
@@ -385,6 +387,8 @@ void DebugContext::Process(DbgMsgType type, const char* module, const char* file
 {
     DebugControl* control = DebugControl::GetDebugControl();
     qcc::String oss;
+
+    oss.reserve(sizeof(msg));
 
     GenPrefix(oss, type, module, filename, lineno, control->PrintThread());
 
@@ -495,6 +499,8 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
                 static const size_t LINE_LEN = 16;
                 size_t i;
                 qcc::String oss;
+
+                oss.reserve(strlen(dataStr) + 8 + dataLen * 4 + (((dataLen + 15) / 16) * (40 + sizeof(module))));
 
                 GenPrefix(oss, type, module, filename, lineno, control->PrintThread());
 

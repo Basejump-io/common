@@ -129,9 +129,9 @@ bool String::operator<(const String& str) const
 {
     /* Include the null in the compare to catch case when two strings have different lengths */
     if (context && str.context) {
-        return 0 > ::memcmp(context->c_str,
-                            str.context->c_str,
-                            MIN(context->offset, str.context->offset) + 1);
+        return (context != str.context) && (0 > ::memcmp(context->c_str,
+                                                         str.context->c_str,
+                                                         MIN(context->offset, str.context->offset) + 1));
     } else {
         return size() < str.size();
     }
@@ -141,13 +141,17 @@ int String::compare(size_t pos, size_t n, const String& s) const
 {
     int ret;
     if (context && s.context) {
-        size_t subStrLen = MIN(context->offset - pos, n);
-        size_t sLen = s.context->offset;
-        ret = ::memcmp(context->c_str + pos, s.context->c_str, MIN(subStrLen, sLen));
-        if ((0 == ret) && (subStrLen < sLen)) {
-            ret = -1;
-        } else if ((0 == ret) && (subStrLen > sLen)) {
-            ret = 1;
+        if ((pos == 0) && (context == s.context)) {
+            ret = 0;
+        } else {
+            size_t subStrLen = MIN(context->offset - pos, n);
+            size_t sLen = s.context->offset;
+            ret = ::memcmp(context->c_str + pos, s.context->c_str, MIN(subStrLen, sLen));
+            if ((0 == ret) && (subStrLen < sLen)) {
+                ret = -1;
+            } else if ((0 == ret) && (subStrLen > sLen)) {
+                ret = 1;
+            }
         }
     } else {
         if (context && (0 < n) && (npos != pos)) {
@@ -165,13 +169,17 @@ int String::compare(size_t pos, size_t n, const String& s, size_t sPos, size_t s
 {
     int ret;
     if (context && s.context) {
-        size_t subStrLen = MIN(context->offset - pos, n);
-        size_t sSubStrLen = MIN(s.context->offset - sPos, sn);
-        ret = ::memcmp(context->c_str + pos, s.context->c_str + sPos, MIN(subStrLen, sSubStrLen));
-        if ((0 == ret) && (subStrLen < sSubStrLen)) {
-            ret = -1;
-        } else if ((0 == ret) && (subStrLen > sSubStrLen)) {
-            ret = 1;
+        if ((pos == sPos) && (context == s.context)) {
+            ret = 0;
+        } else {
+            size_t subStrLen = MIN(context->offset - pos, n);
+            size_t sSubStrLen = MIN(s.context->offset - sPos, sn);
+            ret = ::memcmp(context->c_str + pos, s.context->c_str + sPos, MIN(subStrLen, sSubStrLen));
+            if ((0 == ret) && (subStrLen < sSubStrLen)) {
+                ret = -1;
+            } else if ((0 == ret) && (subStrLen > sSubStrLen)) {
+                ret = 1;
+            }
         }
     } else {
         if (context && (0 < n) && (npos != pos) && (size() > pos)) {
@@ -414,6 +422,10 @@ String String::substr(size_t pos, size_t n) const
 
 bool String::operator==(const String& other) const
 {
+    if (context == other.context) {
+        /* If both contexts point to the same memory then they are, by definition, the same. */
+        return true;
+    }
     size_t otherSize = other.size();
     if (context && (0 < otherSize)) {
         if (context->offset != other.context->offset) {
