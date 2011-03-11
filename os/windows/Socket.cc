@@ -322,9 +322,7 @@ QStatus Shutdown(SocketFd sockfd)
 
     ret = shutdown(static_cast<SOCKET>(sockfd), SD_BOTH);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Shutdown socket: %d - %s", err, strerror(err)));
     }
     return status;
 }
@@ -336,10 +334,7 @@ void Close(SocketFd sockfd)
 
     QCC_DbgTrace(("Close (sockfd = %d)", sockfd));
     ret = closesocket(static_cast<SOCKET>(sockfd));
-    if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        QCC_LogError(ER_OS_ERROR, ("Close socket: %d - %s", err, strerror(err)));
-    } else {
+    if (ret != SOCKET_ERROR) {
         WSADecRefCount();
     }
 }
@@ -588,7 +583,6 @@ QStatus Recv(SocketFd sockfd, void* buf, size_t len, size_t& received)
             status = ER_WOULDBLOCK;
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Receive: %d - %s", err, strerror(err)));
         }
         received = 0;
     } else {
