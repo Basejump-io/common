@@ -759,4 +759,10 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
     return status;
 }
 
+QStatus SocketPair(SocketFd(&sockets)[2])
+{
+    int ret = socketpair(AF_UNIX, SOCK_STREAM, 0, sockets);
+    return (ret == 0) ? ER_OK : ER_FAIL;
+}
+
 }  /* namespace */

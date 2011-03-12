@@ -369,7 +369,7 @@ class String {
     int compare(const String& other) const { return compare(0, npos, other); }
 
     /**
-     * Compare a substring of this string with other.
+     * Compare a substring of this string with a substring of other.
      *
      * @param pos       Start position of this string.
      * @param n         Number of characters of this string to use for compare.
@@ -382,7 +382,7 @@ class String {
     int compare(size_t pos, size_t n, const String& other, size_t otherPos, size_t otherN) const;
 
     /**
-     * Compare a substring of this string with a substring of the other.
+     * Compare a substring of this string with other.
      *
      * @param pos    Start position of this string.
      * @param n      Number of characters of this string to use for compare.
