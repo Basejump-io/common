@@ -1015,7 +1015,7 @@ QStatus SocketPair(SocketFd(&sockets)[2])
         goto socketPairCleanup;
     }
 
- socketPairCleanup:
+socketPairCleanup:
 
     if (status != ER_OK) {
         Close(sockets[0]);
