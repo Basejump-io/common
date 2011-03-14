@@ -181,7 +181,7 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
             QCC_LogError(status, ("Connecting to %s %d: %d - %s", remoteAddr.ToString().c_str(), remotePort, err, strerror(err)));
         }
     } else {
-        uint32_t mode = 1; // Non-blocking
+        u_long mode = 1; // Non-blocking
         ret = ioctlsocket(sockfd, FIONBIO, &mode);
         if (ret == SOCKET_ERROR) {
             int err = WSAGetLastError();
@@ -288,7 +288,7 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
             remotePort = 0;
         }
         newSockfd = static_cast<SocketFd>(ret);
-        uint32_t mode = 1; // Non-blocking
+        u_long mode = 1; // Non-blocking
         ret = ioctlsocket(newSockfd, FIONBIO, &mode);
         if (ret == SOCKET_ERROR) {
             WSADecRefCount();
@@ -968,8 +968,61 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
 
 QStatus SocketPair(SocketFd(&sockets)[2])
 {
-    int ret = socketpair(AF_INET, SOCK_STREAM, 0, sockets);
-    return (ret == 0) ? ER_OK : ER_FAIL;
+    QStatus status = ER_OK;
+
+    QCC_DbgTrace(("SocketPair()"));
+
+    /* Create sockets */
+    status = Socket(QCC_AF_INET, QCC_SOCK_STREAM, sockets[0]);
+    if (status != ER_OK) {
+        return status;
+    }
+
+    status = Socket(QCC_AF_INET, QCC_SOCK_STREAM, sockets[1]);
+    if (status != ER_OK) {
+        Close(sockets[0]);
+        return status;
+    }
+
+    /* Bind fd[0] */
+    IPAddress ipAddr("127.0.0.1");
+    status = Bind(sockets[0], ipAddr, 0);
+    if (status != ER_OK) {
+        goto socketPairCleanup;
+    }
+
+    /* Listen fds[0] */
+    status = Listen(sockets[0], 1);
+    if (status != ER_OK) {
+        goto socketPairCleanup;
+    }
+
+    /* Get addr info for fds[0] */
+    struct sockaddr_in addrInfo;
+    int len = sizeof(addrInfo);
+    int ret = getsockname(sockets[0], reinterpret_cast<sockaddr*>(&addrInfo), &len);
+    if (ret == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("getsockopt failed: %d - %s", err, strerror(err)));
+        goto socketPairCleanup;
+    }
+
+    /* Connect fds[1] */
+    status = Connect(sockets[1], ipAddr, ntohs(addrInfo.sin_port));
+    if (status != ER_OK) {
+        QCC_LogError(status, ("SocketPair.Connect failed"));
+        goto socketPairCleanup;
+    }
+
+ socketPairCleanup:
+
+    if (status != ER_OK) {
+        Close(sockets[0]);
+        Close(sockets[1]);
+    }
+
+    return status;
 }
 
 }   /* namespace */
