@@ -35,7 +35,7 @@ namespace qcc {
  * @return  New value (after increment) of *mem
  */
 inline int32_t IncrementAndFetch(int32_t* mem) {
-    return (int32_t) InterlockedIncrement(reinterpret_cast<uint32_t*>(mem));
+    return InterlockedIncrement(reinterpret_cast<volatile long*>(mem));
 }
 
 /**
@@ -45,7 +45,7 @@ inline int32_t IncrementAndFetch(int32_t* mem) {
  * @return  New value (after decrement) of *mem
  */
 inline int32_t DecrementAndFetch(int32_t* mem) {
-    return (int32_t) InterlockedDecrement(reinterpret_cast<uint32_t*>(mem));
+    return InterlockedDecrement(reinterpret_cast<volatile long*>(mem));
 }
 
 }
