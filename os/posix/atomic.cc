@@ -14,7 +14,7 @@
  *    limitations under the License.
  *
  ******************************************************************************/
-#if (defined(ANDROID) and ARMV == 5)or(defined(QCC_MAEMO) and defined(QCC_X86))
+#if defined(QCC_MAEMO) and defined(QCC_X86)
 
 #include <qcc/platform.h>
 

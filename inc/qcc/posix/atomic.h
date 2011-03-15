@@ -26,15 +26,57 @@
 
 #include <qcc/platform.h>
 
+#ifdef ANDROID
+#include <sys/atomics.h>
+#endif
+
 namespace qcc {
 
 #ifdef QCC_CPU_ARM
+
+#ifdef ANDROID
 
 /**
  * Increment an int32_t and return it's new value atomically.
  *
  * @param mem   Pointer to int32_t to be incremented.
- * @return  New value (afer increment) of *mem
+ * @return  New value (after increment) of *mem
+ */
+inline int32_t IncrementAndFetch(volatile int32_t* mem)
+{
+    /*
+     * Androids built in __atomic_inc operation returns the previous value
+     * stored in mem. This value has been changed in memory.  Since we expect
+     * the value after the increment to be returned we add one to the value
+     * returned by __atomic_inc.
+     */
+    return __atomic_inc(mem) + 1;
+}
+
+/**
+ * Decrement an int32_t and return it's new value atomically.
+ *
+ * @param mem   Pointer to int32_t to be decremented.
+ * @return  New value (after decrement) of *mem
+ */
+inline int32_t DecrementAndFetch(volatile int32_t* mem)
+{
+    /*
+     * Androids built in __atomic_dec operation returns the previous value
+     * stored in mem. This value has been changed in memory.  Since we expect
+     * the value after the decrement to be returned we subtract one from the
+     * value returned by __atomic_dec.
+     */
+    return __atomic_dec(mem) - 1;
+}
+
+#else /* TARGET_ANDROID */
+
+/**
+ * Increment an int32_t and return it's new value atomically.
+ *
+ * @param mem   Pointer to int32_t to be incremented.
+ * @return  New value (after increment) of *mem
  */
 inline int32_t IncrementAndFetch(volatile int32_t* mem)
 {
@@ -77,7 +119,7 @@ inline int32_t DecrementAndFetch(volatile int32_t* mem)
 
     return ret;
 }
-
+#endif /* ANDROID */
 #elif defined (QCC_OS_LINUX)
 
 /**
@@ -118,7 +160,7 @@ int32_t IncrementAndFetch(volatile int32_t* mem);
  */
 int32_t DecrementAndFetch(volatile int32_t* mem);
 
-#endif
+#endif /* QCC_CPU_ARM */
 }
 
 #endif
