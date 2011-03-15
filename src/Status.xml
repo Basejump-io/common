@@ -37,6 +37,12 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_BAD_ARG_7" value="0x12" comment="Function call argument 7 is invalid"/>
   <status name="ER_BAD_ARG_8" value="0x13" comment="Function call argument 8 is invalid"/>
   <status name="ER_INVALID_ADDRESS" value="0x14" comment="Address is NULL or invalid"/>
+  <status name="ER_INVALID_DATA" value="0x15" comment="Generic invalid data error"/>
+  <status name="ER_READ_ERROR" value="0x16" comment="Generic read error"/>
+  <status name="ER_WRITE_ERROR" value="0x17" comment="Generic write error"/>
+  <status name="ER_OPEN_FAILED" value="0x18" comment="Generic open failure"/>
+  <status name="ER_PARSE_ERROR" value="0x19" comment="Generic parse failure"/>
+  <status name="ER_END_OF_DATA" value="0x1A" comment="Generic EOD/EOF error"/>
 
   <status name="ER_COMMON_ERRORS" value="0x1000" comment="Error code block for the Common subsystem."/>
   <status name="ER_STOPPING_THREAD" value="0x1001" comment="Operation interrupted by ERThread stop signal."/>
