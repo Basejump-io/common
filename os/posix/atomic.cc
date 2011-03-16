@@ -14,7 +14,7 @@
  *    limitations under the License.
  *
  ******************************************************************************/
-#if defined(QCC_MAEMO) and defined(QCC_X86)
+#if defined(QCC_MAEMO)and defined(QCC_X86)
 
 #include <qcc/platform.h>
 
@@ -26,25 +26,25 @@ static pthread_mutex_t atomicLock = PTHREAD_MUTEX_INITIALIZER;
 
 namespace qcc {
 
-    int32_t IncrementAndFetch(volatile int32_t* mem)
-    {
-        int32_t ret;
+int32_t IncrementAndFetch(volatile int32_t* mem)
+{
+    int32_t ret;
 
-        pthread_mutex_lock(&atomicLock);
-        ret = ++(*mem);
-        pthread_mutex_unlock(&atomicLock);
-        return ret;
-    }
+    pthread_mutex_lock(&atomicLock);
+    ret = ++(*mem);
+    pthread_mutex_unlock(&atomicLock);
+    return ret;
+}
 
-    int32_t DecrementAndFetch(volatile int32_t* mem)
-    {
-        int32_t ret;
+int32_t DecrementAndFetch(volatile int32_t* mem)
+{
+    int32_t ret;
 
-        pthread_mutex_lock(&atomicLock);
-        ret = --(*mem);
-        pthread_mutex_unlock(&atomicLock);
-        return ret;
-    }
+    pthread_mutex_lock(&atomicLock);
+    ret = --(*mem);
+    pthread_mutex_unlock(&atomicLock);
+    return ret;
+}
 
 }
 
