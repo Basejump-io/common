@@ -168,6 +168,15 @@ class Timer : public Thread {
      */
     void RemoveAlarm(const Alarm& alarm);
 
+    /*
+     * Test if the specified alarm is associated with this timer.
+     *
+     * @param alarm     Alarm to check.
+     *
+     * @return  Returns true if the alarm is associated with this timer, false if not.
+     */
+    bool HasAlarm(const Alarm& alarm);
+
   protected:
 
     /**

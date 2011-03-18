@@ -58,6 +58,14 @@ void Timer::RemoveAlarm(const Alarm& alarm)
     lock.Unlock();
 }
 
+bool Timer::HasAlarm(const Alarm& alarm)
+{
+    lock.Lock();
+    bool hasAlarm = alarms.count(alarm) != 0;
+    lock.Unlock();
+    return hasAlarm;
+}
+
 ThreadReturn STDCALL Timer::Run(void* arg)
 {
     /* Wait for first entry on (sorted) alarm list to expire */
