@@ -20,17 +20,41 @@
 #ifndef _PLATFORM_UNICODE_H
 #define _PLATFORM_UNICODE_H
 
+/// @cond ALLJOYN_DEV
 #if __SIZEOF_WCHAR_T__ == 4
-// GCC normally defines a 4 byte wchar_t
+// GCC normally defines a 4-byte wchar_t
+/**
+ * If wchar_t is defined as 4-bytes this will convert UTF8 to wchar_t
+ */
 #define ConvertUTF8ToWChar ConvertUTF8toUTF32
+
+/**
+ * if wchar_t is defined as 4-bytes this will convert wchar_t to UTF8
+ */
 #define ConvertWCharToUTF8 ConvertUTF32toUTF8
+
+/**
+ * WideUTF is defined as a 4-byte container
+ */
 #define WideUTF UTF32
 #else
+
 // GCC will define a 2 byte wchar_t when running under windows or if given the
 // -fshort-wchar option.
-#define ConvertUTF8ToWChar ConvertUTF8toUTF16          /**< @internal */
-#define ConvertWCharToUTF8 ConvertUTF16toUTF8          /**< @internal */
-#define WideUTF UTF16                                  /**< @internal */
-#endif
+/**
+ * If wchar_t is defined as 2-bytes this will convert UTF8 to wchar_t
+ */
+#define ConvertUTF8ToWChar ConvertUTF8toUTF16
 
+/**
+ * if wchar_t is defined as 2-bytes this will convert wchar_t to UTF8
+ */
+#define ConvertWCharToUTF8 ConvertUTF16toUTF8
+
+/**
+ * WideUTF is defined as a 2-byte container
+ */
+#define WideUTF UTF16
+#endif
+/// @endcond
 #endif

@@ -23,7 +23,14 @@
 #define _TOOLCHAIN_QCC_MAPPING_H
 
 #include <windows.h>
-
+/// @cond ALLJOYN_DEV
+/**
+ * Map snprintf to _snprintf
+ *
+ * snprintf does not properly map in windows this is needed to insure calls to
+ * snprintf(char *str, size_t size, const char *format, ...) will compile in
+ * Windows.
+ */
 #define snprintf _snprintf
-
+/// @endcond
 #endif

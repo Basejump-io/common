@@ -21,7 +21,20 @@
 #define _PLATFORM_UNICODE_H
 
 // Visual Studio uses a 2 byte wchar_t
-#define ConvertUTF8ToWChar ConvertUTF8toUTF16      /**< @internal */
-#define ConvertWCharToUTF8 ConvertUTF16toUTF8      /**< @internal */
-#define WideUTF UTF16                              /**< @internal */
+/// @cond ALLJOYN_DEV
+/**
+ * If wchar_t is defined as 2-bytes this will convert UTF8 to wchar_t
+ */
+#define ConvertUTF8ToWChar ConvertUTF8toUTF16
+
+/**
+ * if wchar_t is defined as 2-bytes this will convert wchar_t to UTF8
+ */
+#define ConvertWCharToUTF8 ConvertUTF16toUTF8
+
+/**
+ * WideUTF is defined as a 2-byte container
+ */
+#define WideUTF UTF16
+/// @endcond
 #endif
