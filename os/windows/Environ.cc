@@ -31,6 +31,7 @@
 #include <qcc/Environ.h>
 #include <qcc/string.h>
 #include <qcc/StringUtil.h>
+#include <qcc/Logger.h>
 
 #include <Status.h>
 
@@ -73,6 +74,10 @@ void Environ::Preload(const char* keyPrefix)
     size_t prefixLen = strlen(keyPrefix);
     LPTCH env = GetEnvironmentStrings();
     LPTSTR var = env ? reinterpret_cast<LPTSTR>(env) + 1 : NULL;
+    if(var == NULL) {
+    	Log(LOG_ERR, "Environ::Preload unable to read Environment Strings");
+    	return;
+    }
     while (*var != NULL) {
         size_t len = wcslen((const wchar_t*)var);
         char* ansiBuf = (char*)malloc(len + 1);
