@@ -190,7 +190,21 @@ class ManagedObj {
      * @param other  The other managed object to compare.
      * @return  true if the managed objects are equal.
      */
-    bool operator==(const ManagedObj<T>& other) { return object == other.object; }
+    bool operator==(const ManagedObj<T>& other) const { return (object == other.object) || (*object == *other.object); }
+
+    /**
+     * Inequality for managed objects is whatever inequality means for @<T@>
+     * @param other  The other managed object to compare.
+     * @return  true if the managed objects are equal.
+     */
+    bool operator!=(const ManagedObj<T>& other) const { return (object != other.object) || (*object != *other.object); }
+
+    /**
+     * Less-than for managed objects is whatever less-than means for @<T@>
+     * @param other  The other managed object to compare.
+     * @return  true if the managed objects are equal.
+     */
+    bool operator<(const ManagedObj<T>& other) const { return (object != other.object) && (*object < *other.object); }
 
     /**
      * Get a reference to T.
