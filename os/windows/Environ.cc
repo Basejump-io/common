@@ -60,6 +60,7 @@ qcc::String Environ::Find(const qcc::String& key, const char* defaultValue)
             val = new char[len];
             GetEnvironmentVariableA(key.c_str(), val, len);
             vars[key] = val;
+            delete [] val;
         }
     }
     val = vars[key];
