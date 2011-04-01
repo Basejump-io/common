@@ -314,6 +314,14 @@ QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, So
  */
 QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, SocketFd* fdList, size_t numFds, uint32_t pid);
 
+/**
+ * Set a socket to blocking or not blocking.
+ *
+ * @param sockfd    Socket descriptor.
+ * @param blocking  If true set it to blocking, otherwise no-blocking.
+ */
+QStatus SetBlocking(SocketFd sockfd, bool blocking);
+
 }
 
 #endif

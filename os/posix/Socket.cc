@@ -160,10 +160,18 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
     MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
     ret = connect(static_cast<int>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret == -1) {
-        status = ER_OS_ERROR;
-        QCC_LogError(status, ("Connecting (sockfd = %u) to %s %d: %d - %s", sockfd,
-                              remoteAddr.ToString().c_str(), remotePort,
-                              errno, strerror(errno)));
+        if ((errno == EINPROGRESS) || (errno == EALREADY)) {
+            status = ER_WOULDBLOCK;
+        } else if (errno == EISCONN) {
+            status = ER_OK;
+        } else if (errno == ECONNREFUSED) {
+            status = ER_CONN_REFUSED;
+        } else {
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("Connecting (sockfd = %u) to %s %d: %d - %s", sockfd,
+                                  remoteAddr.ToString().c_str(), remotePort,
+                                  errno, strerror(errno)));
+        }
     } else {
         int flags = fcntl(sockfd, F_GETFL, 0);
         ret = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
@@ -278,8 +286,12 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
 
     ret = accept(static_cast<int>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), &addrLen);
     if (ret == -1) {
-        status = ER_OS_ERROR;
-        QCC_LogError(status, ("Accept (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
+        if (errno == EWOULDBLOCK) {
+            status = ER_WOULDBLOCK;
+        } else {
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("Accept (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
+        }
     } else {
         if (addr.ss_family == AF_INET) {
             struct sockaddr_in* sa = reinterpret_cast<struct sockaddr_in*>(&addr);
@@ -763,6 +775,22 @@ QStatus SocketPair(SocketFd(&sockets)[2])
 {
     int ret = socketpair(AF_UNIX, SOCK_STREAM, 0, sockets);
     return (ret == 0) ? ER_OK : ER_FAIL;
+}
+
+QStatus SetBlocking(SocketFd sockfd, bool blocking)
+{
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    ssize_t ret;
+    if (blocking) {
+        ret = fcntl(sockfd, F_SETFL, flags & ~O_NONBLOCK);
+    } else {
+        ret = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+    }
+    if (ret == -1) {
+        return ER_OS_ERROR;
+    } else {
+        return ER_OK;
+    }
 }
 
 }  /* namespace */

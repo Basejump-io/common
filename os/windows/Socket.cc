@@ -172,8 +172,10 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
     ret = connect(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
-        if (WSAEWOULDBLOCK == err) {
+        if ((WSAEWOULDBLOCK == err) || (WSAEALREADY == err)) {
             status = ER_WOULDBLOCK;
+        } else if (WSAECONNREFUSED == err) {
+            status = ER_CONN_REFUSED;
         } else if (WSAEISCONN == err) {
             status = ER_OK;
         } else {
@@ -237,7 +239,7 @@ QStatus Listen(SocketFd sockfd, int backlog)
     QCC_DbgTrace(("Bind(sockfd = %d, backlog = %d)", sockfd, backlog));
 
     ret = listen(static_cast<SOCKET>(sockfd), backlog);
-    if (ret != 0) {
+    if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Listening: %d - %s", err, strerror(err)));
@@ -1016,6 +1018,20 @@ socketPairCleanup:
         Close(sockets[1]);
     }
 
+    return status;
+}
+
+QStatus SetBlocking(SocketFd sockfd, bool blocking)
+{
+    QStatus status = ER_OK;
+
+    u_long mode = blocking ? 0 : 1;
+    int ret = ioctlsocket(sockfd, FIONBIO, &mode);
+    if (ret == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Failed to set socket non-blocking %d - %s", err, strerror(err)));
+    }
     return status;
 }
 
