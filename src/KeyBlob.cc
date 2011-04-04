@@ -207,15 +207,17 @@ KeyBlob::KeyBlob(const KeyBlob& other)
 
 KeyBlob& KeyBlob::operator=(const KeyBlob& other)
 {
-    assert(other.blobType < INVALID);
-    Erase();
-    if (other.blobType != EMPTY) {
-        data = new uint8_t[other.size];
-        memcpy(data, other.data, other.size);
-        size = other.size;
-        blobType = other.blobType;
-        expiration = other.expiration;
-        tag = other.tag;
+    if (this != &other) {
+        assert(other.blobType < INVALID);
+        Erase();
+        if (other.blobType != EMPTY) {
+            data = new uint8_t[other.size];
+            memcpy(data, other.data, other.size);
+            size = other.size;
+            blobType = other.blobType;
+            expiration = other.expiration;
+            tag = other.tag;
+        }
     }
     return *this;
 }
