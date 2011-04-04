@@ -181,7 +181,7 @@ QStatus KeyBlob::Load(qcc::Source& source)
                 data = new uint8_t[size];
                 status = source.PullBytes(data, size, pulled);
                 if (status != ER_OK) {
-                    delete data;
+                    delete [] data;
                     data = NULL;
                 }
             }
