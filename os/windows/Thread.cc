@@ -93,6 +93,7 @@ Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExterna
     function(isExternal ? NULL : func),
     handle(isExternal ? GetCurrentThread() : 0),
     exitValue(NULL),
+    arg(NULL),
     threadId(isExternal ? GetCurrentThreadId() : 0),
     listener(NULL),
     isExternal(isExternal),
