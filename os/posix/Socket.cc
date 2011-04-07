@@ -414,7 +414,7 @@ QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent)
 
     QCC_DbgLocalData(buf, len);
 
-    while (true) {
+    while (status == ER_OK) {
         ret = send(static_cast<int>(sockfd), buf, len, MSG_NOSIGNAL);
         if (ret == -1) {
             if (errno == EAGAIN) {
