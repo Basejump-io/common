@@ -48,13 +48,27 @@
  * of those macros, they use slightly different names.  This unifies the names
  * to match BSD names (also used by Android'd Bionic).
  */
-#define letoh16(_val) __bswap_16(_val)
-#define letoh32(_val) __bswap_32(_val)
-#define letoh64(_val) __bswap_64(_val)
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
+#define letoh16(_val) (_val)
+#define letoh32(_val) (_val)
+#define letoh64(_val) (_val)
 
 #define betoh16(_val) __bswap_16(_val)
 #define betoh32(_val) __bswap_32(_val)
 #define betoh64(_val) __bswap_64(_val)
+
+#else
+
+#define letoh16(_val) __bswap_16(_val)
+#define letoh32(_val) __bswap_32(_val)
+#define letoh64(_val) __bswap_64(_val)
+
+#define betoh16(_val) (_val)
+#define betoh32(_val) (_val)
+#define betoh64(_val) (_val)
+
+#endif
 
 // Undefine GlibC's versions the macros to help prevent writting non-portable code.
 #undef le16toh
