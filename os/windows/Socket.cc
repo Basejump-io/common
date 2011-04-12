@@ -236,7 +236,7 @@ QStatus Listen(SocketFd sockfd, int backlog)
     QStatus status = ER_OK;
     int ret;
 
-    QCC_DbgTrace(("Bind(sockfd = %d, backlog = %d)", sockfd, backlog));
+    QCC_DbgTrace(("Listen(sockfd = %d, backlog = %d)", sockfd, backlog));
 
     ret = listen(static_cast<SOCKET>(sockfd), backlog);
     if (ret == SOCKET_ERROR) {
