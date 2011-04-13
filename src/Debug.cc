@@ -359,7 +359,7 @@ class DebugContext {
   private:
     char msg[2000];  // Just allocate a buffer that's 'big enough'.
     size_t msgLen;
-    static int ctxCnt;
+    static int32_t ctxCnt;
     bool suppress;
 
   public:
