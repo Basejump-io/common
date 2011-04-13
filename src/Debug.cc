@@ -50,9 +50,7 @@ using namespace qcc;
 
 class StdoutLock {
   public:
-    StdoutLock()
-    {
-    }
+    StdoutLock() { }
 
     ~StdoutLock()
     {
@@ -82,7 +80,7 @@ class StdoutLock {
   private:
     Mutex* Get(void)
     {
-        if (m_mutex == 0 && m_destructed == false) {
+        if (m_mutex == NULL && m_destructed == false) {
             m_mutex = new Mutex;
         }
         return m_mutex;
@@ -92,7 +90,7 @@ class StdoutLock {
     static bool m_destructed;
 };
 
-Mutex* StdoutLock::m_mutex = 0;
+Mutex* StdoutLock::m_mutex = NULL;
 bool StdoutLock::m_destructed = false;
 
 StdoutLock stdoutLock;
@@ -183,12 +181,12 @@ class DebugControl {
         }
     }
 
-    void AddTagLevelPair(const char* tag, int level)
+    void AddTagLevelPair(const char* tag, uint32_t level)
     {
-        modLevels.insert(pair<const qcc::String, int>(tag, level));
+        modLevels.insert(pair<const qcc::String, uint32_t>(tag, level));
     }
 
-    void SetAllLevel(int level)
+    void SetAllLevel(uint32_t level)
     {
         allLevel = level;
     }
@@ -557,9 +555,18 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
     }
 }
 
-void QCC_SetLogLevels(const char* logEnv)
+void QCC_SetDebugLevel(const char* module, uint32_t level)
 {
     DebugControl* control = DebugControl::GetDebugControl();
+    if (strcmp(module, "ALL") == 0) {
+        control->SetAllLevel(level);
+    } else {
+        control->AddTagLevelPair(module, level);
+    }
+}
+
+void QCC_SetLogLevels(const char* logEnv)
+{
     size_t pos = 0;
     qcc::String s = logEnv;
     while (qcc::String::npos != pos) {
@@ -568,12 +575,8 @@ void QCC_SetLogLevels(const char* logEnv)
         if (qcc::String::npos != eqPos) {
             qcc::String tag = s.substr(pos, eqPos - pos);
             qcc::String levelStr = (qcc::String::npos == endPos) ? s.substr(eqPos + 1) : s.substr(eqPos + 1, endPos - eqPos - 1);
-            int level = StringToU32(levelStr, 0, 0);
-            if (tag == "ALL") {
-                control->SetAllLevel(level);
-            } else {
-                control->AddTagLevelPair(tag.c_str(), level);
-            }
+            uint32_t level = StringToU32(levelStr, 0, 0);
+            QCC_SetDebugLevel(tag.c_str(), level);
         }
         pos = (qcc::String::npos == endPos) ? endPos : endPos + 1;
     }

@@ -19,6 +19,18 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
+#ifndef _QCC_LOG_H
+#define _QCC_LOG_H
+
+#include <qcc/platform.h>
+
+/**
+ * Set AllJoyn debug levels.
+ *
+ * @param module    name of the module to generate debug output
+ * @param level     debug level to set for the module
+ */
+void QCC_SetDebugLevel(const char* module, uint32_t level);
 
 /**
  * Set AllJoyn logging levels.
@@ -35,3 +47,6 @@ void QCC_SetLogLevels(const char* logEnv);
  * @param  useOSLog   true iff OS specific logging should be used rather than print for AllJoyn debug messages.
  */
 void QCC_UseOSLogging(bool useOSLog);
+
+
+#endif
