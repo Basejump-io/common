@@ -379,7 +379,7 @@ class DebugContext {
     bool IsSuppressed() const { return suppress; }
 };
 
-int DebugContext::ctxCnt = 0;
+int32_t DebugContext::ctxCnt = 0;
 
 void DebugContext::Process(DbgMsgType type, const char* module, const char* filename, int lineno)
 {
