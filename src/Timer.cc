@@ -120,7 +120,7 @@ ThreadReturn STDCALL Timer::Run(void* arg)
             Alarm alarm = *it;
             alarms.erase(it);
             lock.Unlock();
-            it->listener->AlarmTriggered(*it, ER_TIMER_EXITING);
+            alarm.listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
             lock.Lock();
         }
     }
