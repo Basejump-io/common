@@ -1,14 +1,18 @@
 
    Copyright (c)2009-2011, Qualcomm Innovation Center, Inc
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
+   ============================================================================
+
+
+   All software contained herein is licensed under the Apache License,
+   Version 2.0 (the "Apache License"); you may not use this software except
+   in compliance with the Apache License.
 
    Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
+   distributed under the Apache License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+   See the Apache License for the specific language governing permissions
+   and limitations under the Apache License.
 
 
                                  Apache License
@@ -187,4 +191,26 @@
       of your accepting any such warranty or additional liability.
 
    END OF TERMS AND CONDITIONS
+
+   ============================================================================
+
+
+   All documentation contained herein is licensed under the Creative Commons
+   Attribution-ShareAlike 3.0 Unported License (the "CC BY-SA License");
+   provided,
+   that (i) any source code incorporated in this documentation is licensed
+            under the Apache License version 2.0
+   and (ii) THIS DOCUMENTATION AND ALL INFORMATION CONTAINED HEREIN ARE
+            PROVIDED ON AN "AS-IS" BASIS WITHOUT WARRANTY OF ANY KIND.
+
+   To view a copy of this license, visit
+
+      http://creativecommons.org/licenses/by-sa/3.0/
+
+   or send a letter to
+
+      Creative Commons
+      171 Second Street, Suite 300
+      San Francisco
+      California, 94105, USA
 
