@@ -73,7 +73,6 @@ QStatus Sleep(uint32_t ms) {
 
 Thread* Thread::GetThread()
 {
-    QCC_DbgTrace(("Thread::GetThread()"));
     Thread* ret = NULL;
 
     /* Find thread on threadList */

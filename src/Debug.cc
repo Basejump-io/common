@@ -498,7 +498,7 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
                 size_t i;
                 qcc::String oss;
 
-                oss.reserve(strlen(dataStr) + 8 + dataLen * 4 + (((dataLen + 15) / 16) * (40 + sizeof(module))));
+                oss.reserve(strlen(dataStr) + 8 + dataLen * 4 + (((dataLen + 15) / 16) * (40 + strlen(module))));
 
                 GenPrefix(oss, type, module, filename, lineno, control->PrintThread());
 
