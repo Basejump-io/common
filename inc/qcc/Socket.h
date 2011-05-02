@@ -156,7 +156,7 @@ QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock);
 
 /**
  * Create a connected pair of (local domain) sockets.
- * @param sockets   Array of two sockects;
+ * @param[out] sockets   Array of two sockects;
  * @return ER_OK if successful.
  */
 QStatus SocketPair(SocketFd(&sockets)[2]);
