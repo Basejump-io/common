@@ -58,7 +58,7 @@ void BufferedSource::Reset(Source& source)
 
 BufferedSource::~BufferedSource()
 {
-    delete buf;
+    delete [] buf;
 }
 
 QStatus BufferedSource::PullBytes(void* outBuf, size_t reqBytes, size_t& actualBytes, uint32_t timeout)
