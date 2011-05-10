@@ -343,6 +343,7 @@ Event::~Event()
         CloseHandle(handle);
     }
     if (ownsIoHandle && (INVALID_HANDLE_VALUE != ioHandle)) {
+        WSAEventSelect(ioFd, ioHandle, 0);
         WSACloseEvent(ioHandle);
     }
 }
