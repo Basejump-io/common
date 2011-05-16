@@ -58,6 +58,22 @@ void Timer::RemoveAlarm(const Alarm& alarm)
     lock.Unlock();
 }
 
+bool Timer::RemoveAlarm(AlarmListener* listener, Alarm& alarm)
+{
+    bool removedOne = false;
+    lock.Lock();
+    for (set<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
+        if (it->listener == listener) {
+            alarm = *it;
+            alarms.erase(it);
+            removedOne = true;
+            break;
+        }
+    }
+    lock.Unlock();
+    return removedOne;
+}
+
 bool Timer::HasAlarm(const Alarm& alarm)
 {
     lock.Lock();

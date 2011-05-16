@@ -168,6 +168,17 @@ class Timer : public Thread {
      */
     void RemoveAlarm(const Alarm& alarm);
 
+    /**
+     * Remove any alarm for a specific listener returning the alarm. Returns a boolean if an alarm
+     * was removed. This function is designed to be called in a loop to remove all alarms for a
+     * specific listener. For example this function would be called from the listener's destructor.
+     * The alarm is returned so the listener can free and resource referenced by the alarm.
+     *
+     * @param listener  The specific listener.
+     * @param alarm     Alarm that was removed
+     */
+    bool RemoveAlarm(AlarmListener* listener, Alarm& alarm);
+
     /*
      * Test if the specified alarm is associated with this timer.
      *
