@@ -507,6 +507,11 @@ class Crypto_AES  {
     Crypto_AES() { }
 
     /**
+     * Copy constructor is private and does nothing
+     */
+    Crypto_AES(const Crypto_AES& other) { }
+
+    /**
      * Assigment operator is private and does nothing
      */
     Crypto_AES& operator=(const Crypto_AES& other) { return *this; }
@@ -928,6 +933,16 @@ class Crypto_SRP {
     QStatus TestVector();
 
   private:
+
+    /**
+     * Copy constructor is private and does nothing
+     */
+    Crypto_SRP(const Crypto_SRP& other) { }
+
+    /**
+     * Assigment operator is private and does nothing
+     */
+    Crypto_SRP& operator=(const Crypto_SRP& other) { return *this; }
 
     void ServerCommon(qcc::String& toClient);
 
