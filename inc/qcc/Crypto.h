@@ -565,7 +565,9 @@ class Crypto_BigNum {
      */
     const Crypto_BigNum& operator=(const Crypto_BigNum& other)
     {
-        BN_copy(num, other.num);
+        if (&other != this) {
+            BN_copy(num, other.num);
+        }
         return *this;
     }
 

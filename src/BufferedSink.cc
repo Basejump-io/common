@@ -52,7 +52,7 @@ BufferedSink::BufferedSink(Sink& sink, size_t minChunk)
 BufferedSink::~BufferedSink()
 {
     QCC_DbgTrace(("~BufferedSink()"));
-    delete buf;
+    delete [] buf;
 }
 
 QStatus BufferedSink::PushBytes(const void* dataIn, size_t numBytes, size_t& numSent)

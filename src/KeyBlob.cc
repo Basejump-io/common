@@ -76,6 +76,9 @@ KeyBlob::KeyBlob(const qcc::String& secret, size_t len, const Type initType) : b
                 p += sizeof(digest);
             }
         }
+    } else {
+        size = 0;
+        data = NULL;
     }
 }
 
@@ -201,6 +204,9 @@ KeyBlob::KeyBlob(const KeyBlob& other)
         size = other.size;
         expiration = other.expiration;
         tag = other.tag;
+    } else {
+        data = NULL;
+        size = 0;
     }
     blobType = other.blobType;
 }

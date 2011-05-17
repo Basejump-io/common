@@ -88,6 +88,17 @@ class BufferedSink : public Sink {
     QStatus Flush();
 
   private:
+
+    /**
+     * Copy constructor is private and does nothing
+     */
+    BufferedSink(const BufferedSink& other) : sink(other.sink), event(other.event), minChunk(other.minChunk), buf(NULL), wrPtr(NULL) { }
+
+    /**
+     * Assigment operator is private and does nothing
+     */
+    BufferedSink& operator=(const BufferedSink& other) { return *this; }
+
     Sink& sink;                 /**< Underlying raw sink */
     Event& event;               /**< IO event for this buffered source */
     const size_t minChunk;      /**< Chunk size */
