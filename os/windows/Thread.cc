@@ -87,7 +87,7 @@ Thread* Thread::GetThread()
 
 
 Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExternal) :
-    state(isExternal ? RUNNING : INITIAL),
+    state(isExternal ? RUNNING : DEAD),
     isStopping(false),
     funcName(funcName),
     function(isExternal ? NULL : func),
@@ -217,6 +217,9 @@ QStatus Thread::Stop(void)
     if (isExternal) {
         QCC_LogError(ER_EXTERNAL_THREAD, ("Cannot stop an external thread"));
         return ER_EXTERNAL_THREAD;
+    } else if (state == DEAD) {
+        QCC_DbgPrintf(("Thread::Stop() thread is dead [%s]", funcName.c_str()));
+        return ER_DEAD_THREAD;
     } else {
         QCC_DbgTrace(("Thread::Stop() %x [%s]", handle, funcName.c_str()));
         isStopping = true;
@@ -278,6 +281,13 @@ QStatus Thread::Join(void)
     QCC_DbgTrace(("Thread::Join() [%s run: %s]", funcName.c_str(), IsRunning() ? "true" : "false"));
 
     /*
+     * Nothing to join if the thread is dead
+     */
+    if (state == DEAD) {
+        QCC_DbgPrintf(("Thread::Join() thread is dead [%s]", funcName.c_str()));
+        return ER_DEAD_THREAD;
+    }
+    /*
      * There is a race condition where the underlying OS thread has not yet started to run. We need
      * to wait until the thread is actually running before we can join it.
      */
@@ -304,9 +314,9 @@ QStatus Thread::Join(void)
         }
         CloseHandle(handle);
         handle = 0;
-        isStopping = false;
         ++stopped;
     }
+    isStopping = false;
     state = DEAD;
     QCC_DbgPrintf(("%s thread %s", self ? "Closed" : "Joined", funcName.c_str()));
     return status;
