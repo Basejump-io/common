@@ -965,6 +965,9 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
 QStatus SocketPair(SocketFd(&sockets)[2])
 {
     QStatus status = ER_OK;
+    IPAddress ipAddr("127.0.0.1");
+    IPAddress remAddr;
+    uint16_t remPort;
 
     QCC_DbgTrace(("SocketPair()"));
 
@@ -981,7 +984,6 @@ QStatus SocketPair(SocketFd(&sockets)[2])
     }
 
     /* Bind fd[0] */
-    IPAddress ipAddr("127.0.0.1");
     status = Bind(sockets[0], ipAddr, 0);
     if (status != ER_OK) {
         goto socketPairCleanup;
@@ -1008,6 +1010,25 @@ QStatus SocketPair(SocketFd(&sockets)[2])
     status = Connect(sockets[1], ipAddr, ntohs(addrInfo.sin_port));
     if (status != ER_OK) {
         QCC_LogError(status, ("SocketPair.Connect failed"));
+        goto socketPairCleanup;
+    }
+
+    /* Accept fds[0] */
+    status = Accept(sockets[0], remAddr, remPort, sockets[0]);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("SocketPair.Accept failed"));
+        goto socketPairCleanup;
+    }
+
+    /* Make sockets blocking */
+    status = SetBlocking(sockets[0], true);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("SetBlocking fd[0] failed"));
+        goto socketPairCleanup;
+    }
+    status = SetBlocking(sockets[1], true);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("SetBlocking fd[1] failed"));
         goto socketPairCleanup;
     }
 
