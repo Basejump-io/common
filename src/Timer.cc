@@ -39,9 +39,9 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
         bool alertThread = alarms.empty() || (alarm < *alarms.begin());
         alarms.insert(alarm);
 
-        bool localInUserCallback = inUserCallback;
+        bool inUserCallback = (currentAlarm != NULL);
         lock.Unlock();
-        if (alertThread && !localInUserCallback) {
+        if (alertThread && !inUserCallback) {
             Alert();
         }
         return ER_OK;
@@ -55,6 +55,16 @@ void Timer::RemoveAlarm(const Alarm& alarm)
 {
     lock.Lock();
     alarms.erase(alarm);
+    /*
+     * There might be a call in progress to the alarm that is being removed.
+     */
+    if (currentAlarm && (alarm == *currentAlarm) && (Thread::GetThread() != this)) {
+        do { 
+            lock.Unlock();
+            qcc::Sleep(1);
+            lock.Lock();
+        } while (currentAlarm && (alarm == *currentAlarm));
+    }
     lock.Unlock();
 }
 
@@ -69,6 +79,18 @@ bool Timer::RemoveAlarm(AlarmListener* listener, Alarm& alarm)
             removedOne = true;
             break;
         }
+    }
+    /*
+     * This function is most likely being called because the listener is about to be freed. If there
+     * are no alarms remaining check that we are not currently servicing an alarm for this listener.
+     * If we are, wait until the listener returns.
+     */
+    if (!removedOne && currentAlarm && (currentAlarm->listener == listener) && (Thread::GetThread() != this)) {
+        do { 
+            lock.Lock();
+            qcc::Sleep(1);
+            lock.Unlock();
+        } while (currentAlarm && (currentAlarm->listener == listener));
     }
     lock.Unlock();
     return removedOne;
@@ -102,14 +124,14 @@ ThreadReturn STDCALL Timer::Run(void* arg)
                 set<Alarm>::iterator it = alarms.begin();
                 Alarm top = *it;
                 alarms.erase(it);
-                inUserCallback = true;
+                currentAlarm = &top;
                 stopEvent.ResetEvent();
                 lock.Unlock();
                 if (FALLBEHIND_WARNING_MS < -delay) {
                     QCC_LogError(ER_TIMER_FALLBEHIND, ("Timer has fallen behind by %d ms", -delay));
                 }
                 (top.listener->AlarmTriggered)(top, ER_OK);
-                inUserCallback = false;
+                currentAlarm = NULL;
                 if (0 != top.periodMs) {
                     top.alarmTime += top.periodMs;
                     if (top.alarmTime < now) {

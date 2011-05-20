@@ -152,7 +152,7 @@ class Timer : public Thread {
      * @param name          Name for the thread.
      * @param expireOnExit  If true call all pending alarms when this thread exits.
      */
-    Timer(const char* name = "timer", bool expireOnExit = false) : Thread(name), inUserCallback(false), expireOnExit(expireOnExit) { }
+    Timer(const char* name = "timer", bool expireOnExit = false) : Thread(name), currentAlarm(NULL), expireOnExit(expireOnExit) { }
 
     /**
      * Associate an alarm with a timer.
@@ -201,7 +201,7 @@ class Timer : public Thread {
 
     Mutex lock;
     std::set<Alarm, std::less<Alarm> >  alarms;
-    bool inUserCallback;
+    Alarm* currentAlarm;
     bool expireOnExit;
 };
 
