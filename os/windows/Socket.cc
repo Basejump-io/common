@@ -32,6 +32,7 @@
 #include <qcc/Socket.h>
 #include <qcc/Util.h>
 #include <qcc/Thread.h>
+#include <qcc/StringUtil.h>
 #include <qcc/windows/utility.h>
 
 #include <Status.h>
@@ -47,6 +48,22 @@ namespace qcc {
 const SocketFd INVALID_SOCKET_FD = INVALID_SOCKET;
 
 static int32_t socketCount = 0;
+
+static qcc::String StrError()
+{
+    int errnum = WSAGetLastError();
+    char msgbuf[256];
+
+    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                   NULL,
+                   errnum,
+                   MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                   (LPSTR) msgbuf,
+                   sizeof(msgbuf),
+                   NULL);
+    return U32ToString(errnum) + " - " + msgbuf;
+
+}
 
 static void MakeSockAddr(const IPAddress& addr, uint16_t port,
                          sockaddr_in* addrBuf, socklen_t& addrSize)
@@ -118,9 +135,8 @@ static QStatus GetSockAddr(const SOCKADDR_STORAGE* addrBuf, socklen_t addrSize,
                                  NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
 
     if (dwRetval != 0) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("GetSockAddr: %d - %s", err, strerror(err)));
+        QCC_LogError(status, ("GetSockAddr: %s", StrError().c_str()));
     } else {
         addr = IPAddress(hostname);
         port = atoi(servInfo);
@@ -147,9 +163,8 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
     }
     ret = socket(static_cast<int>(addrFamily), static_cast<int>(type), 0);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Opening socket: %d - %s", err, strerror(err)));
+        QCC_LogError(status, ("Opening socket: %s", StrError().c_str()));
         WSADecRefCount();
     } else {
         sockfd = static_cast<SocketFd>(ret);
@@ -171,25 +186,28 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
     MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
     ret = connect(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        if ((WSAEWOULDBLOCK == err) || (WSAEALREADY == err)) {
+        switch (WSAGetLastError()) {
+        case WSAEWOULDBLOCK:
+        case WSAEALREADY:
             status = ER_WOULDBLOCK;
-        } else if (WSAECONNREFUSED == err) {
+            break;
+        case WSAECONNREFUSED:
             status = ER_CONN_REFUSED;
-        } else if (WSAEISCONN == err) {
+            break;
+        case WSAEISCONN:
             status = ER_OK;
-        } else {
+            break;
+        default:
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Connecting to %s %d: %d - %s", remoteAddr.ToString().c_str(), remotePort, err, strerror(err)));
+            QCC_LogError(status, ("Connecting to %s %d: %s", remoteAddr.ToString().c_str(), remotePort, StrError().c_str()));
+            break;
         }
     } else {
         u_long mode = 1; // Non-blocking
         ret = ioctlsocket(sockfd, FIONBIO, &mode);
         if (ret == SOCKET_ERROR) {
-            int err = WSAGetLastError();
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Failed to set socket non-blocking %d - %s", err, strerror(err)));
-            closesocket(sockfd);
+            QCC_LogError(status, ("Failed to set socket non-blocking ", StrError().c_str()));
         }
     }
     return status;
@@ -215,11 +233,9 @@ QStatus Bind(SocketFd sockfd, const IPAddress& localAddr, uint16_t localPort)
 
     MakeSockAddr(localAddr, localPort, &addr, addrLen);
     ret = bind(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
-    if (ret != 0) {
-        int err = WSAGetLastError();
-        status = (err == WSAEADDRNOTAVAIL ? ER_SOCKET_BIND_ERROR : ER_OS_ERROR);
-        QCC_LogError(status, ("Binding to %s %d: %d - %s",
-                              localAddr.ToString().c_str(), localPort, err, strerror(err)));
+    if (ret == SOCKET_ERROR) {
+        status = (WSAGetLastError() == WSAEADDRNOTAVAIL) ? ER_SOCKET_BIND_ERROR : ER_OS_ERROR;
+        QCC_LogError(status, ("Binding to %s %d: %s", localAddr.ToString().c_str(), localPort, StrError().c_str()));
     }
     return status;
 }
@@ -240,9 +256,8 @@ QStatus Listen(SocketFd sockfd, int backlog)
 
     ret = listen(static_cast<SOCKET>(sockfd), backlog);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Listening: %d - %s", err, strerror(err)));
+        QCC_LogError(status, ("Listening: %s", StrError().c_str()));
     }
     return status;
 }
@@ -265,12 +280,11 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
     ret = accept(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), &addrLen);
     if (ret == SOCKET_ERROR) {
         WSADecRefCount();
-        int err = WSAGetLastError();
-        if (WSAEWOULDBLOCK == err) {
+        if (WSAGetLastError() == WSAEWOULDBLOCK) {
             status = ER_WOULDBLOCK;
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Listening: %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("Listening: %s", StrError().c_str()));
         }
         newSockfd = -1;
     } else {
@@ -294,9 +308,8 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
         ret = ioctlsocket(newSockfd, FIONBIO, &mode);
         if (ret == SOCKET_ERROR) {
             WSADecRefCount();
-            int err = WSAGetLastError();
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Failed to set socket non-blocking %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("Failed to set socket non-blocking %s", StrError().c_str()));
             closesocket(newSockfd);
             newSockfd = -1;
         } else {
@@ -336,7 +349,9 @@ void Close(SocketFd sockfd)
 
     QCC_DbgTrace(("Close (sockfd = %d)", sockfd));
     ret = closesocket(static_cast<SOCKET>(sockfd));
-    if (ret != SOCKET_ERROR) {
+    if (ret == SOCKET_ERROR) {
+        QCC_LogError(ER_OS_ERROR, ("Close: (sockfd = %d) %s", sockfd, StrError().c_str()));
+    } else {
         WSADecRefCount();
     }
 }
@@ -352,8 +367,7 @@ QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
     }
     int ret = WSADuplicateSocket(sockfd, qcc::GetPid(), &protocolInfo);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        QCC_LogError(ER_OS_ERROR, ("SocketDup: %d - %s", err, strerror(err)));
+        QCC_LogError(ER_OS_ERROR, ("SocketDup: %s", StrError().c_str()));
         status = ER_OS_ERROR;
     } else {
         dupSock = WSASocket(protocolInfo.iAddressFamily,
@@ -363,9 +377,8 @@ QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
                             0,
                             WSA_FLAG_OVERLAPPED);
         if (dupSock == INVALID_SOCKET) {
-            int err = WSAGetLastError();
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("SocketDup WSASocket: %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("SocketDup WSASocket: %s", StrError().c_str()));
         }
     }
     if (status != ER_OK) {
@@ -388,9 +401,8 @@ QStatus GetLocalAddress(SocketFd sockfd, IPAddress& addr, uint16_t& port)
     ret = getsockname(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addrBuf), &addrLen);
 
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Geting Local Address: %d - %s", err, strerror(err)));
+        QCC_LogError(status, ("Geting Local Address: %s", StrError().c_str()));
     } else {
         QCC_DbgPrintf(("ret = %d  addrBuf.ss_family = %d  addrLen = %d", ret, addrBuf.ss_family, addrLen));
         if (addrBuf.ss_family == AF_INET) {
@@ -425,13 +437,12 @@ QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent)
 
     ret = send(static_cast<SOCKET>(sockfd), static_cast<const char*>(buf), len, 0);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        if (WSAEWOULDBLOCK == err) {
+        if (WSAGetLastError() == WSAEWOULDBLOCK) {
             sent = 0;
             status = ER_WOULDBLOCK;
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Send: %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("Send: %s", StrError().c_str()));
         }
     } else {
         sent = static_cast<size_t>(ret);
@@ -459,13 +470,12 @@ QStatus SendTo(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
     ret = sendto(static_cast<SOCKET>(sockfd), static_cast<const char*>(buf), len, 0,
                  reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        if (WSAEWOULDBLOCK == err) {
+        if (WSAGetLastError() == WSAEWOULDBLOCK) {
             sent = 0;
             status = ER_WOULDBLOCK;
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Send: %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("Send: %s", StrError().c_str()));
         }
     } else {
         sent = static_cast<size_t>(ret);
@@ -508,13 +518,12 @@ static QStatus SendSGCommon(SocketFd sockfd, sockaddr_in* addr, socklen_t addrLe
     DWORD dwsent;
     ret = WSASendMsg(static_cast<SOCKET>(sockfd), &msg, 0, &dwsent, NULL, NULL);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        if (WSAEWOULDBLOCK == err) {
+        if (WSAGetLastError() == WSAEWOULDBLOCK) {
             status = ER_WOULDBLOCK;
             sent = 0;
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Send: %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("Send: %s", StrError().c_str()));
         }
     }
     QCC_DbgPrintf(("Sent %u bytes", dwsent));
@@ -580,8 +589,7 @@ QStatus Recv(SocketFd sockfd, void* buf, size_t len, size_t& received)
 
     ret = recv(static_cast<SOCKET>(sockfd), static_cast<char*>(buf), len, 0);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        if (WSAEWOULDBLOCK == err) {
+        if (WSAGetLastError() == WSAEWOULDBLOCK) {
             status = ER_WOULDBLOCK;
         } else {
             status = ER_OS_ERROR;
@@ -613,12 +621,11 @@ QStatus RecvFrom(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
     ret = recvfrom(static_cast<int>(sockfd), static_cast<char*>(buf), len, 0,
                    reinterpret_cast<sockaddr*>(&fromAddr), &addrLen);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        if (WSAEWOULDBLOCK == err) {
+        if (WSAGetLastError() == WSAEWOULDBLOCK) {
             status = ER_WOULDBLOCK;
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Receive: %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("Receive: %d", StrError().c_str()));
         }
         received = 0;
     } else {
@@ -665,13 +672,12 @@ static QStatus RecvSGCommon(SocketFd sockfd, SOCKADDR_STORAGE* addr, socklen_t* 
 
     ret = WSARecvMsg(static_cast<SOCKET>(sockfd), &msg, 0, received, NULL, NULL);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        if (WSAEWOULDBLOCK == err) {
+        if (WSAGetLastError() == WSAEWOULDBLOCK) {
             received = 0;
             status = ER_WOULDBLOCK;
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Receive: %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("Receive: %s", StrError().c_str()));
         }
     } else {
         sg.SetDataSize(received);
@@ -828,17 +834,15 @@ QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, So
     u_long marked = 0;
     int ret = ioctlsocket(sockfd, SIOCATMARK, &marked);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("RecvWithFds ioctlsocket: %d - %s", err, strerror(err)));
+        QCC_LogError(status, ("RecvWithFds ioctlsocket: %s", StrError().c_str()));
     }
     if ((status == ER_OK) && !marked) {
         char fdCount;
         ret = recv(sockfd, &fdCount, 1, MSG_OOB);
         if (ret == SOCKET_ERROR) {
-            int err = WSAGetLastError();
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("RecvWithFds recv (MSG_OOB): %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("RecvWithFds recv (MSG_OOB): %s", StrError().c_str()));
         } else {
             recvdFds = fdCount;
             QCC_DbgHLPrintf(("RecvWithFds OOB %d handles", recvdFds));
@@ -884,9 +888,8 @@ QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, So
                                         0,
                                         WSA_FLAG_OVERLAPPED);
                 if (fd == INVALID_SOCKET) {
-                    int err = WSAGetLastError();
                     status = ER_OS_ERROR;
-                    QCC_LogError(status, ("RecvWithFds WSASocket: %d - %s", err, strerror(err)));
+                    QCC_LogError(status, ("RecvWithFds WSASocket: %s", StrError().c_str()));
                 } else {
                     QCC_DbgHLPrintf(("RecvWithFds got handle %u", fd));
                     *fdList++ = fd;
@@ -920,9 +923,8 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
     char oob = static_cast<char>(numFds);
     int ret = send(sockfd, &oob, 1, MSG_OOB);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("RecvWithFds recv (MSG_OOB): %d - %s", err, strerror(err)));
+        QCC_LogError(status, ("RecvWithFds recv (MSG_OOB): %s", StrError().c_str()));
     } else {
         QCC_DbgHLPrintf(("SendWithFds OOB %d handles", oob));
     }
@@ -930,9 +932,8 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
         WSAPROTOCOL_INFO protocolInfo;
         ret = WSADuplicateSocket(*fdList++, pid, &protocolInfo);
         if (ret) {
-            int err = WSAGetLastError();
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("SendFd WSADuplicateSocket: %d - %s", err, strerror(err)));
+            QCC_LogError(status, ("SendFd WSADuplicateSocket: %s", StrError().c_str()));
         } else {
             uint8_t* buf = reinterpret_cast<uint8_t*>(&protocolInfo);
             size_t sz = sizeof(protocolInfo);
@@ -1000,9 +1001,8 @@ QStatus SocketPair(SocketFd(&sockets)[2])
     int len = sizeof(addrInfo);
     int ret = getsockname(sockets[0], reinterpret_cast<sockaddr*>(&addrInfo), &len);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("getsockopt failed: %d - %s", err, strerror(err)));
+        QCC_LogError(status, ("getsockopt failed: %s", StrError().c_str()));
         goto socketPairCleanup;
     }
 
@@ -1049,9 +1049,8 @@ QStatus SetBlocking(SocketFd sockfd, bool blocking)
     u_long mode = blocking ? 0 : 1;
     int ret = ioctlsocket(sockfd, FIONBIO, &mode);
     if (ret == SOCKET_ERROR) {
-        int err = WSAGetLastError();
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Failed to set socket non-blocking %d - %s", err, strerror(err)));
+        QCC_LogError(status, ("Failed to set socket non-blocking %s", StrError().c_str()));
     }
     return status;
 }
