@@ -59,7 +59,7 @@ void Timer::RemoveAlarm(const Alarm& alarm)
      * There might be a call in progress to the alarm that is being removed.
      */
     if (currentAlarm && (alarm == *currentAlarm) && (Thread::GetThread() != this)) {
-        do { 
+        do {
             lock.Unlock();
             qcc::Sleep(1);
             lock.Lock();
@@ -86,7 +86,7 @@ bool Timer::RemoveAlarm(AlarmListener* listener, Alarm& alarm)
      * If we are, wait until the listener returns.
      */
     if (!removedOne && currentAlarm && (currentAlarm->listener == listener) && (Thread::GetThread() != this)) {
-        do { 
+        do {
             lock.Lock();
             qcc::Sleep(1);
             lock.Unlock();

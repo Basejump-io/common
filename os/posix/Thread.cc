@@ -363,7 +363,7 @@ QStatus Thread::Join(void)
     QCC_DbgPrintf(("[%s - %x] Joining thread [%s - %x]",
                    GetThread()->funcName.c_str(), GetThread()->handle,
                    funcName.c_str(), handle));
-    
+
     /*
      * Nothing to join if the thread is dead
      */

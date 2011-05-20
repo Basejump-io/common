@@ -191,12 +191,15 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
         case WSAEALREADY:
             status = ER_WOULDBLOCK;
             break;
+
         case WSAECONNREFUSED:
             status = ER_CONN_REFUSED;
             break;
+
         case WSAEISCONN:
             status = ER_OK;
             break;
+
         default:
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Connecting to %s %d: %s", remoteAddr.ToString().c_str(), remotePort, StrError().c_str()));
