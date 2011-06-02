@@ -23,6 +23,7 @@
 #define _TOOLCHAIN_QCC_MAPPING_H
 
 #include <windows.h>
+#include <float.h>
 /// @cond ALLJOYN_DEV
 /**
  * Map snprintf to _snprintf
@@ -32,5 +33,33 @@
  * Windows.
  */
 #define snprintf _snprintf
+
+/**
+ * Map stroll to _strtoi64
+ *
+ * stroll does not properly map in windows this is needed to insure calls to
+ * strtoll(const char *nptr, char **endptr, int base) will compile in Windows.
+ */
+#define strtoll _strtoi64
+
+/**
+ * Map strtoull to _strtoui64
+ *
+ * strtoull does not properly map in windows this is needed to insure calls to
+ * strtoull(const char *nptr, char **endptr, int base) will compile in Windows.
+ */
+#define strtoull _strtoui64
+
+/**
+ * Map fpclassify to _fpclass
+ *
+ * fpclassify does not properly map in windows this is needed to insure calls to
+ * fpclassify(x) will compile in Windows.
+ */
+#define fpclassify _fpclass
+
+#define FP_NAN (_FPCLASS_SNAN | _FPCLASS_QNAN)
+#define FP_ZERO (_FPCLASS_NZ | _FPCLASS_PZ)
+#define FP_INFINITE (_FPCLASS_NINF | _FPCLASS_PINF)
 /// @endcond
 #endif
