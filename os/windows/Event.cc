@@ -144,7 +144,7 @@ QStatus Event::Wait(Event& evt, uint32_t maxWaitMs)
         ReleaseIOMask(evt);
     }
     if ((WAIT_OBJECT_0 <= ret) && ((WAIT_OBJECT_0 + numHandles) > ret)) {
-        if (stopEvent && (WAIT_OBJECT_0  == ret)) {
+        if (WAIT_OBJECT_0  == ret) {
             /* StopEvent fired */
             status = (thread && thread->IsStopping()) ? ER_STOPPING_THREAD : ER_ALERTED_THREAD;
         } else {

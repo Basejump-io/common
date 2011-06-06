@@ -42,7 +42,7 @@ void Mutex::Init()
         uint32_t ret = GetLastError();
         strerror_r(ret, buf, sizeof(buf));
         // Can't use ER_LogError() since it uses mutexs under the hood.
-        printf("**** Mutex attribute initialization failure: %d - %s", ret, buf);
+        printf("**** Mutex attribute initialization failure: %u - %s", ret, buf);
     }
 
 }
@@ -54,7 +54,7 @@ Mutex::~Mutex()
         uint32_t ret = GetLastError();
         strerror_r(ret, buf, sizeof(buf));
         // Can't use ER_LogError() since it uses mutexs under the hood.
-        printf("***** Mutex(0x%x) destruction failure: %d - %s", mutex, ret, buf);
+        printf("***** Mutex(0x%x) destruction failure: %u - %s", mutex, ret, buf);
     }
 }
 
@@ -69,7 +69,7 @@ QStatus Mutex::Lock(void)
         uint32_t ret = GetLastError();
         strerror_r(ret, buf, sizeof(buf));
         // Can't use ER_LogError() since it uses mutexs under the hood.
-        printf("***** Thread %d Mutex(0x%x) lock failure: %d - %s", mutex, GetCurrentThreadId(), ret, buf);
+        printf("***** Thread %d Mutex(0x%x) lock failure: %u - %s", GetCurrentThreadId(), mutex, ret, buf);
         return ER_OS_ERROR;
     }
     return ER_OK;
@@ -85,7 +85,7 @@ QStatus Mutex::Unlock(void)
         uint32_t ret = GetLastError();
         strerror_r(ret, buf, sizeof(buf));
         // Can't use ER_LogError() since it uses mutexs under the hood.
-        printf("***** Thread %d Mutex(0x%x) unlock failure: %d - %s", mutex, GetCurrentThreadId(), ret, buf);
+        printf("***** Thread %d Mutex(0x%x) unlock failure: %u - %s", GetCurrentThreadId(), mutex, ret, buf);
         return ER_OS_ERROR;
     }
     return ER_OK;

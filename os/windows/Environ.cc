@@ -54,7 +54,8 @@ qcc::String Environ::Find(const qcc::String& key, const char* defaultValue)
 {
     qcc::String val;
     if (vars.count(key) == 0) {
-        char* val = NULL;
+        char c;
+        char* val = &c;
         DWORD len = GetEnvironmentVariableA(key.c_str(), val, 0);
         if (len) {
             val = new char[len];
