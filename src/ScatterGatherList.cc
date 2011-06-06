@@ -38,6 +38,9 @@ using namespace qcc;
 
 size_t ScatterGatherList::CopyDataFrom(const_iterator begin, const_iterator end, size_t limit)
 {
+    if (sg.empty() || (begin == end)) {
+        return 0;
+    }
     iterator dest(sg.begin());
     const_iterator src(begin);
     uint8_t* srcBuf = reinterpret_cast<uint8_t*>(src->buf);

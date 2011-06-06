@@ -480,14 +480,14 @@ int _QCC_DbgPrintCheck(DbgMsgType type, const char* module)
 void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, int lineno,
                      const char* dataStr, const void* data, size_t dataLen)
 {
-    DebugContext* context;
-
     if (_QCC_DbgPrintCheck(type, module)) {
         if (data == NULL) {
-            context = new DebugContext();
+            DebugContext* context = new DebugContext();
             if (!context->IsSuppressed()) {
                 _QCC_DbgPrintAppend(context, "<null>");
                 _QCC_DbgPrintProcess(context, type, module, filename, lineno);
+            } else {
+                delete context;
             }
         } else {
             DebugContext ctx;
