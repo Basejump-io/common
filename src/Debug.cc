@@ -629,10 +629,10 @@ static void WindowsLogCB(DbgMsgType type, const char* module, const char* msg, v
 
 void QCC_UseOSLogging(bool useOSLog)
 {
-#ifdef QCC_OS_ANDROID
+#if defined(QCC_OS_ANDROID)
     QCC_DbgMsgCallback cb = useOSLog ? AndroidLogCB : WriteMsg;
     void* context = stderr;
-#elsif QCC_OS_WINDOWS
+#elif defined(QCC_OS_WINDOWS)
     QCC_DbgMsgCallback cb = useOSLog ? WindowsLogCB : WriteMsg;
     void* context = stderr;
 #else
