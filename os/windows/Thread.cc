@@ -238,11 +238,11 @@ QStatus Thread::Alert()
 
 QStatus Thread::Alert(uint32_t alertCode)
 {
+    this->alertCode = alertCode;
     if (state == DEAD) {
         return ER_DEAD_THREAD;
     }
     QCC_DbgTrace(("Thread::Alert() [%s run: %s]", funcName.c_str(), IsRunning() ? "true" : "false"));
-    this->alertCode = alertCode;
     return stopEvent.SetEvent();
 }
 
