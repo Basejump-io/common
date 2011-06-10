@@ -244,7 +244,7 @@ QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, co
         if (len > 0) {
             hash.Update(digest, sizeof(digest));
         }
-        hash.Update((const uint8_t*)label, strlen(label) - 1);
+        hash.Update((const uint8_t*)label, strlen(label));
         hash.Update((const uint8_t*)seed.data(), seed.size());
         hash.GetDigest(digest);
         memcpy(out, digest, (std::min)(sizeof(digest), outLen - len));
