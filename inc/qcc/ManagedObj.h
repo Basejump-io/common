@@ -166,6 +166,101 @@ class ManagedObj {
     }
 
     /**
+     * Allocate T(arg1, arg2, arg3, arg4, arg5, arg6) on the heap and set it's reference count to 1.
+     * @param arg1   First arg to T constructor.
+     * @param arg2   Second arg to T constructor.
+     * @param arg3   Third arg to T constructor.
+     * @param arg4   Fourth arg to T constructor.
+     * @param arg5   Fifth arg to T constructor.
+     * @param arg6   Sixth arg to T constructor.
+     */
+    template <typename A1, typename A2, typename A3, typename A4, typename A5, typename A6> ManagedObj<T>(A1 & arg1, A2 & arg2, A3 & arg3, A4 & arg4, A5 & arg5, A6 & arg6)
+    {
+        const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+        context = reinterpret_cast<ManagedCtx*>(malloc(offset + sizeof(T)));
+        context = new (context) ManagedCtx(1);
+        object = new ((char*)context + offset)T(arg1, arg2, arg3, arg4, arg5, arg6);
+    }
+
+    /**
+     * Allocate T(arg1, arg2, arg3, arg4, arg5, arg6, arg7) on the heap and set it's reference count to 1.
+     * @param arg1   First arg to T constructor.
+     * @param arg2   Second arg to T constructor.
+     * @param arg3   Third arg to T constructor.
+     * @param arg4   Fourth arg to T constructor.
+     * @param arg5   Fifth arg to T constructor.
+     * @param arg6   Sixth arg to T constructor.
+     * @param arg7   Seventh arg to T constructor.
+     */
+    template <typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7> ManagedObj<T>(A1 & arg1, A2 & arg2, A3 & arg3, A4 & arg4, A5 & arg5, A6 & arg6, A7 & arg7)
+    {
+        const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+        context = reinterpret_cast<ManagedCtx*>(malloc(offset + sizeof(T)));
+        context = new (context) ManagedCtx(1);
+        object = new ((char*)context + offset)T(arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+    }
+
+    /**
+     * Allocate T(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) on the heap and set it's reference count to 1.
+     * @param arg1   First arg to T constructor.
+     * @param arg2   Second arg to T constructor.
+     * @param arg3   Third arg to T constructor.
+     * @param arg4   Fourth arg to T constructor.
+     * @param arg5   Fifth arg to T constructor.
+     * @param arg6   Sixth arg to T constructor.
+     * @param arg7   Seventh arg to T constructor.
+     * @param arg8   Eight arg to T constructor.
+     */
+    template <typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7, typename A8> ManagedObj<T>(A1 & arg1, A2 & arg2, A3 & arg3, A4 & arg4, A5 & arg5, A6 & arg6, A7 & arg7, A8 & arg8)
+    {
+        const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+        context = reinterpret_cast<ManagedCtx*>(malloc(offset + sizeof(T)));
+        context = new (context) ManagedCtx(1);
+        object = new ((char*)context + offset)T(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+    }
+
+    /**
+     * Allocate T(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) on the heap and set it's reference count to 1.
+     * @param arg1   First arg to T constructor.
+     * @param arg2   Second arg to T constructor.
+     * @param arg3   Third arg to T constructor.
+     * @param arg4   Fourth arg to T constructor.
+     * @param arg5   Fifth arg to T constructor.
+     * @param arg6   Sixth arg to T constructor.
+     * @param arg7   Seventh arg to T constructor.
+     * @param arg8   Eight arg to T constructor.
+     * @param arg9   Ninth arg to T constructor.
+     */
+    template <typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7, typename A8, typename A9> ManagedObj<T>(A1 & arg1, A2 & arg2, A3 & arg3, A4 & arg4, A5 & arg5, A6 & arg6, A7 & arg7, A8 & arg8, A9 & arg9)
+    {
+        const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+        context = reinterpret_cast<ManagedCtx*>(malloc(offset + sizeof(T)));
+        context = new (context) ManagedCtx(1);
+        object = new ((char*)context + offset)T(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+    }
+
+    /**
+     * Allocate T(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) on the heap and set it's reference count to 1.
+     * @param arg1   First arg to T constructor.
+     * @param arg2   Second arg to T constructor.
+     * @param arg3   Third arg to T constructor.
+     * @param arg4   Fourth arg to T constructor.
+     * @param arg5   Fifth arg to T constructor.
+     * @param arg6   Sixth arg to T constructor.
+     * @param arg7   Seventh arg to T constructor.
+     * @param arg8   Eight arg to T constructor.
+     * @param arg9   Ninth arg to T constructor.
+     * @param arg10  Tenth arg to T constructor.
+     */
+    template <typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7, typename A8, typename A9, typename A10> ManagedObj<T>(A1 & arg1, A2 & arg2, A3 & arg3, A4 & arg4, A5 & arg5, A6 & arg6, A7 & arg7, A8 & arg8, A9 & arg9, A10 & arg10)
+    {
+        const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+        context = reinterpret_cast<ManagedCtx*>(malloc(offset + sizeof(T)));
+        context = new (context) ManagedCtx(1);
+        object = new ((char*)context + offset)T(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+    }
+
+    /**
      * ManagedObj destructor.
      * Decrement T's reference count and deallocate if zero.
      */
