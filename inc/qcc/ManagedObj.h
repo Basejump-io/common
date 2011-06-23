@@ -86,6 +86,15 @@ class ManagedObj {
         object = new ((char*)context + offset)T();
     }
 
+    /** Constructor to wrap an existing T in its managed object type */
+    ManagedObj<T>(T * naked)
+    {
+        const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+        object = naked;
+        context = (ManagedCtx*)((char*)object - offset);
+        IncRef();
+    }
+
     /**
      * Allocate T(arg1) on the heap and set it's reference count to 1.
      * @param arg1   First arg to T constructor.
