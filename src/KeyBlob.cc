@@ -48,6 +48,7 @@ void KeyBlob::Erase()
         blobType = EMPTY;
         data = NULL;
         size = 0;
+        expiration.seconds = 0;
     }
 }
 
@@ -132,7 +133,10 @@ QStatus KeyBlob::Store(qcc::Sink& sink) const
     status = sink.PushBytes(&flags, sizeof(flags), pushed);
     if ((status == ER_OK) && (blobType != EMPTY)) {
         if (flags & EXPIRES_FLAG) {
-            status = sink.PushBytes(&expiration, sizeof(expiration), pushed);
+            status = sink.PushBytes(&expiration.seconds, sizeof(expiration.seconds), pushed);
+            if (status == ER_OK) {
+                status = sink.PushBytes(&expiration.mseconds, sizeof(expiration.mseconds), pushed);
+            }
         }
         if (status == ER_OK) {
             status = sink.PushBytes(tag.data(), tag.size(), pushed);
@@ -163,7 +167,10 @@ QStatus KeyBlob::Load(qcc::Source& source)
             status = ER_CORRUPT_KEYBLOB;
         }
         if ((status == ER_OK) && (flags & EXPIRES_FLAG)) {
-            status = source.PullBytes(&expiration, sizeof(expiration), pulled);
+            status = source.PullBytes(&expiration.seconds, sizeof(expiration.seconds), pulled);
+            if (status == ER_OK) {
+                status = source.PullBytes(&expiration.mseconds, sizeof(expiration.mseconds), pulled);
+            }
         }
         if (status == ER_OK) {
             char tagBytes[MAx_TAG_LEN];
