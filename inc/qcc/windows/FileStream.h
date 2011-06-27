@@ -36,6 +36,16 @@
 
 namespace qcc {
 
+
+/**
+ * Platform abstraction for deleting a file
+ *
+ * @param fileName  The name of the file to delete
+ *
+ * @eturn ER_OK if the file was deleted or an error status otherwise.
+ */
+QStatus DeleteFile(qcc::String fileName);
+
 /**
  * FileSoure is an implementation of Source used for reading from files.
  */
@@ -83,10 +93,26 @@ class FileSource : public Source {
      */
     bool IsValid() { return INVALID_HANDLE_VALUE != handle; }
 
+    /**
+     * Lock the underlying file for exclusive access
+     *
+     * @param block  If block is true the function will block until file access if permitted.
+     *
+     * @return Returns true if the file was locked, false if the file was not locked or if the file
+     *         was not valid, i.e. if IsValid() would returnf false;
+     */
+    bool Lock(bool block = false);
+
+    /**
+     * Unlock the file if previously locked
+     */
+    void Unlock();
+
   private:
     HANDLE handle;        /**< File handle */
     Event event;          /**< Source event */
-    bool ownsHandle;      /** True if Source is responsible for closing handle */
+    bool ownsHandle;      /**< True if Source is responsible for closing handle */
+    bool locked;          /**< true if the sink has been locked for exclusive access */
 };
 
 
@@ -145,11 +171,27 @@ class FileSink : public Sink {
      */
     bool IsValid() { return INVALID_HANDLE_VALUE != handle; }
 
+    /**
+     * Lock the underlying file for exclusive access
+     *
+     * @param block  If block is true the function will block until file access if permitted.
+     *
+     * @return Returns true if the file was locked, false if the file was not locked or if the file
+     *         was not valid, i.e. if IsValid() would returnf false;
+     */
+    bool Lock(bool block = false);
+
+    /**
+     * Unlock the file if previously locked
+     */
+    void Unlock();
+
   private:
 
     HANDLE handle;        /**< File handle */
     Event event;          /**< I/O event */
-    bool ownsHandle;      /** True if Source is responsible for closing handle */
+    bool ownsHandle;      /**< True if Source is responsible for closing handle */
+    bool locked;          /**< true if the sink has been locked for exclusive access */
 };
 
 }  /* namespace */

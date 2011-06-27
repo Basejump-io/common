@@ -35,6 +35,14 @@ using namespace qcc;
 /** @internal */
 #define QCC_MODULE  "STREAM"
 
+QStatus qcc::DeleteFile(qcc::String fileName)
+{
+    if (DeleteFileA(fileName.c_str())) {
+        return ER_OK;
+    } else {
+        return ER_OS_ERROR;
+    }
+}
 
 static void ReSlash(qcc::String& inStr)
 {
@@ -45,7 +53,7 @@ static void ReSlash(qcc::String& inStr)
     }
 }
 
-FileSource::FileSource(qcc::String fileName) : handle(INVALID_HANDLE_VALUE), event(0, 0), ownsHandle(true)
+FileSource::FileSource(qcc::String fileName) : handle(INVALID_HANDLE_VALUE), event(0, 0), ownsHandle(true), locked(false)
 {
     ReSlash(fileName);
     handle = CreateFileA(fileName.c_str(),
@@ -103,7 +111,33 @@ QStatus FileSource::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, u
     }
 }
 
-FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALUE), event(Event::alwaysSet), ownsHandle(true)
+bool FileSource::Lock(bool block)
+{
+    if (INVALID_HANDLE_VALUE == handle) {
+        return false;
+    }
+    if (locked) {
+        return true;
+    } else {
+        OVERLAPPED ovl = { 0 };
+        locked = LockFileEx(handle,
+                            block ? LOCKFILE_EXCLUSIVE_LOCK : LOCKFILE_FAIL_IMMEDIATELY,
+                            0, 0, 0xFFFFFFFF, &ovl);
+        return locked;
+
+    }
+}
+
+void FileSource::Unlock()
+{
+    if (handle != INVALID_HANDLE_VALUE && locked) {
+        OVERLAPPED ovl = { 0 };
+        UnlockFileEx(handle, 0, 0, 0xFFFFFFFF, &ovl);
+        locked = false;
+    }
+}
+
+FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALUE), event(Event::alwaysSet), ownsHandle(true), locked(false)
 {
     ReSlash(fileName);
 
@@ -206,5 +240,28 @@ QStatus FileSink::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
     }
 }
 
+bool FileSink::Lock(bool block)
+{
+    if (INVALID_HANDLE_VALUE == handle) {
+        return false;
+    }
+    if (locked) {
+        return true;
+    } else {
+        OVERLAPPED ovl = { 0 };
+        locked = LockFileEx(handle,
+                            block ? LOCKFILE_EXCLUSIVE_LOCK : LOCKFILE_FAIL_IMMEDIATELY,
+                            0, 0, 0xFFFFFFFF, &ovl);
+        return locked;
 
+    }
+}
 
+void FileSink::Unlock()
+{
+    if (handle != INVALID_HANDLE_VALUE && locked) {
+        OVERLAPPED ovl = { 0 };
+        UnlockFileEx(handle, 0, 0, 0xFFFFFFFF, &ovl);
+        locked = false;
+    }
+}

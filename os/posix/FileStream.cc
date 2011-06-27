@@ -25,7 +25,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
+#include <sys/file.h>
 
 #include <qcc/Debug.h>
 #include <qcc/FileStream.h>
@@ -36,6 +36,15 @@ using namespace qcc;
 
 /** @internal */
 #define QCC_MODULE  "STREAM"
+
+QStatus qcc::DeleteFile(qcc::String fileName)
+{
+    if (unlink(fileName.c_str())) {
+        return ER_OS_ERROR;
+    } else {
+        return ER_OK;
+    }
+}
 
 FileSource::FileSource(qcc::String fileName)
     : fd(open(fileName.c_str(), O_RDONLY)), event(fd, Event::IO_READ, false), ownsFd(true)
@@ -48,7 +57,7 @@ FileSource::FileSource(qcc::String fileName)
 }
 
 FileSource::FileSource()
-    : fd(0), event(fd, Event::IO_READ, false), ownsFd(false)
+    : fd(0), event(fd, Event::IO_READ, false), ownsFd(false), locked(false)
 {
 }
 
@@ -80,6 +89,28 @@ QStatus FileSource::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, u
     }
 }
 
+bool FileSource::Lock(bool block)
+{
+    if (fd < 0) {
+        return false;
+    }
+    if (!locked) {
+        int ret = flock(fd, block ? LOCK_EX : LOCK_EX | LOCK_NB);
+        if (ret && errno != EWOULDBLOCK) {
+            QCC_LogError(ER_OS_ERROR, ("Lock fd %d failed with '%s'", fd, strerror(errno)));
+        }
+        locked = (ret == 0);
+    }
+    return locked;
+}
+
+void FileSource::Unlock()
+{
+    if (fd >= 0 && locked) {
+        flock(fd, LOCK_UN);
+        locked = false;
+    }
+}
 
 FileSink::FileSink(qcc::String fileName, Mode mode)
     : fd(-1), event(fd, Event::IO_WRITE, false), ownsFd(true)
@@ -142,7 +173,7 @@ FileSink::FileSink(qcc::String fileName, Mode mode)
 }
 
 FileSink::FileSink()
-    : fd(1), event(fd, Event::IO_WRITE, false), ownsFd(false)
+    : fd(1), event(fd, Event::IO_WRITE, false), ownsFd(false), locked(false)
 {
 }
 
@@ -168,4 +199,25 @@ QStatus FileSink::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
     }
 }
 
+bool FileSink::Lock(bool block)
+{
+    if (fd < 0) {
+        return false;
+    }
+    if (!locked) {
+        int ret = flock(fd, block ? LOCK_EX : LOCK_EX | LOCK_NB);
+        if (ret && errno != EWOULDBLOCK) {
+            QCC_LogError(ER_OS_ERROR, ("Lock fd %d failed with '%s'", fd, strerror(errno)));
+        }
+        locked = (ret == 0);
+    }
+    return locked;
+}
 
+void FileSink::Unlock()
+{
+    if (fd >= 0 && locked) {
+        flock(fd, LOCK_UN);
+        locked = false;
+    }
+}
