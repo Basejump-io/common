@@ -85,6 +85,20 @@ Thread* Thread::GetThread()
     return ret;
 }
 
+void Thread::CleanExternalThreads()
+{
+    threadListLock.Lock();
+    map<unsigned int, Thread*>::iterator it = threadList.begin();
+    while (it != threadList.end()) {
+        if (it->second->isExternal) {
+            delete it->second;
+            threadList.erase(it++);
+        } else {
+            ++it;
+        }
+    }
+    threadListLock.Unlock();
+}
 
 Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExternal) :
     state(isExternal ? RUNNING : DEAD),
