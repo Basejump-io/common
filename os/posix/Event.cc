@@ -274,7 +274,10 @@ static void destroyPipe(int rdFd, int wrFd)
 #else
     pipeLock->Lock();
 
-    /* Delete the pipe (permanently) if the number of pipes on the free list is twice as many as on the used list */
+    /*
+     * Delete the pipe (permanently) if the number of pipes on the free list is twice as many as
+     * on the used list.
+     */
     bool closePipe = (freePipeList.size() >= (2 * (usedPipeList.size() - 1)));
 
     /* Look for pipe on usedPipeList */
@@ -296,7 +299,15 @@ static void destroyPipe(int rdFd, int wrFd)
     }
 
     if (foundPipe) {
-        if (closePipe) {
+        if (usedPipeList.size() == 0) {
+            /* Empty the free list if this was the last pipe in use */
+            vector<pair<int, int> >::iterator it = freePipeList.begin();
+            while (it != freePipeList.end())  {
+                close(it->first);
+                close(it->second);
+                it = freePipeList.erase(it);
+            }
+        } else if (closePipe) {
             /* Trim freeList down to 2*used pipe */
             while (freePipeList.size() > (2 * usedPipeList.size())) {
                 pair<int, int> fdPair = freePipeList.back();
