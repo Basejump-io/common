@@ -260,7 +260,7 @@ QStatus Crypto_RSA::FromPKCS8(const qcc::String& pkcs8, PassphraseListener* list
         }
     }
     if (status != ER_OK) {
-        QCC_LogError(status, ("PEM_read_bio_RSAPrivateKey() failed %s", ERR_error_string(0, NULL)));
+        QCC_LogError(status, ("PEM_read_bio_RSAPrivateKey() failed %s", ERR_error_string(ERR_get_error(), NULL)));
     }
     BIO_free(bio);
     /* Cleanup loaded ciphers and digests */
