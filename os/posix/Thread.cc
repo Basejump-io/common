@@ -293,7 +293,7 @@ QStatus Thread::Stop(void)
         return ER_EXTERNAL_THREAD;
     } else if (state == DEAD) {
         QCC_DbgPrintf(("Thread::Stop() thread is dead [%s]", funcName.c_str()));
-        return ER_DEAD_THREAD;
+        return ER_OK;
     } else {
         QCC_DbgTrace(("Thread::Stop() %x [%s]", handle, funcName.c_str()));
         isStopping = true;
@@ -369,7 +369,7 @@ QStatus Thread::Join(void)
      */
     if (state == DEAD) {
         QCC_DbgPrintf(("Thread::Join() thread is dead [%s]", funcName.c_str()));
-        return ER_DEAD_THREAD;
+        return ER_OK;
     }
     /*
      * There is a race condition where the underlying OS thread has not yet started to run. We need
