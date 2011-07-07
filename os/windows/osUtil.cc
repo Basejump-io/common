@@ -124,7 +124,7 @@ QStatus ExecAs(const char* user, const char* exec, const ExecArgs& args, const q
     return ER_NOT_IMPLEMENTED;
 }
 
-QStatus GetPlatformEntropy(uint8_t* data, size_t len)
+QStatus GetPlatformEntropy(uint8_t* data, size_t& len)
 {
     QStatus status = ER_OS_ERROR;
     HCRYPTPROV ctx;

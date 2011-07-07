@@ -203,11 +203,11 @@ QStatus ExecAs(const char* user, const char* exec, const ExecArgs& args, const q
  * Call platform specific APIs to get entropy data for seeding a PRNG
  *
  * @param data  A buffer to receive the entropy data.
- * @param len   The length of the buffer.
+ * @param len   On input the length of the buffer, on output the actual number of bytes of entropy.
  *
  * @return ER_OK if entropy was succesfully obtained.
  */
-QStatus GetPlatformEntropy(uint8_t* data, size_t len);
+QStatus GetPlatformEntropy(uint8_t* data, size_t& len);
 
 };
 #endif

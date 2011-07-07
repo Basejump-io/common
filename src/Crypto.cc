@@ -267,9 +267,23 @@ void Crypto_BigNum::GenerateRandomValue(size_t bits)
 {
     static bool initialized = false;
     if (!initialized) {
+        /*
+         * OpenSSL initializes the PRNG with platform-specific entropy. Here we call a
+         * platform specific function to obtain additional entropy contributions.
+         */
         uint8_t* entropy = new uint8_t[ENTROPY_BYTES];
-        GetPlatformEntropy(entropy, ENTROPY_BYTES);
-        RAND_add(entropy, ENTROPY_BYTES, double(ENTROPY_BYTES));
+        size_t num = ENTROPY_BYTES;
+        QStatus status = GetPlatformEntropy(entropy, num);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Failed to get platform-specific entropy"));
+        } else {
+            /*
+             * If the platform can provide additional entropy add it here
+             */
+            if (num) {
+                RAND_add(entropy, num, double(num));
+            }
+        }
         delete [] entropy;
     }
     BN_rand(num, bits, -1, 0);
