@@ -49,6 +49,7 @@ void KeyBlob::Erase()
         data = NULL;
         size = 0;
         expiration.seconds = 0;
+        role = NO_ROLE;
     }
 }
 
@@ -57,6 +58,7 @@ KeyBlob::KeyBlob(const qcc::String& secret, size_t len, const Type initType) : b
     if (blobType != EMPTY) {
         size = (uint16_t)len;
         data = new uint8_t[len];
+        role = NO_ROLE;
         uint8_t* p = data;
 
         while (len) {
@@ -211,6 +213,7 @@ KeyBlob::KeyBlob(const KeyBlob& other)
         size = other.size;
         expiration = other.expiration;
         tag = other.tag;
+        role = other.role;
     } else {
         data = NULL;
         size = 0;
@@ -230,6 +233,7 @@ KeyBlob& KeyBlob::operator=(const KeyBlob& other)
             blobType = other.blobType;
             expiration = other.expiration;
             tag = other.tag;
+            role = other.role;
         }
     }
     return *this;
