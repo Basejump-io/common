@@ -23,9 +23,16 @@
 #include <assert.h>
 #include <ctype.h>
 
+#include <openssl/bn.h>
+#include <openssl/hmac.h>
+#include <openssl/sha.h>
+#include <openssl/md5.h>
+#include <openssl/rand.h>
+
 #include <qcc/platform.h>
 #include <qcc/Debug.h>
 #include <qcc/Crypto.h>
+#include <qcc/Util.h>
 
 #include <Status.h>
 
@@ -251,6 +258,21 @@ QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, co
         out += sizeof(digest);
     }
     return ER_OK;
+}
+
+
+static const size_t ENTROPY_BYTES = 1024;
+
+void Crypto_BigNum::GenerateRandomValue(size_t bits)
+{
+    static bool initialized = false;
+    if (!initialized) {
+        uint8_t* entropy = new uint8_t[ENTROPY_BYTES];
+        GetPlatformEntropy(entropy, ENTROPY_BYTES);
+        RAND_add(entropy, ENTROPY_BYTES, double(ENTROPY_BYTES));
+        delete [] entropy;
+    }
+    BN_rand(num, bits, -1, 0);
 }
 
 }

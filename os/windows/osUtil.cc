@@ -27,6 +27,7 @@
 #include <process.h>
 #include <lmcons.h>
 #define SECURITY_WIN32
+#include <wincrypt.h>
 #include <security.h>
 #include <secext.h>
 
@@ -121,6 +122,20 @@ QStatus Exec(const char* exec, const ExecArgs& args, const qcc::Environ& envs)
 QStatus ExecAs(const char* user, const char* exec, const ExecArgs& args, const qcc::Environ& envs)
 {
     return ER_NOT_IMPLEMENTED;
+}
+
+QStatus GetPlatformEntropy(uint8_t* data, size_t len)
+{
+    QStatus status = ER_OS_ERROR;
+    HCRYPTPROV ctx;
+    if (CryptAcquireContext(&ctx, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
+        if (CryptGenRandom(ctx, len, data)) {
+            status = ER_OK;
+        }
+        CryptReleaseContext(ctx, 0);
+    }
+    return status;
+
 }
 
 }

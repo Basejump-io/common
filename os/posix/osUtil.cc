@@ -195,3 +195,18 @@ QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, co
     }
     return ER_OK;
 }
+
+QStatus qcc::GetPlatformEntropy(uint8_t* data, size_t len)
+{
+    QStatus status = ER_OS_ERROR;
+    FILE* file;
+
+    file = fopen("/dev/urandom", "r");
+    if (file) {
+        if (fread(data, len, 1, file) == len) {
+            status = ER_OK;
+        }
+        fclose(file);
+    }
+    return status;
+}

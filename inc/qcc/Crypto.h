@@ -324,6 +324,11 @@ class Crypto_AES  {
     static const size_t AES128_SIZE = (128 / 8);
 
     /**
+     * Preferred size of the nonce for AES CCM - this allows encryption of up to 2^32 bytes of data.
+     */
+    static const size_t CCM_NONCE_SIZE = 11;
+
+    /**
      * Flag to constructor indicating key is being used to encryption
      */
     static const bool ENCRYPT = true;
@@ -342,7 +347,7 @@ class Crypto_AES  {
     Crypto_AES(const KeyBlob& key, bool encrypt);
 
     /**
-     * Data in encrypted or decrypted in 16 byte blocks.
+     * Data is encrypted or decrypted in 16 byte blocks.
      */
     class Block {
       public:
@@ -426,10 +431,10 @@ class Crypto_AES  {
      *                    must be large enough to hold the encrypted input data and the
      *                    authentication field. This means at least (len + authLen) bytes.
      * @param len         On input the length of the input data,returns the length of the output data.
-     * @param nonce       A nonce. A different nonce must be used each time.
+     * @param nonce       A nonce with length between 11 and 14 bytes. The nonce must contain a variable
+     *                    component that is different for every encryption in a given session.
      * @param addData     Additional data to be authenticated.
      * @param addLen      Length of the additional data.
-     * @param authField   Returns the authentication field.
      * @param authLen     Lengh of the authentication field, must be in range 4..16
      *
      * @return ER_OK if the data was encrypted.
@@ -444,6 +449,9 @@ class Crypto_AES  {
      * @param msgLen   On input, the length in bytes of the plaintext message, on output the expanded
      *                 length of the encrypted message.
      * @param hdrLen   Length in bytes of the header portion of the message
+     * @param nonce    A nonce with length between 11 and 14 bytes. The nonce must contain a variable
+     *                 component that is different for every encryption in a given session.
+     * @param authLen  Lengh of the authentication field, must be in range 4..16
      */
     QStatus Encrypt_CCM(void* msg, size_t& msgLen, size_t hdrLen, const KeyBlob& nonce, uint8_t authLen = 8)
     {
@@ -465,7 +473,8 @@ class Crypto_AES  {
      * @param in          An array of to encrypt
      * @param out         The encrypted data blocks, this can be the same as in.
      * @param len         On input the length of the input data, returns the length of the output data.
-     * @param nonce       A nonce. A different nonce must be used each time.
+     * @param nonce       A nonce with length between 11 and 14 bytes. The nonce must contain a variable
+     *                    component that is different for every encryption in a given session.
      * @param addData     Additional data to be authenticated.
      * @param addLen      Length of the additional data.
      * @param authLen     Length of the authentication field, must be in range 4..16
@@ -482,6 +491,9 @@ class Crypto_AES  {
      * @param msgLen   On input, the length in bytes of the encrypted message, on output the
      *                 length of the plaintext message.
      * @param hdrLen   Length in bytes of the header portion of the message
+     * @param nonce    A nonce with length between 11 and 14 bytes. The nonce must contain a variable
+     *                 component that is different for every encryption in a given session.
+     * @param authLen  Lengh of the authentication field, must be in range 4..16
      */
     QStatus Decrypt_CCM(void* msg, size_t& msgLen, size_t hdrLen, const KeyBlob& nonce, uint8_t authLen = 8)
     {
@@ -638,7 +650,7 @@ class Crypto_BigNum {
      *
      * @param bits  The size of the number in bits.
      */
-    void GenerateRandomValue(size_t bits) { BN_rand(num, bits, -1, 0); }
+    void GenerateRandomValue(size_t bits);
 
     /**
      * Convert a number of bytes in to a big number value.
