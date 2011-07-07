@@ -324,11 +324,6 @@ class Crypto_AES  {
     static const size_t AES128_SIZE = (128 / 8);
 
     /**
-     * Preferred size of the nonce for AES CCM - this allows encryption of up to 2^32 bytes of data.
-     */
-    static const size_t CCM_NONCE_SIZE = 11;
-
-    /**
      * Flag to constructor indicating key is being used to encryption
      */
     static const bool ENCRYPT = true;
@@ -431,7 +426,7 @@ class Crypto_AES  {
      *                    must be large enough to hold the encrypted input data and the
      *                    authentication field. This means at least (len + authLen) bytes.
      * @param len         On input the length of the input data,returns the length of the output data.
-     * @param nonce       A nonce with length between 11 and 14 bytes. The nonce must contain a variable
+     * @param nonce       A nonce with length between 4 and 14 bytes. The nonce must contain a variable
      *                    component that is different for every encryption in a given session.
      * @param addData     Additional data to be authenticated.
      * @param addLen      Length of the additional data.
@@ -449,7 +444,7 @@ class Crypto_AES  {
      * @param msgLen   On input, the length in bytes of the plaintext message, on output the expanded
      *                 length of the encrypted message.
      * @param hdrLen   Length in bytes of the header portion of the message
-     * @param nonce    A nonce with length between 11 and 14 bytes. The nonce must contain a variable
+     * @param nonce    A nonce with length between 4 and 14 bytes. The nonce must contain a variable
      *                 component that is different for every encryption in a given session.
      * @param authLen  Lengh of the authentication field, must be in range 4..16
      */

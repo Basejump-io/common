@@ -173,7 +173,7 @@ void Crypto_AES::Compute_CCM_AuthField(Block& T, uint8_t M, uint8_t L, const Key
     Block B_0(0);
     B_0.data[0] = flags;
     memset(&B_0.data[1], 0, 15 - L);
-    memcpy(&B_0.data[1], nonce.GetData(), min(nonce.GetSize(), (size_t)(15 - L)));
+    memcpy(&B_0.data[1], nonce.GetData(), nonce.GetSize());
     for (size_t i = 15, l = mLen; l != 0; i--) {
         B_0.data[i] = (uint8_t)(l & 0xFF);
         l >>= 8;
@@ -282,13 +282,13 @@ QStatus Crypto_AES::Encrypt_CCM(const void* in, void* out, size_t& len, const Ke
     if (!out && len) {
         return ER_BAD_ARG_2;
     }
-    if (nLen < 11 || nLen > 14) {
+    if (nLen < 4 || nLen > 14) {
         return ER_BAD_ARG_4;
     }
     if ((authLen < 4) || (authLen > 16)) {
         return ER_BAD_ARG_8;
     }
-    const uint8_t L = 15 - (uint8_t)nLen;
+    const uint8_t L = 15 - (uint8_t)max(nLen, (size_t)11);
     if (L < LengthOctetsFor(len)) {
         return ER_BAD_ARG_3;
     }
@@ -333,13 +333,13 @@ QStatus Crypto_AES::Decrypt_CCM(const void* in, void* out, size_t& len, const Ke
     if (!len || (len < authLen)) {
         return ER_BAD_ARG_3;
     }
-    if (nLen < 11 || nLen > 14) {
+    if (nLen < 4 || nLen > 14) {
         return ER_BAD_ARG_4;
     }
     if ((authLen < 4) || (authLen > 16)) {
         return ER_BAD_ARG_8;
     }
-    const uint8_t L = 15 - nLen;
+    const uint8_t L = 15 - (uint8_t)max(nLen, (size_t)11);
     if (L < LengthOctetsFor(len)) {
         return ER_BAD_ARG_3;
     }
