@@ -269,22 +269,28 @@ static inline uint8_t LengthOctetsFor(size_t len)
  */
 QStatus Crypto_AES::Encrypt_CCM(const void* in, void* out, size_t& len, const KeyBlob& nonce, const void* addData, size_t addLen, uint8_t authLen)
 {
-    uint8_t L = LengthOctetsFor(len);
-
+    /*
+     * Check we are initialized for encryption
+     */
+    if (!encrypt) {
+        return ER_CRYPTO_ERROR;
+    }
+    size_t nLen = nonce.GetSize();
     if (!in && len) {
         return ER_BAD_ARG_1;
     }
     if (!out && len) {
         return ER_BAD_ARG_2;
     }
+    if (nLen < 11 || nLen > 14) {
+        return ER_BAD_ARG_4;
+    }
     if ((authLen < 4) || (authLen > 16)) {
         return ER_BAD_ARG_8;
     }
-    /*
-     * Check we are initialized for encryption
-     */
-    if (!encrypt) {
-        return ER_CRYPTO_ERROR;
+    const uint8_t L = 15 - (uint8_t)nLen;
+    if (L < LengthOctetsFor(len)) {
+        return ER_BAD_ARG_3;
     }
     /*
      * Compute the authentication field T.
@@ -296,7 +302,7 @@ QStatus Crypto_AES::Encrypt_CCM(const void* in, void* out, size_t& len, const Ke
      */
     Block ivec(0);
     ivec.data[0] = (L - 1);
-    memcpy(&ivec.data[1], nonce.GetData(), min(nonce.GetSize(), (size_t)(15 - L)));
+    memcpy(&ivec.data[1], nonce.GetData(), nLen);
     unsigned int num = 0;
     Block ecount_buf(0);
     /*
@@ -314,29 +320,35 @@ QStatus Crypto_AES::Encrypt_CCM(const void* in, void* out, size_t& len, const Ke
 
 QStatus Crypto_AES::Decrypt_CCM(const void* in, void* out, size_t& len, const KeyBlob& nonce, const void* addData, size_t addLen, uint8_t authLen)
 {
-    uint8_t L = LengthOctetsFor(len);
-
-    if (!in) {
-        return ER_BAD_ARG_1;
-    }
-    if (!len || (len < authLen)) {
-        return ER_BAD_ARG_3;
-    }
-    if ((authLen < 4) || (authLen > 16)) {
-        return ER_BAD_ARG_8;
-    }
     /*
      * Check we are initialized for encryption - CCM only uses AES encryption.
      */
     if (!encrypt) {
         return ER_CRYPTO_ERROR;
     }
+    size_t nLen = nonce.GetSize();
+    if (!in) {
+        return ER_BAD_ARG_1;
+    }
+    if (!len || (len < authLen)) {
+        return ER_BAD_ARG_3;
+    }
+    if (nLen < 11 || nLen > 14) {
+        return ER_BAD_ARG_4;
+    }
+    if ((authLen < 4) || (authLen > 16)) {
+        return ER_BAD_ARG_8;
+    }
+    const uint8_t L = 15 - nLen;
+    if (L < LengthOctetsFor(len)) {
+        return ER_BAD_ARG_3;
+    }
     /*
      * Initialize ivec and other initial args.
      */
     Block ivec(0);
     ivec.data[0] = (L - 1);
-    memcpy(&ivec.data[1], nonce.GetData(), min(nonce.GetSize(), (size_t)(15 - L)));
+    memcpy(&ivec.data[1], nonce.GetData(), nLen);
     unsigned int num = 0;
     Block ecount_buf(0);
     /*
