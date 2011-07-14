@@ -302,7 +302,7 @@ static void destroyPipe(int rdFd, int wrFd)
         if (usedPipeList.size() == 0) {
             /* Empty the free list if this was the last pipe in use */
             vector<pair<int, int> >::iterator it = freePipeList.begin();
-            while (it != freePipeList.end())  {
+            while (it != freePipeList.end()) {
                 close(it->first);
                 close(it->second);
                 it = freePipeList.erase(it);
