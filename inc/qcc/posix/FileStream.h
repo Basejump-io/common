@@ -63,6 +63,21 @@ class FileSource : public Source {
      */
     FileSource();
 
+    /**
+     * Copy constructor.
+     *
+     * @param other   FileSource to copy from.
+     */
+    FileSource(const FileSource& other);
+
+    /**
+     * Assignment.
+     *
+     * @param other FileSource to copy from.
+     * @return This FileSource.
+     */
+    FileSource operator=(const FileSource& other);
+
     /** Destructor */
     virtual ~FileSource();
 
@@ -83,7 +98,7 @@ class FileSource : public Source {
      *
      * @return Event that is signaled when data is available.
      */
-    Event& GetSourceEvent() { return event; }
+    Event& GetSourceEvent() { return *event; }
 
     /**
      * Check validity of FILE.
@@ -109,7 +124,7 @@ class FileSource : public Source {
 
   private:
     int fd;        /**< File descriptor */
-    Event event;   /**< I/O event */
+    Event* event;  /**< I/O event */
     bool ownsFd;   /**< true if sink is responsible for closing fd */
     bool locked;   /**< true if the sink has been locked for exclusive access */
 };
@@ -143,6 +158,21 @@ class FileSink : public Sink {
      */
     FileSink();
 
+    /**
+     * Copy constructor.
+     *
+     * @param other   FileSink to copy from.
+     */
+    FileSink(const FileSink& other);
+
+    /**
+     * Assignment.
+     *
+     * @param other FileSink to copy from.
+     * @return This FileSink.
+     */
+    FileSink operator=(const FileSink& other);
+
     /** FileSink Destructor */
     virtual ~FileSink();
 
@@ -161,7 +191,7 @@ class FileSink : public Sink {
      *
      * @return Event that is signaled when sink can accept more bytes.
      */
-    Event& GetSinkEvent() { return event; }
+    Event& GetSinkEvent() { return *event; }
 
     /**
      * Check validity of FILE.
@@ -188,7 +218,7 @@ class FileSink : public Sink {
   private:
 
     int fd;        /**< File descriptor */
-    Event event;   /**< I/O event */
+    Event* event;  /**< I/O event */
     bool ownsFd;   /**< true if sink is responsible for closing fd */
     bool locked;   /**< true if the sink has been locked for exclusive access */
 };

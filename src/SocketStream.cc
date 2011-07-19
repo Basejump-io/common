@@ -46,11 +46,18 @@ static int MakeSock(AddressFamily family, SocketType type)
     return sock;
 }
 
+static SocketFd CopySock(const SocketFd& inFd)
+{
+    SocketFd outFd;
+    QStatus status = SocketDup(inFd, outFd);
+    return (status == ER_OK) ? outFd : -1;
+}
+
 SocketStream::SocketStream(SocketFd sock) :
     isConnected(true),
     sock(sock),
-    sourceEvent(sock, Event::IO_READ, false),
-    sinkEvent(sock, Event::IO_WRITE, false),
+    sourceEvent(new Event(sock, Event::IO_READ, false)),
+    sinkEvent(new Event(sock, Event::IO_WRITE, false)),
     isDetached(false)
 {
 }
@@ -59,15 +66,39 @@ SocketStream::SocketStream(SocketFd sock) :
 SocketStream::SocketStream(AddressFamily family, SocketType type) :
     isConnected(false),
     sock(MakeSock(family, type)),
-    sourceEvent(sock, Event::IO_READ, false),
-    sinkEvent(sourceEvent, Event::IO_WRITE, false),
+    sourceEvent(new Event(sock, Event::IO_READ, false)),
+    sinkEvent(new Event(*sourceEvent, Event::IO_WRITE, false)),
     isDetached(false)
 {
+}
+
+SocketStream::SocketStream(const SocketStream& other) :
+    isConnected(other.isConnected),
+    sock(CopySock(other.sock)),
+    sourceEvent(new Event(sock, Event::IO_READ, false)),
+    sinkEvent(new Event(*sourceEvent, Event::IO_WRITE, false)),
+    isDetached(other.isDetached)
+{
+}
+
+SocketStream SocketStream::operator=(const SocketStream& other)
+{
+    Close();
+    isConnected = other.isConnected;
+    sock = CopySock(other.sock);
+    delete sourceEvent;
+    sourceEvent = new Event(sock, Event::IO_READ, false);
+    delete sinkEvent;
+    sinkEvent = new Event(*sourceEvent, Event::IO_WRITE, false);
+    isDetached = other.isDetached;
+    return *this;
 }
 
 SocketStream::~SocketStream()
 {
     Close();
+    delete sourceEvent;
+    delete sinkEvent;
 }
 
 QStatus SocketStream::Connect(qcc::String& host, uint16_t port)
@@ -76,7 +107,7 @@ QStatus SocketStream::Connect(qcc::String& host, uint16_t port)
     QStatus status = qcc::Connect(sock, ipAddr, port);
 
     if (ER_WOULDBLOCK == status) {
-        status = Event::Wait(sourceEvent, Event::WAIT_FOREVER);
+        status = Event::Wait(*sourceEvent, Event::WAIT_FOREVER);
         if (ER_OK == status) {
             status = qcc::Connect(sock, ipAddr, port);
         }
@@ -90,7 +121,7 @@ QStatus SocketStream::Connect(qcc::String& path)
 {
     QStatus status = qcc::Connect(sock, path.c_str());
     if (ER_WOULDBLOCK == status) {
-        status = Event::Wait(sourceEvent, Event::WAIT_FOREVER);
+        status = Event::Wait(*sourceEvent, Event::WAIT_FOREVER);
         if (ER_OK == status) {
             status = qcc::Connect(sock, path.c_str());
         }
@@ -127,7 +158,7 @@ QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes,
     while (true) {
         status = Recv(sock, buf, reqBytes, actualBytes);
         if (ER_WOULDBLOCK == status) {
-            status = Event::Wait(sourceEvent, timeout);
+            status = Event::Wait(*sourceEvent, timeout);
             if (ER_OK != status) {
                 break;
             }
@@ -159,7 +190,7 @@ QStatus SocketStream::PullBytesAndFds(void* buf, size_t reqBytes, size_t& actual
             status = RecvWithFds(sock, buf, reqBytes, actualBytes, fdList, numFds, recvdFds);
         }
         if (ER_WOULDBLOCK == status) {
-            status = Event::Wait(sourceEvent, timeout);
+            status = Event::Wait(*sourceEvent, timeout);
             if (ER_OK != status) {
                 break;
             }
@@ -184,7 +215,7 @@ QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSen
     while (true) {
         status = qcc::Send(sock, buf, numBytes, numSent);
         if (ER_WOULDBLOCK == status) {
-            status = Event::Wait(sinkEvent);
+            status = Event::Wait(*sinkEvent);
             if (ER_OK != status) {
                 break;
             }
@@ -211,7 +242,7 @@ QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& 
     while (true) {
         status = qcc::SendWithFds(sock, buf, numBytes, numSent, fdList, numFds, pid);
         if (ER_WOULDBLOCK == status) {
-            status = Event::Wait(sinkEvent);
+            status = Event::Wait(*sinkEvent);
             if (ER_OK != status) {
                 break;
             }

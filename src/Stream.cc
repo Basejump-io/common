@@ -27,6 +27,8 @@
 
 #include <Status.h>
 
+#define QCC_MODULE "STREAM"
+
 using namespace std;
 using namespace qcc;
 

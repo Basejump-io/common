@@ -53,7 +53,20 @@ static void ReSlash(qcc::String& inStr)
     }
 }
 
-FileSource::FileSource(qcc::String fileName) : handle(INVALID_HANDLE_VALUE), event(0, 0), ownsHandle(true), locked(false)
+static HANDLE DupHandle(HANDLE inHandle)
+{
+    HANDLE outHandle = INVALID_HANDLE_VALUE;
+    DuplicateHandle(GetCurrentProcess(),
+                    inHandle,
+                    GetCurrentProcess(),
+                    &outHandle,
+                    0,
+                    FALSE,
+                    DUPLICATE_SAME_ACCESS);
+    return outHandle;
+}
+
+FileSource::FileSource(qcc::String fileName) : handle(INVALID_HANDLE_VALUE), event(&Event::alwaysSet), ownsHandle(true), locked(false)
 {
     ReSlash(fileName);
     handle = CreateFileA(fileName.c_str(),
@@ -69,13 +82,32 @@ FileSource::FileSource(qcc::String fileName) : handle(INVALID_HANDLE_VALUE), eve
     }
 }
 
-FileSource::FileSource() : handle(INVALID_HANDLE_VALUE), event(0, 0), ownsHandle(false)
+FileSource::FileSource() : handle(INVALID_HANDLE_VALUE), event(&Event::alwaysSet), ownsHandle(false)
 {
     handle = GetStdHandle(STD_INPUT_HANDLE);
 
     if (NULL == handle) {
         QCC_LogError(ER_OS_ERROR, ("GetStdHandle failed (%d)", GetLastError()));
     }
+}
+
+FileSource::FileSource(const FileSource& other) :
+    handle((other.handle == INVALID_HANDLE_VALUE) ? INVALID_HANDLE_VALUE : DupHandle(other.handle)),
+    event(&Event::alwaysSet),
+    ownsHandle(true),
+    locked(other.locked)
+{
+}
+
+FileSource FileSource::operator=(const FileSource& other)
+{
+    if (ownsHandle && (INVALID_HANDLE_VALUE != handle)) {
+        CloseHandle(handle);
+    }
+    handle = (other.handle == INVALID_HANDLE_VALUE) ? INVALID_HANDLE_VALUE : DupHandle(other.handle);
+    event = &Event::alwaysSet;
+    ownsFd = true;
+    locked = other.locked;
 }
 
 FileSource::~FileSource()
@@ -99,7 +131,6 @@ QStatus FileSource::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, u
         actualBytes = readBytes;
         return ((0 < reqBytes) && (0 == readBytes)) ? ER_NONE : ER_OK;
     } else {
-        event.ResetTime(Event::WAIT_FOREVER, 0);
         DWORD error = GetLastError();
         if (ERROR_HANDLE_EOF == error) {
             actualBytes = 0;
@@ -137,13 +168,13 @@ void FileSource::Unlock()
     }
 }
 
-FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALUE), event(Event::alwaysSet), ownsHandle(true), locked(false)
+FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALUE), event(&Event::alwaysSet), ownsHandle(true), locked(false)
 {
     ReSlash(fileName);
 
     DWORD attributes;
     switch (mode) {
-    case PRIVATE:
+    case PRIVATE :
         attributes = FILE_ATTRIBUTE_HIDDEN;
         break;
 
@@ -204,13 +235,32 @@ FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALU
     }
 }
 
-FileSink::FileSink() : handle(INVALID_HANDLE_VALUE), event(Event::alwaysSet), ownsHandle(false)
+FileSink::FileSink() : handle(INVALID_HANDLE_VALUE), event(&Event::alwaysSet), ownsHandle(false), locked(false)
 {
     handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
     if (NULL == handle) {
         QCC_LogError(ER_OS_ERROR, ("GetStdHandle failed (%d)", GetLastError()));
     }
+}
+
+FileSink::FileSink(const FileSink& other) :
+    handle((other.handle == INVALID_HANDLE_VALUE) ? INVALID_HANDLE_VALUE : DupHandle(other.handle)),
+    event(&Event::alwaysSet),
+    ownsHandle(true),
+    locked(other.locked)
+{
+}
+
+FileSink FileSink::operator=(const FileSink& other)
+{
+    if (ownsHandle && (INVALID_HANDLE_VALUE != handle)) {
+        CloseHandle(handle);
+    }
+    handle = (other.handle == INVALID_HANDLE_VALUE) ? INVALID_HANDLE_VALUE : DupHandle(other.handle);
+    event = &Event::alwaysSet;
+    ownsFd = true;
+    locked = other.locked;
 }
 
 FileSink::~FileSink() {
@@ -234,7 +284,6 @@ QStatus FileSink::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
         numSent = writeBytes;
         return ER_OK;
     } else {
-        event.ResetTime(Event::WAIT_FOREVER, 0);
         QCC_LogError(ER_FAIL, ("WriteFile failed. error=%d", GetLastError()));
         return ER_FAIL;
     }

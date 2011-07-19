@@ -42,19 +42,33 @@ class SocketStream : public Stream {
   public:
 
     /**
-     * Create an SocketStream from an existing socket.
+     * Create a SocketStream from an existing socket.
      *
      * @param sock      socket handle.
      */
     SocketStream(SocketFd sock);
 
     /**
-     * Create an SocketStream.
+     * Create a SocketStream.
      *
      * @param family    Socket family.
      * @param type      Socket type.
      */
     SocketStream(AddressFamily family, SocketType type);
+
+    /**
+     * Copy-constructor
+     *
+     * @param other  SocketStream to copy from.
+     */
+    SocketStream(const SocketStream& other);
+
+    /**
+     * Assignment operator.
+     *
+     * @param other  SocketStream to assign from.
+     */
+    SocketStream operator=(const SocketStream& other);
 
     /** Destructor */
     virtual ~SocketStream();
@@ -134,14 +148,14 @@ class SocketStream : public Stream {
      *
      * @return Event that is set when data is available.
      */
-    Event& GetSourceEvent() { return sourceEvent; }
+    Event& GetSourceEvent() { return *sourceEvent; }
 
     /**
      * Get the Event indicating that sink can accept data.
      *
      * @return Event set when socket can accept more data via PushBytes
      */
-    Event& GetSinkEvent() { return sinkEvent; }
+    Event& GetSinkEvent() { return *sinkEvent; }
 
     /**
      * Indicate whether socket is connected.
@@ -172,8 +186,8 @@ class SocketStream : public Stream {
   protected:
 
     SocketFd sock;                   /**< Socket file descriptor */
-    Event sourceEvent;               /**< Event signaled when data is available */
-    Event sinkEvent;                 /**< Event signaled when sink can accept data */
+    Event* sourceEvent;              /**< Event signaled when data is available */
+    Event* sinkEvent;                /**< Event signaled when sink can accept data */
     bool isDetached;                 /**< Detached socket streams do not shutdown the underlying socket when closing */
 };
 

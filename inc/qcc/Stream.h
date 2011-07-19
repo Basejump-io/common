@@ -58,7 +58,7 @@ class Source {
      * @param reqBytes     Number of bytes requested to be pulled from source.
      * @param actualBytes  Actual number of bytes retrieved from source.
      * @param timeout      Time to wait to pull the requested bytes.
-     * @return   OI_OK if successful. ER_NONE if source is exhausted. Otherwise an error.
+     * @return   ER_OK if successful. ER_NONE if source is exhausted. Otherwise an error.
      */
     virtual QStatus PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout = Event::WAIT_FOREVER) { return ER_NONE; }
 
