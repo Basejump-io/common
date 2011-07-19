@@ -101,13 +101,16 @@ FileSource::FileSource(const FileSource& other) :
 
 FileSource FileSource::operator=(const FileSource& other)
 {
-    if (ownsHandle && (INVALID_HANDLE_VALUE != handle)) {
-        CloseHandle(handle);
+    if (&other != this) {
+        if (ownsHandle && (INVALID_HANDLE_VALUE != handle)) {
+            CloseHandle(handle);
+        }
+        handle = (other.handle == INVALID_HANDLE_VALUE) ? INVALID_HANDLE_VALUE : DupHandle(other.handle);
+        event = &Event::alwaysSet;
+        ownsHandle = true;
+        locked = other.locked;
     }
-    handle = (other.handle == INVALID_HANDLE_VALUE) ? INVALID_HANDLE_VALUE : DupHandle(other.handle);
-    event = &Event::alwaysSet;
-    ownsFd = true;
-    locked = other.locked;
+    return *this;
 }
 
 FileSource::~FileSource()
@@ -254,13 +257,16 @@ FileSink::FileSink(const FileSink& other) :
 
 FileSink FileSink::operator=(const FileSink& other)
 {
-    if (ownsHandle && (INVALID_HANDLE_VALUE != handle)) {
-        CloseHandle(handle);
+    if (&other != this) {
+        if (ownsHandle && (INVALID_HANDLE_VALUE != handle)) {
+            CloseHandle(handle);
+        }
+        handle = (other.handle == INVALID_HANDLE_VALUE) ? INVALID_HANDLE_VALUE : DupHandle(other.handle);
+        event = &Event::alwaysSet;
+        ownsHandle = true;
+        locked = other.locked;
     }
-    handle = (other.handle == INVALID_HANDLE_VALUE) ? INVALID_HANDLE_VALUE : DupHandle(other.handle);
-    event = &Event::alwaysSet;
-    ownsFd = true;
-    locked = other.locked;
+    return *this;
 }
 
 FileSink::~FileSink() {
