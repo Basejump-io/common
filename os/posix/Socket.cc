@@ -34,6 +34,9 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#if defined(QCC_OS_DARWIN)
+#include <sys/ucred.h>
+#endif
 
 #include <qcc/IPAddress.h>
 #include <qcc/ScatterGatherList.h>
@@ -47,6 +50,15 @@
 namespace qcc {
 
 const SocketFd INVALID_SOCKET_FD = -1;
+
+#if defined(QCC_OS_DARWIN)
+#define MSG_NOSIGNAL 0
+void disableSigPipe(SocketFd socket)
+{
+    int disableSigPipe = 1;
+    setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, &disableSigPipe, sizeof(disableSigPipe));
+}
+#endif
 
 static void MakeSockAddr(const char* path,
                          struct sockaddr_storage* addrBuf, socklen_t& addrSize)
@@ -129,7 +141,6 @@ static QStatus GetSockAddr(const sockaddr_storage* addrBuf, socklen_t addrSize,
 }
 
 
-
 QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
 {
     QStatus status = ER_OK;
@@ -143,6 +154,9 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
         QCC_LogError(status, ("Opening socket: %d - %s", errno, strerror(errno)));
     } else {
         sockfd = static_cast<SocketFd>(ret);
+#if defined(QCC_OS_DARWIN)
+        disableSigPipe(sockfd);
+#endif
     }
     return status;
 }
@@ -310,6 +324,9 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
             remotePort = 0;
         }
         newSockfd = static_cast<SocketFd>(ret);
+#if defined(QCC_OS_DARWIN)
+        disableSigPipe(newSockfd);
+#endif
         QCC_DbgPrintf(("New socket FD: %d", newSockfd));
 
         int flags = fcntl(newSockfd, F_GETFL, 0);

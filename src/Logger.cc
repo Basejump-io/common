@@ -71,7 +71,7 @@ void qcc::Log(int priority, const char* format, ...)
         if (priority <= loggerSettings->GetLevel()) {
             __android_log_vprint(androidPriorityMap[priority], loggerSettings->name, format, ap);
         }
-#else  // QCC_OS_LINUX
+#else  // QCC_OS_LINUX || QCC_OS_DARWIN
 
         vsyslog(priority, format, ap);
 

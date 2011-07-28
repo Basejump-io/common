@@ -22,7 +22,12 @@
  *    limitations under the License.
  ******************************************************************************/
 
+#if defined(QCC_OS_DARWIN)
+#include <machine/endian.h>
+#include <libkern/OSByteOrder.h>
+#else
 #include <endian.h>
+#endif
 
 /*
  * Make the target's endianness known to the rest of the code in portable manner.
@@ -87,6 +92,25 @@
 #endif
 
 
+#if defined(QCC_OS_DARWIN)
+
+/**
+ * Swap bytes in place to convert endianness of a 16 bit integer
+ */
+#define EndianSwap16(_val) (_val) = OSSwapConstInt16(_val)
+
+/**
+ * Swap bytes in place to convert endianness of a 32 bit integer
+ */
+#define EndianSwap32(_val) (_val) = OSSwapConstInt32(_val)
+
+/**
+ * Swap bytes in place to convert endianness of a 64 bit integer
+ */
+#define EndianSwap64(_val) (_val) = OSSwapConstInt64(_val)
+
+
+#else
 /**
  * Swap bytes in place to convert endianness of a 16 bit integer
  */
@@ -102,6 +126,7 @@
  */
 #define EndianSwap64(_val) (_val) = __swap64(_val)
 
+#endif
 
 #define ER_DIR_SEPARATOR  "/"
 

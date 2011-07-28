@@ -33,6 +33,8 @@ if env['OS'] == 'windows':
         env.AppendUnique(LIBS = ['setupapi', 'user32', 'winmm', 'ws2_32', 'iphlpapi', 'secur32', 'Advapi32'])
 elif env['OS'] == 'linux':
     env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto'])
+elif env['OS'] == 'darwin':
+    env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto'])
 elif env['OS'] == 'android':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc'])
 elif env['OS'] == 'android_donut':

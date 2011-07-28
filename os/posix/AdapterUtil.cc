@@ -32,6 +32,12 @@
 #include <stdio.h>
 #include <sys/ioctl.h>
 
+#if defined(QCC_OS_DARWIN)
+// Note that this include must be _after_ net/if.h
+#include <ifaddrs.h>
+#include <net/if_dl.h>
+#endif
+
 #include <qcc/AdapterUtil.h>
 #include <qcc/Debug.h>
 #include <qcc/NetInfo.h>
@@ -49,6 +55,46 @@ qcc::AdapterUtil* qcc::AdapterUtil::singleton = NULL;
 AdapterUtil::~AdapterUtil(void) {
 }
 
+#if defined(QCC_OS_DARWIN)
+#define IFHWADDRLEN 6
+static QStatus getMacAddress(unsigned char *mac_dest, const struct ifreq *item)
+{
+    ifaddrs* iflist = NULL;
+    QStatus status = ER_OK;
+    
+    if (getifaddrs(&iflist) < 0) {
+        status = ER_OS_ERROR;
+        goto exit;
+    } 
+    
+    for (ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
+        if ((cur->ifa_addr->sa_family == AF_LINK) &&
+            (strcmp(cur->ifa_name, item->ifr_name) == 0) &&
+            cur->ifa_addr) {
+                
+            sockaddr_dl* sdl = (sockaddr_dl*)cur->ifa_addr;
+            memcpy(mac_dest, LLADDR(sdl), IFHWADDRLEN);
+            break;
+        }
+    }
+exit:
+    if (iflist) {
+        freeifaddrs(iflist);
+    }
+    return status;
+}
+
+#else // defined(QCC_OS_LINUX)
+
+static QStatus getMacAddress(unsigned char *mac_dest, const struct ifreg *item)
+{
+    QStatus status = ER_OK;
+    memcpy(mac_dest, item.ifr_hwaddr.sa_data, IFHWADDRLEN);
+    return status;
+}
+
+#endif
+
 QStatus AdapterUtil::ForceUpdate()
 {
     char buf[1024];
@@ -57,7 +103,7 @@ QStatus AdapterUtil::ForceUpdate()
     int sck;
     int nInterfaces;
     int i;
-    sockaddr savedPhysicalAddress;
+    unsigned char savedPhysicalAddress[IFHWADDRLEN];
     uint8_t adapterCount = 1;
 
     QStatus status = ER_OK;
@@ -66,7 +112,7 @@ QStatus AdapterUtil::ForceUpdate()
 
     interfaces.clear();
     isMultihomed = false;
-    memset(&savedPhysicalAddress, 0, sizeof(sockaddr));
+    memset(savedPhysicalAddress, 0, IFHWADDRLEN);
 
     // Get a socket handle.
     sck = socket(AF_INET, SOCK_DGRAM, 0);
@@ -95,9 +141,12 @@ QStatus AdapterUtil::ForceUpdate()
         NetInfo netInfo;
 
         qcc::String aname(item->ifr_name);
-        sockaddr physicalAddress;
-        memcpy(&physicalAddress, &(item->ifr_hwaddr), IFHWADDRLEN);
-
+        unsigned char physicalAddress[IFHWADDRLEN];
+        status = getMacAddress(physicalAddress, item);
+        if (status != ER_OK) {
+            goto exit;
+        }
+        
         if (qcc::String::npos != aname.find("lo")) {
             continue;
         }

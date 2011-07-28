@@ -24,9 +24,28 @@
 
 #include <time.h>
 
+#if defined(QCC_OS_DARWIN)
+#include <sys/time.h>
+#endif
+
 #include <qcc/time.h>
 
+
+
 using namespace qcc;
+
+static void platform_gettime(struct timespec *ts)
+{
+
+#if defined(QCC_OS_DARWIN)
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    ts->tv_sec = tv.tv_sec;
+    ts->tv_nsec = tv.tv_usec * 1000;
+#else
+    clock_gettime(CLOCK_MONOTONIC, ts);
+#endif
+}
 
 static time_t s_clockOffset = 0;
 
@@ -35,7 +54,7 @@ uint32_t qcc::GetTimestamp(void)
     struct timespec ts;
     uint32_t ret_val;
 
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    platform_gettime(&ts);
 
     if (0 == s_clockOffset) {
         s_clockOffset = ts.tv_sec;
@@ -50,7 +69,7 @@ uint32_t qcc::GetTimestamp(void)
 void qcc::GetTimeNow(Timespec* ts)
 {
     struct timespec _ts;
-    clock_gettime(CLOCK_MONOTONIC, &_ts);
+    platform_gettime(&_ts);
     ts->seconds = _ts.tv_sec;
     ts->mseconds = _ts.tv_nsec / 1000000;
 }

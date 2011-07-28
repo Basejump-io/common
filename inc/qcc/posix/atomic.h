@@ -30,6 +30,10 @@
 #include <sys/atomics.h>
 #endif
 
+#if defined(QCC_OS_DARWIN)
+#include <libkern/OSAtomic.h>
+#endif
+
 namespace qcc {
 
 #ifdef QCC_CPU_ARM
@@ -120,7 +124,7 @@ inline int32_t DecrementAndFetch(volatile int32_t* mem)
     return ret;
 }
 #endif /* ANDROID */
-#elif defined (QCC_OS_LINUX)
+#elif defined(QCC_OS_LINUX)
 
 /**
  * Increment an int32_t and return it's new value atomically.
@@ -161,6 +165,31 @@ int32_t IncrementAndFetch(volatile int32_t* mem);
 int32_t DecrementAndFetch(volatile int32_t* mem);
 
 #endif /* QCC_CPU_ARM */
+
+#if defined(QCC_OS_DARWIN)
+
+/**
+ * Increment an int32_t and return it's new value atomically.
+ *
+ * @param mem   Pointer to int32_t to be incremented.
+ * @return  New value (after increment) of *mem
+ */
+inline int32_t IncrementAndFetch(int32_t* mem) {
+    return OSAtomicIncrement32(mem);
+}
+
+/**
+ * Decrement an int32_t and return it's new value atomically.
+ *
+ * @param mem   Pointer to int32_t to be decremented.
+ * @return  New value (afer decrement) of *mem
+ */
+inline int32_t DecrementAndFetch(int32_t* mem) {
+    return OSAtomicDecrement32(mem);
+}
+
+#endif
+
 }
 
 #endif
