@@ -53,7 +53,7 @@ const SocketFd INVALID_SOCKET_FD = -1;
 
 #if defined(QCC_OS_DARWIN)
 #define MSG_NOSIGNAL 0
-void disableSigPipe(SocketFd socket)
+static void DisableSigPipe(SocketFd socket)
 {
     int disableSigPipe = 1;
     setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, &disableSigPipe, sizeof(disableSigPipe));
@@ -71,10 +71,12 @@ static void MakeSockAddr(const char* path,
     memcpy(sa.sun_path, path, (std::min)(pathLen, sizeof(sa.sun_path) - 1));
     /*
      * We use an @ in the first character position to indicate an abstract socket. Abstract sockets
-     * start with a NUL character.
+     * start with a NUL character on Linux.
      */
     if (sa.sun_path[0] == '@') {
+#if defined(QCC_OS_LINUX) || defined (QCC_OS_ANDROID)
         sa.sun_path[0] = 0;
+#endif
         addrSize = offsetof(struct sockaddr_un, sun_path) + pathLen;
     } else {
         addrSize = sizeof(sa);
@@ -84,7 +86,7 @@ static void MakeSockAddr(const char* path,
 
 
 static void MakeSockAddr(const IPAddress& addr, uint16_t port,
-                         struct sockaddr_storage* addrBuf, socklen_t addrSize)
+                         struct sockaddr_storage* addrBuf, socklen_t& addrSize)
 {
     if (addr.IsIPv4()) {
         struct sockaddr_in sa;
@@ -93,6 +95,7 @@ static void MakeSockAddr(const IPAddress& addr, uint16_t port,
         sa.sin_family = AF_INET;
         sa.sin_port = htons(port);
         sa.sin_addr.s_addr = addr.GetIPv4AddressNetOrder();
+        addrSize = sizeof(sa);
         memcpy(addrBuf, &sa, sizeof(sa));
     } else {
         struct sockaddr_in6 sa;
@@ -103,6 +106,7 @@ static void MakeSockAddr(const IPAddress& addr, uint16_t port,
         sa.sin6_flowinfo = 0;  // TODO: What should go here???
         addr.RenderIPv6Binary(sa.sin6_addr.s6_addr, sizeof(sa.sin6_addr.s6_addr));
         sa.sin6_scope_id = 0;  // TODO: What should go here???
+        addrSize = sizeof(sa);
         memcpy(addrBuf, &sa, sizeof(sa));
     }
 }
@@ -155,7 +159,7 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
     } else {
         sockfd = static_cast<SocketFd>(ret);
 #if defined(QCC_OS_DARWIN)
-        disableSigPipe(sockfd);
+        DisableSigPipe(sockfd);
 #endif
     }
     return status;
@@ -325,7 +329,7 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
         }
         newSockfd = static_cast<SocketFd>(ret);
 #if defined(QCC_OS_DARWIN)
-        disableSigPipe(newSockfd);
+        DisableSigPipe(newSockfd);
 #endif
         QCC_DbgPrintf(("New socket FD: %d", newSockfd));
 

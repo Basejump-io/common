@@ -57,7 +57,7 @@ AdapterUtil::~AdapterUtil(void) {
 
 #if defined(QCC_OS_DARWIN)
 #define IFHWADDRLEN 6
-static QStatus getMacAddress(unsigned char *mac_dest, const struct ifreq *item)
+static QStatus GetMacAddress(unsigned char *mac_dest, const struct ifreq *item)
 {
     ifaddrs* iflist = NULL;
     QStatus status = ER_OK;
@@ -86,7 +86,7 @@ exit:
 
 #else // defined(QCC_OS_LINUX)
 
-static QStatus getMacAddress(unsigned char *mac_dest, const struct ifreg *item)
+static QStatus GetMacAddress(unsigned char *mac_dest, const struct ifreg *item)
 {
     QStatus status = ER_OK;
     memcpy(mac_dest, item.ifr_hwaddr.sa_data, IFHWADDRLEN);
@@ -142,7 +142,7 @@ QStatus AdapterUtil::ForceUpdate()
 
         qcc::String aname(item->ifr_name);
         unsigned char physicalAddress[IFHWADDRLEN];
-        status = getMacAddress(physicalAddress, item);
+        status = GetMacAddress(physicalAddress, item);
         if (status != ER_OK) {
             goto exit;
         }
