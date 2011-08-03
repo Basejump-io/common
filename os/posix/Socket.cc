@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -791,6 +792,18 @@ QStatus SetBlocking(SocketFd sockfd, bool blocking)
     } else {
         return ER_OK;
     }
+}
+
+QStatus SetNagle(SocketFd sockfd, bool useNagle)
+{
+    QStatus status = ER_OK;
+    int arg = useNagle ? 1 : -0;
+    int r = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (void*)&arg, sizeof(int));
+    if (r != 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Setting TCP_NODELAY failed: (%d) %s", errno, strerror(errno)));
+    }
+    return status;
 }
 
 }  /* namespace */

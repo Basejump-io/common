@@ -322,6 +322,14 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
  */
 QStatus SetBlocking(SocketFd sockfd, bool blocking);
 
+/**
+ * Set TCP based socket to use or not use Nagle algorithm (TCP_NODELAY)
+ *
+ * @param sockfd    Socket descriptor.
+ * @param useNagle  Set to true to Nagle algorithm. Set to false to disable Nagle.
+ */
+QStatus SetNagle(SocketFd sockfd, bool useNagle);
+
 }
 
 #endif
