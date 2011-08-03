@@ -1058,4 +1058,16 @@ QStatus SetBlocking(SocketFd sockfd, bool blocking)
     return status;
 }
 
+QStatus SetNagle(SocketFd sockfd, bool useNagle)
+{
+    QStatus status = ER_OK;
+    int arg = useNagle ? 1 : -0;
+    int r = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&arg, sizeof(int));
+    if (r != 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Setting TCP_NODELAY failed: (%d) %s", errno, strerror(errno)));
+    }
+    return status;
+}
+
 }   /* namespace */
