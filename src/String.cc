@@ -25,7 +25,7 @@
 #include <string.h>
 #include <new>
 
-#if defined(WIN32) || defined(QCC_OS_DARWIN)
+#if defined(WIN32)
 /*
  * memmem not provided on Windows
  */
