@@ -86,10 +86,10 @@ exit:
 
 #else // defined(QCC_OS_LINUX)
 
-static QStatus GetMacAddress(unsigned char *mac_dest, const struct ifreg *item)
+static QStatus GetMacAddress(unsigned char *mac_dest, const struct ifreq *item)
 {
     QStatus status = ER_OK;
-    memcpy(mac_dest, item.ifr_hwaddr.sa_data, IFHWADDRLEN);
+    memcpy(mac_dest, item->ifr_hwaddr.sa_data, IFHWADDRLEN);
     return status;
 }
 
