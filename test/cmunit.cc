@@ -264,7 +264,9 @@ static QStatus testFileSink()
         "testDir/bar",            /* Creation of file in existing directory */
         "testDir/../testDir/foo", /* Normalize paths and open existing file */
         "testDir//bar",           /* Normalize path for extra slashes */
-        "//testDir/foo",          /* Leading slashes */
+//#ifdef _WIN32                     /* Do not have permissions to create a file at root for other OSs without super user access */
+//        "//testDir/foo",          /* Leading slashes */
+//#endif
         "testDir/dir/foo",        /* Create multiple directories */
         "testDir/dir/bar",        /* Creation of file in existing nested directory */
         NULL
@@ -275,7 +277,10 @@ static QStatus testFileSink()
     }
 
     const char* xfail[] = {
-        "testDir/dir", /* Create a file that is already an existing directory */
+        "testDir/dir",  /* Create a file that is already an existing directory */
+#if !defined(_WIN32)
+        "//testDir/foo", /* Do not have permissions to create a file at root for other OSs without super user access */
+#endif
         NULL
     };
     for (const char** pathname = xfail; *pathname; ++pathname) {
