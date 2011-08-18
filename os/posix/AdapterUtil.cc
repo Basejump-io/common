@@ -57,21 +57,21 @@ AdapterUtil::~AdapterUtil(void) {
 
 #if defined(QCC_OS_DARWIN)
 #define IFHWADDRLEN 6
-static QStatus GetMacAddress(unsigned char *mac_dest, const struct ifreq *item)
+static QStatus GetMacAddress(unsigned char* mac_dest, const struct ifreq* item)
 {
     ifaddrs* iflist = NULL;
     QStatus status = ER_OK;
-    
+
     if (getifaddrs(&iflist) < 0) {
         status = ER_OS_ERROR;
         goto exit;
-    } 
-    
+    }
+
     for (ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
         if ((cur->ifa_addr->sa_family == AF_LINK) &&
             (strcmp(cur->ifa_name, item->ifr_name) == 0) &&
             cur->ifa_addr) {
-                
+
             sockaddr_dl* sdl = (sockaddr_dl*)cur->ifa_addr;
             memcpy(mac_dest, LLADDR(sdl), IFHWADDRLEN);
             break;
@@ -86,7 +86,7 @@ exit:
 
 #else // defined(QCC_OS_LINUX)
 
-static QStatus GetMacAddress(unsigned char *mac_dest, const struct ifreq *item)
+static QStatus GetMacAddress(unsigned char* mac_dest, const struct ifreq* item)
 {
     QStatus status = ER_OK;
     memcpy(mac_dest, item->ifr_hwaddr.sa_data, IFHWADDRLEN);
@@ -146,7 +146,7 @@ QStatus AdapterUtil::ForceUpdate()
         if (status != ER_OK) {
             goto exit;
         }
-        
+
         if (qcc::String::npos != aname.find("lo")) {
             continue;
         }

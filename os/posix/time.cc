@@ -34,7 +34,7 @@
 
 using namespace qcc;
 
-static void platform_gettime(struct timespec *ts)
+static void platform_gettime(struct timespec* ts)
 {
 
 #if defined(QCC_OS_DARWIN)
