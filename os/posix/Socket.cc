@@ -60,8 +60,8 @@ static void DisableSigPipe(SocketFd socket)
 }
 #endif
 
-static void MakeSockAddr(const char* path,
-                         struct sockaddr_storage* addrBuf, socklen_t& addrSize)
+static QStatus MakeSockAddr(const char* path,
+                            struct sockaddr_storage* addrBuf, socklen_t& addrSize)
 {
     size_t pathLen = strlen(path);
     struct sockaddr_un sa;
@@ -76,17 +76,21 @@ static void MakeSockAddr(const char* path,
     if (sa.sun_path[0] == '@') {
 #if defined(QCC_OS_LINUX) || defined (QCC_OS_ANDROID)
         sa.sun_path[0] = 0;
-#endif
         addrSize = offsetof(struct sockaddr_un, sun_path) + pathLen;
+#else /* Non-linux platforms */
+        QCC_LogError(ER_NOT_IMPLEMENTED, ("Abstract socket paths are not supported"));
+        return ER_NOT_IMPLEMENTED;
+#endif
     } else {
         addrSize = sizeof(sa);
     }
     memcpy(addrBuf, &sa, sizeof(sa));
+    return ER_OK;
 }
 
 
-static void MakeSockAddr(const IPAddress& addr, uint16_t port,
-                         struct sockaddr_storage* addrBuf, socklen_t& addrSize)
+static QStatus MakeSockAddr(const IPAddress& addr, uint16_t port,
+                            struct sockaddr_storage* addrBuf, socklen_t& addrSize)
 {
     if (addr.IsIPv4()) {
         struct sockaddr_in sa;
@@ -109,6 +113,7 @@ static void MakeSockAddr(const IPAddress& addr, uint16_t port,
         addrSize = sizeof(sa);
         memcpy(addrBuf, &sa, sizeof(sa));
     }
+    return ER_OK;
 }
 
 
@@ -176,7 +181,11 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
     QCC_DbgTrace(("Connect(sockfd = %d, remoteAddr = %s, remotePort = %hu)",
                   sockfd, remoteAddr.ToString().c_str(), remotePort));
 
-    MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
+    status = MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
+    if (status != ER_OK) {
+        return status;
+    }
+
     ret = connect(static_cast<int>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret == -1) {
         if ((errno == EINPROGRESS) || (errno == EALREADY)) {
@@ -215,7 +224,11 @@ QStatus Connect(SocketFd sockfd, const char* pathName)
 
     QCC_DbgTrace(("Connect(sockfd = %u, path = %s)", sockfd, pathName));
 
-    MakeSockAddr(pathName, &addr, addrLen);
+    status = MakeSockAddr(pathName, &addr, addrLen);
+    if (status != ER_OK) {
+        return status;
+    }
+
     ret = connect(static_cast<int>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret == -1) {
         status = ER_OS_ERROR;
@@ -247,7 +260,11 @@ QStatus Bind(SocketFd sockfd, const IPAddress& localAddr, uint16_t localPort)
     QCC_DbgTrace(("Bind(sockfd = %d, localAddr = %s, localPort = %hu)",
                   sockfd, localAddr.ToString().c_str(), localPort));
 
-    MakeSockAddr(localAddr, localPort, &addr, addrLen);
+    status = MakeSockAddr(localAddr, localPort, &addr, addrLen);
+    if (status != ER_OK) {
+        return status;
+    }
+
     ret = bind(static_cast<int>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret != 0) {
         status = (errno == EADDRNOTAVAIL ? ER_SOCKET_BIND_ERROR : ER_OS_ERROR);
@@ -267,7 +284,11 @@ QStatus Bind(SocketFd sockfd, const char* pathName)
 
     QCC_DbgTrace(("Bind(sockfd = %d, pathName = %s)", sockfd, pathName));
 
-    MakeSockAddr(pathName, &addr, addrLen);
+    status = MakeSockAddr(pathName, &addr, addrLen);
+    if (status != ER_OK) {
+        return status;
+    }
+
     ret = bind(static_cast<int>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret != 0) {
         status = (errno == EADDRNOTAVAIL ? ER_SOCKET_BIND_ERROR : ER_OS_ERROR);
@@ -476,7 +497,11 @@ QStatus SendTo(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
 
     QCC_DbgLocalData(buf, len);
 
-    MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
+    status = MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
+    if (status != ER_OK) {
+        return status;
+    }
+
     ret = sendto(static_cast<int>(sockfd), buf, len, MSG_NOSIGNAL,
                  reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret == -1) {
@@ -546,7 +571,11 @@ QStatus SendToSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
                   sockfd, remoteAddr.ToString().c_str(), remotePort,
                   sg.Size(), sg.DataSize(), sg.MaxDataSize()));
 
-    MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
+    QStatus status = MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
+    if (status != ER_OK) {
+        return status;
+    }
+
     return SendSGCommon(sockfd, &addr, addrLen, sg, sent);
 }
 
