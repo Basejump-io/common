@@ -37,8 +37,10 @@
 using namespace std;
 using namespace qcc;
 
+#if !defined(QCC_OS_DARWIN)
 extern char** environ;   // For Linux, this is all that's needed to access
                          // environment variables.
+#endif
 
 Environ* Environ::GetAppEnviron(void)
 {
@@ -67,6 +69,9 @@ qcc::String Environ::Find(const qcc::String& key, const char* defaultValue)
 
 void Environ::Preload(const char* keyPrefix)
 {
+#if defined(QCC_OS_DARWIN)
+    return;
+#else
     size_t prefixLen = strlen(keyPrefix);
     for (char** var = environ; *var != NULL; ++var) {
         char* p = *var;
@@ -79,6 +84,7 @@ void Environ::Preload(const char* keyPrefix)
             Find(key, NULL);
         }
     }
+#endif
 }
 
 void Environ::Add(const qcc::String& key, const qcc::String& value)
