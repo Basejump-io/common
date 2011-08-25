@@ -35,10 +35,14 @@ class StreamPump : public qcc::Thread {
   public:
 
     /** Construct a bi-directional stream pump */
-    StreamPump(const Stream& streamA, const Stream& streamB, size_t chunkSize, const char* name = "pump", bool isManaged = false);
+    StreamPump(Stream* streamA, Stream* streamB, size_t chunkSize, const char* name = "pump", bool isManaged = false);
 
     /** Destructor */
-    virtual ~StreamPump() { }
+    virtual ~StreamPump()
+    {
+        delete streamA;
+        delete streamB;
+    }
 
     /**
      * Start the data pump.
@@ -57,8 +61,8 @@ class StreamPump : public qcc::Thread {
     ThreadReturn STDCALL Run(void* arg);
 
   private:
-    Stream streamA;
-    Stream streamB;
+    Stream* streamA;
+    Stream* streamB;
     const size_t chunkSize;
     const bool isManaged;
 };

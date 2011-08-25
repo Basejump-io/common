@@ -34,7 +34,7 @@
 using namespace std;
 using namespace qcc;
 
-StreamPump::StreamPump(const Stream& streamA, const Stream& streamB, size_t chunkSize, const char* name, bool isManaged) :
+StreamPump::StreamPump(Stream* streamA, Stream* streamB, size_t chunkSize, const char* name, bool isManaged) :
     Thread(name), streamA(streamA), streamB(streamB), chunkSize(chunkSize), isManaged(isManaged)
 {
     /* Keep the object alive until Run exits */
@@ -58,10 +58,10 @@ ThreadReturn STDCALL StreamPump::Run(void* args)
 {
     // TODO: Make sure streams are non-blocking
 
-    Event& streamASrcEv = streamA.GetSourceEvent();
-    Event& streamBSrcEv = streamB.GetSourceEvent();
-    Event& streamASinkEv = streamA.GetSinkEvent();
-    Event& streamBSinkEv = streamB.GetSinkEvent();
+    Event& streamASrcEv = streamA->GetSourceEvent();
+    Event& streamBSrcEv = streamB->GetSourceEvent();
+    Event& streamASinkEv = streamA->GetSinkEvent();
+    Event& streamBSinkEv = streamB->GetSinkEvent();
     size_t bToAOffset = 0;
     size_t aToBOffset = 0;
     size_t bToALen = 0;
@@ -79,9 +79,9 @@ ThreadReturn STDCALL StreamPump::Run(void* args)
         if (status == ER_OK) {
             for (size_t i = 0; i < sigEvents.size(); ++i) {
                 if (sigEvents[i] == &streamASrcEv) {
-                    status = streamA.PullBytes(aToBBuf, chunkSize, aToBLen, 0);
+                    status = streamA->PullBytes(aToBBuf, chunkSize, aToBLen, 0);
                     if (status == ER_OK) {
-                        status = streamB.PushBytes(aToBBuf, aToBLen, aToBOffset);
+                        status = streamB->PushBytes(aToBBuf, aToBLen, aToBOffset);
                         if (status != ER_OK) {
                             QCC_LogError(status, ("Stream::PushBytes failed"));
                         }
@@ -92,16 +92,16 @@ ThreadReturn STDCALL StreamPump::Run(void* args)
                     }
                 } else if (sigEvents[i] == &streamBSinkEv) {
                     size_t r;
-                    status = streamB.PushBytes(aToBBuf + aToBOffset, aToBLen - aToBOffset, r);
+                    status = streamB->PushBytes(aToBBuf + aToBOffset, aToBLen - aToBOffset, r);
                     if (status == ER_OK) {
                         aToBOffset += r;
                     } else {
                         QCC_LogError(status, ("Stream::PushBytes failed"));
                     }
                 } else if (sigEvents[i] == &streamBSrcEv) {
-                    status = streamB.PullBytes(bToABuf, chunkSize, bToALen, 0);
+                    status = streamB->PullBytes(bToABuf, chunkSize, bToALen, 0);
                     if (status == ER_OK) {
-                        status = streamA.PushBytes(bToABuf, bToALen, bToAOffset);
+                        status = streamA->PushBytes(bToABuf, bToALen, bToAOffset);
                         if (status != ER_OK) {
                             QCC_LogError(status, ("Stream::PushBytes failed"));
                         }
@@ -112,7 +112,7 @@ ThreadReturn STDCALL StreamPump::Run(void* args)
                     }
                 } else if (sigEvents[i] == &streamASinkEv) {
                     size_t r;
-                    status = streamA.PushBytes(bToABuf + bToAOffset, bToALen - bToAOffset, r);
+                    status = streamA->PushBytes(bToABuf + bToAOffset, bToALen - bToAOffset, r);
                     if (status == ER_OK) {
                         bToAOffset += r;
                     } else {
