@@ -77,6 +77,28 @@ class ManagedObj {
         IncRef();
     }
 
+    /**
+     * Create a deep (clone) copy of a managed object.
+     * A ManagedObject created using this constructor copies the underlying T object and
+     * wraps it in a new ManagedObject with 1 reference.
+     * @param other   ManagedObject to make a deep copy of.
+     */
+    ManagedObj<T>(const ManagedObj<T>& other, bool isDeep)
+    {
+        if (isDeep) {
+            /* Deep copy */
+            const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+            context = reinterpret_cast<ManagedCtx*>(malloc(offset + sizeof(T)));
+            context = new (context) ManagedCtx(1);
+            object = new ((char*)context + offset) T(*other);
+        } else {
+            /* Normal copy constructor (inc ref) of existing object */
+            context = other.context;
+            object = other.object;
+            IncRef();
+        }
+    }
+
     /** Allocate T() on the heap and set it's reference count to 1. */
     ManagedObj<T>()
     {
