@@ -106,14 +106,15 @@ static int passphrase_cb(char* buf, int size, int rwflag, void* u)
     return size;
 }
 
-void Crypto_RSA::Generate(uint32_t modLen, uint32_t exponent)
+void Crypto_RSA::Generate(uint32_t keyLen)
 {
     BIGNUM* bn = BN_new();
     key = RSA_new();
     if (bn && key) {
-        if (!BN_set_word(bn, exponent) || !RSA_generate_key_ex((RSA*)key, modLen, bn, NULL)) {
+        if (!BN_set_word(bn, 65537) || !RSA_generate_key_ex((RSA*)key, keyLen, bn, NULL)) {
             RSA_free((RSA*)key);
             key = NULL;
+            QCC_LogError(ER_CRYPTO_ERROR, ("Failed to generate RSA key"));
         }
     }
     BN_free(bn);
@@ -139,7 +140,7 @@ QStatus Crypto_RSA::MakeSelfCertificate(const qcc::String& commonName, const qcc
     X509_gmtime_adj(X509_get_notAfter(x509), EXPIRE_DAYS(365));
 
     EVP_PKEY* evpk = EVP_PKEY_new();
-    Generate();
+    Generate(512);
     EVP_PKEY_set1_RSA(evpk, (RSA*)key);
     X509_set_pubkey(x509, evpk);
 
@@ -170,37 +171,7 @@ QStatus Crypto_RSA::MakeSelfCertificate(const qcc::String& commonName, const qcc
     return status;
 }
 
-Crypto_RSA::Crypto_RSA(const qcc::String& pkcs8, PassphraseListener* listener) : cert(NULL), key(NULL)
-{
-    QStatus status = FromPKCS8(pkcs8, listener);
-    if (status != ER_OK) {
-        QCC_LogError(status, ("Crypto_RSA constructor failed %s", ERR_error_string(0, NULL)));
-    }
-}
-
-Crypto_RSA::Crypto_RSA(const qcc::String& pem) : cert(NULL), key(NULL)
-{
-    QStatus status = FromPEM(pem);
-    if (status != ER_OK) {
-        QCC_LogError(status, ("Crypto_RSA constructor failed %s", ERR_error_string(0, NULL)));
-    }
-}
-
-Crypto_RSA::Crypto_RSA(const qcc::String& pkcs8, const qcc::String& passphrase) : cert(NULL), key(NULL)
-{
-    QStatus status;
-    if (passphrase.empty()) {
-        status = FromPKCS8(pkcs8, NULL);
-    } else {
-        DefaultPassphraseListener listener(passphrase);
-        status = FromPKCS8(pkcs8, &listener);
-    }
-    if (status != ER_OK) {
-        QCC_LogError(status, ("Crypto_RSA constructor failed %s", ERR_error_string(0, NULL)));
-    }
-}
-
-QStatus Crypto_RSA::FromPEM(const qcc::String& pem)
+QStatus Crypto_RSA::ImportPEM(const qcc::String& pem)
 {
 #ifndef NDEBUG
     ERR_load_crypto_strings();
@@ -224,17 +195,17 @@ QStatus Crypto_RSA::FromPEM(const qcc::String& pem)
     return status;
 }
 
-QStatus Crypto_RSA::FromPKCS8(const qcc::String& pkcs8, const qcc::String& passphrase)
+QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, const qcc::String& passphrase)
 {
     if (passphrase.empty()) {
-        return FromPKCS8(pkcs8, NULL);
+        return ImportPKCS8(pkcs8, NULL);
     } else {
         DefaultPassphraseListener listener(passphrase);
-        return FromPKCS8(pkcs8, &listener);
+        return ImportPKCS8(pkcs8, &listener);
     }
 }
 
-QStatus Crypto_RSA::FromPKCS8(const qcc::String& pkcs8, PassphraseListener* listener)
+QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, PassphraseListener* listener)
 {
     if (key) {
         RSA_free((RSA*)key);
@@ -268,17 +239,37 @@ QStatus Crypto_RSA::FromPKCS8(const qcc::String& pkcs8, PassphraseListener* list
     return status;
 }
 
-QStatus Crypto_RSA::PrivateToPEM(qcc::String& pem, const qcc::String& passphrase)
+QStatus Crypto_RSA::ImportPrivateKey(const qcc::KeyBlob& keyBlob, const qcc::String& passphrase)
 {
-    if (passphrase.empty()) {
-        return PrivateToPEM(pem, NULL);
+    if (keyBlob.GetType() == KeyBlob::PRIVATE) {
+        qcc::String pkcs8((const char*)keyBlob.GetData(), keyBlob.GetSize());
+        return ImportPKCS8(pkcs8, passphrase);
     } else {
-        DefaultPassphraseListener listener(passphrase);
-        return PrivateToPEM(pem, &listener);
+        return ER_CRYPTO_ERROR;
     }
 }
 
-QStatus Crypto_RSA::PrivateToPEM(qcc::String& pem, PassphraseListener* listener)
+QStatus Crypto_RSA::ImportPrivateKey(const qcc::KeyBlob& keyBlob, PassphraseListener* listener)
+{
+    if (keyBlob.GetType() == KeyBlob::PRIVATE) {
+        qcc::String pkcs8((const char*)keyBlob.GetData(), keyBlob.GetSize());
+        return ImportPKCS8(pkcs8, listener);
+    } else {
+        return ER_CRYPTO_ERROR;
+    }
+}
+
+QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, const qcc::String& passphrase)
+{
+    if (passphrase.empty()) {
+        return ExportPrivateKey(keyBlob, NULL);
+    } else {
+        DefaultPassphraseListener listener(passphrase);
+        return ExportPrivateKey(keyBlob, &listener);
+    }
+}
+
+QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, PassphraseListener* listener)
 {
     if (!key) {
         return ER_CRYPTO_KEY_UNUSABLE;
@@ -304,10 +295,9 @@ QStatus Crypto_RSA::PrivateToPEM(qcc::String& pem, PassphraseListener* listener)
     }
     if (status == ER_OK) {
         int32_t len = BIO_pending(bio);
-        char* s = new char[len + 1];
+        uint8_t* s = new uint8_t[len];
         if (BIO_read(bio, s, len) == len) {
-            s[len] = 0;
-            pem = s;
+            keyBlob.Set(s, len, KeyBlob::PRIVATE);
         }
         delete [] s;
     } else {
@@ -337,16 +327,12 @@ qcc::String Crypto_RSA::CertToString()
     return str;
 }
 
-QStatus Crypto_RSA::PublicToPEM(qcc::String& pem)
+QStatus Crypto_RSA::ExportPEM(qcc::String& pem)
 {
     QStatus status = ER_CRYPTO_ERROR;
     BIO* bio = BIO_new(BIO_s_mem());
     if (cert) {
         if (PEM_write_bio_X509(bio, (X509*)cert)) {
-            status = ER_OK;
-        }
-    } else if (key) {
-        if (PEM_write_bio_RSA_PUBKEY(bio, (RSA*)key)) {
             status = ER_OK;
         }
     }
@@ -359,7 +345,7 @@ QStatus Crypto_RSA::PublicToPEM(qcc::String& pem)
         }
         delete [] s;
     } else {
-        QCC_LogError(status, ("PEM_write_bio_%s() failed %s", cert ? "X509" : "RSA_PUBKEY", ERR_error_string(0, NULL)));
+        QCC_LogError(status, ("PEM_write_bio_X509() failed %s", ERR_error_string(0, NULL)));
     }
     BIO_free(bio);
     return status;
@@ -367,7 +353,10 @@ QStatus Crypto_RSA::PublicToPEM(qcc::String& pem)
 
 size_t Crypto_RSA::GetSize()
 {
-    return key ? (size_t)RSA_size((RSA*)key) : 0;
+    if (!size) {
+        size = key ? (size_t)RSA_size((RSA*)key) : 0;
+    }
+    return size;
 }
 
 QStatus Crypto_RSA::Sign(const uint8_t* data, size_t len, uint8_t* signature, size_t& sigLen)
@@ -457,47 +446,44 @@ QStatus Crypto_RSA::PrivateDecrypt(const uint8_t* inData, size_t inLen, uint8_t*
     return ER_OK;
 }
 
-QStatus Crypto_RSA::PrivateEncrypt(const uint8_t* inData, size_t inLen, uint8_t* outData, size_t& outLen)
+QStatus Crypto_RSA::SignDigest(const uint8_t* digest, size_t digLen, uint8_t* signature, size_t& sigLen)
 {
     if (!key) {
         return ER_CRYPTO_KEY_UNUSABLE;
     }
-    if (inLen > MaxDigestSize()) {
+    if (digLen > MaxDigestSize()) {
         return ER_CRYPTO_TRUNCATED;
     }
-    if (outLen < GetSize()) {
+    if (sigLen < GetSize()) {
         return ER_BUFFER_TOO_SMALL;
     }
-    int32_t num = RSA_private_encrypt((int)inLen, inData, outData, (RSA*)key, RSA_PKCS1_PADDING);
-
+    int32_t num = RSA_private_encrypt((int)digLen, digest, signature, (RSA*)key, RSA_PKCS1_PADDING);
     if (num < 0) {
         return ER_CRYPTO_ERROR;
     }
-    outLen = num;
+    sigLen = num;
     return ER_OK;
 }
 
-QStatus Crypto_RSA::PublicDecrypt(const uint8_t* inData, size_t inLen, uint8_t* outData, size_t& outLen)
+QStatus Crypto_RSA::VerifyDigest(const uint8_t* digest, size_t digLen, const uint8_t* signature, size_t sigLen)
 {
+    QStatus status = ER_OK;
     if (!key) {
         return ER_CRYPTO_KEY_UNUSABLE;
     }
-    if (inLen != GetSize()) {
-        return ER_CRYPTO_TRUNCATED;
+    if (digLen > MaxDigestSize()) {
+        return ER_AUTH_FAIL;
     }
-    if (outLen < MaxDigestSize()) {
-        return ER_BUFFER_TOO_SMALL;
+    uint8_t* plaintext = new uint8_t[MaxDigestSize()];
+    int32_t num = RSA_public_decrypt((int)sigLen, signature, plaintext, (RSA*)key, RSA_PKCS1_PADDING);
+    if (((size_t)num != digLen) || (memcmp(plaintext, digest, num) != 0)) {
+        status = (num < 0) ? ER_CRYPTO_ERROR : ER_AUTH_FAIL;
     }
-    int32_t num = RSA_public_decrypt((int)inLen, inData, outData, (RSA*)key, RSA_PKCS1_PADDING);
-
-    if (num < 0) {
-        return ER_CRYPTO_ERROR;
-    }
-    outLen = num;
-    return ER_OK;
+    delete [] plaintext;
+    return status;
 }
 
-Crypto_RSA::Crypto_RSA() : cert(NULL), key(NULL)
+Crypto_RSA::Crypto_RSA() : size(0), cert(NULL), key(NULL)
 {
 #ifndef NDEBUG
     ERR_load_crypto_strings();
