@@ -23,6 +23,7 @@
 #define _QCC_TIME_H
 
 #include <qcc/platform.h>
+#include <qcc/String.h>
 
 namespace qcc {
 
@@ -130,5 +131,13 @@ inline int64_t operator-(const Timespec& ts1, const Timespec& ts2)
 }
 
 }
+
+/**
+ * Return a formatted string for current UTC date and time. Format conforms to RFC 1123
+ * e.g. "Tue, 30 Aug 2011 17:01:45 GMT"
+ *
+ * @return  The formatted date/time string.
+ */
+qcc::String UTCTime();
 
 #endif

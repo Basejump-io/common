@@ -21,14 +21,14 @@
  ******************************************************************************/
 #include <qcc/platform.h>
 
+#include <windows.h>
 #include <sys/timeb.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <time.h>
 
 #include <qcc/time.h>
 
-
-namespace qcc {
 
 uint32_t qcc::GetTimestamp(void)
 {
@@ -64,4 +64,21 @@ void qcc::GetTimeNow(Timespec* ts)
     ts->mseconds = timebuffer.millitm;
 }
 
-}  /* namespace */
+qcc::String UTCTime()
+{
+    static const char* Day[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    static const char* Month[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    char buf[32];
+    SYSTEMTIME systime;
+    GetSystemTime(&systime);
+    sprintf(buf, "%s, %d %s %d %02d:%02d:%02d GMT",
+            Day[systime.wDayOfWeek],
+            systime.wDay,
+            Month[systime.wMonth - 1],
+            systime.wYear,
+            systime.wHour,
+            systime.wMinute,
+            systime.wSecond);
+
+    return buf;
+}

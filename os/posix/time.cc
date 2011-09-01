@@ -23,6 +23,7 @@
 #include <qcc/platform.h>
 
 #include <time.h>
+#include <stdio.h>
 
 #if defined(QCC_OS_DARWIN)
 #include <sys/time.h>
@@ -72,4 +73,24 @@ void qcc::GetTimeNow(Timespec* ts)
     platform_gettime(&_ts);
     ts->seconds = _ts.tv_sec;
     ts->mseconds = _ts.tv_nsec / 1000000;
+}
+
+qcc::String UTCTime()
+{
+    static const char* Day[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    static const char* Month[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    char buf[32];
+    time_t t;
+    time(&t);
+    struct tm* utc = gmtime(&t);
+    sprintf(buf, "%s, %d %s %d %02d:%02d:%02d GMT",
+            Day[utc->tm_wday],
+            utc->tm_mday,
+            Month[utc->tm_mon],
+            1900 + utc->tm_year,
+            utc->tm_hour,
+            utc->tm_min,
+            utc->tm_sec);
+
+    return buf;
 }
