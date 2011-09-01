@@ -26,11 +26,7 @@
 
 #include <assert.h>
 #include <string.h>
-
-#include <openssl/bn.h>
-#include <openssl/hmac.h>
-#include <openssl/sha.h>
-#include <openssl/md5.h>
+#include <stdarg.h>
 
 #include <qcc/KeyBlob.h>
 #include <qcc/Stream.h>
@@ -72,10 +68,9 @@ class Crypto_RSA {
     /**
      * Constructor to generate a new key pair
      *
-     * @param modLen    The length of the modulus in bytes
-     * @param exponent  The exponent must be an odd number, most commonly 65537
+     * @param modLen    The length of the key in bits. This must be a multiple of 64 and >= 512
      */
-    Crypto_RSA(uint32_t modLen, uint32_t exponent = 65537) { Generate(modLen, exponent); }
+    Crypto_RSA(uint32_t keyLen) : size(keyLen / 8), cert(NULL), key(NULL) { Generate(keyLen); }
 
     /**
      * Default constructor.
@@ -83,94 +78,91 @@ class Crypto_RSA {
     Crypto_RSA();
 
     /**
-     * Constructor to initialize a public key from a PEM-encoded X509 certificate.
+     * Import a private key from a PKCS#8 encoded string.
      *
-     * @param pem   The PEM encoded string.
-     */
-    Crypto_RSA(const qcc::String& pem);
-
-    /**
-     * Constructor to initialize a key-pair from a PKCS#8 or PEM encoded string.
-     *
-     * @param pem        The PEM or PKCS#8 encoded string
-     * @param listener   The listener to call if a passphrase is required to decrypt a private key.
-     */
-    Crypto_RSA(const qcc::String& pkcs8, PassphraseListener* listener);
-
-    /**
-     * Constructor to initialize a key-pair from a PKCS#8 or PEM encoded string.
-     *
-     * @param pem        The PEM or PKCS#8 encoded string
-     * @param passphrase The passphrase required to decode the private key
-     */
-    Crypto_RSA(const qcc::String& pkcs8, const qcc::String& passphrase);
-
-    /**
-     * Set a key-pair from a PKCS#8 or PEM encoded string.
-     *
-     * @param pkcs8       The PEM or PKCS#8 encoded string
-     * @param passphrase The passphrase required to decode the private key
-     * @return  - ER_OK if the key was decrypted.
-     *          - ER_AUTH_FAIL if the passphrase was incorrect or the PEM string was invalid.
+     * @param pkcs8        The PKCS#8 encoded string
+     * @param passphrase   The passphrase required to decode the private key
+     * @return  - ER_OK if the key was successfully imported.
+     *          - ER_AUTH_FAIL if the passphrase was incorrect or the PKCS string was invalid.
      *          - Other error status.
      */
-    QStatus FromPKCS8(const qcc::String& pkcs8, const qcc::String& passphrase);
+    QStatus ImportPKCS8(const qcc::String& pkcs8, const qcc::String& passphrase);
 
     /**
-     * Set a key-pair from a PKCS#8 or PEM encoded string.
+     * Import a private key from a PKCS#8 encoded string.
      *
-     * @param pkcs8      The PEM or PKCS#8 encoded string
+     * @param pkcs8      The PKCS#8 encoded string
      * @param listener   The listener to call if a passphrase is required to decrypt a private key.
-     * @return  - ER_OK if the key was decrypted.
-     *          - ER_AUTH_FAIL if the passphrase was incorrect or the PEM string was invalid.
+     * @return  - ER_OK if the key was successfully imported.
+     *          - ER_AUTH_FAIL if the passphrase was incorrect or the PKCS string was invalid.
      *          - ER_AUTH_REJECT if the listener rejected the authentication request.
      *          - Other error status.
      */
-    QStatus FromPKCS8(const qcc::String& pkcs8, PassphraseListener* listener);
+    QStatus ImportPKCS8(const qcc::String& pkcs8, PassphraseListener* listener);
 
     /**
-     * Set a public key from a PEM-encoded X509 certificate.
+     * Import a public key from a PEM-encoded public key.
      *
-     * @param pem   The PEM encoded cert..
+     * @param pem   The PEM encoded key.
      */
-    QStatus FromPEM(const qcc::String& pem);
+    QStatus ImportPEM(const qcc::String& pem);
 
     /**
-     * Generate a public/private key pair
-     */
-    void Generate(uint32_t modLen = 512, uint32_t exponent = 65537);
-
-    /**
-     * Returns the PEM (PKCS#8) encoded string for a private key. Returns an empty string if the key
-     * is not a private key.
+     * Import a private key from an encrypted keyblob
      *
-     * @param pem          Returns the PEM encoded private key.
+     * @param keyblob      The encrypted keyblob
+     * @param passphrase   The passphrase required to decode the private key
+     * @return  - ER_OK if the key was successfully imported.
+     *          - ER_AUTH_FAIL if the passphrase was incorrect or the keyblob was invalid.
+     *          - Other error status.
+     */
+    QStatus ImportPrivateKey(const qcc::KeyBlob& keyBlob, const qcc::String& passphrase);
+
+    /**
+     * Import a private key from an encrypted keyblob
+     *
+     * @param keyblob    The encrypted keyblob
+     * @param listener   The listener to call if a passphrase is required to decrypt a private key.
+     * @return  - ER_OK if the key was successfully imported.
+     *          - ER_AUTH_FAIL if the passphrase was incorrect or the keyblob was invalid.
+     *          - ER_AUTH_REJECT if the listener rejected the authentication request.
+     *          - Other error status.
+     */
+    QStatus ImportPrivateKey(const qcc::KeyBlob& keyBlob, PassphraseListener* listener);
+
+    /**
+     * Returns a platform-specific encrypted key blob for a private key. It should be assumed that
+     * the keyblob is not transportable off device since the content may be no more than a reference
+     * to a key held in a internal platform key store.
+     *
+     * @param keyBlob      Returns the key blob with encrypted private key.
      * @param passphrase   The passphrase to encrypt the private key
-     * @return  - ER_OK if the key was encoded.
+     * @return  - ER_OK if the key was exported.
      *          - Other error status.
      */
-    QStatus PrivateToPEM(qcc::String& pem, const qcc::String& passphrase);
+    QStatus ExportPrivateKey(qcc::KeyBlob& keyBlob, const qcc::String& passphrase);
 
     /**
-     * Returns the PEM (PKCS#8) encoded string for a private key. Returns an empty string if the key
-     * is not a private key.
+     * Returns a platform-specific encrypted key blob for a private key. It should be assumed that
+     * the keyblob is not transportable off device since the content may be no more than a reference
+     * to a key held in a internal platform key store.
      *
-     * @param pem         Returns the PEM encoded private key.
-     * @param listener   The listener to call to obtain a passphrase to encrypt the private key.
-     * @return  - ER_OK if the key was encoded.
+     * @param keyBlob      Returns the key blob with encrypted private key.
+     * @param listener     The listener to call to obtain a passphrase to encrypt the private key.
+     * @return  - ER_OK if the key was exported.
      *          - ER_AUTH_REJECT if the listener rejected the authentication request.
      *          - Other error status.
      */
-    QStatus PrivateToPEM(qcc::String& pem, PassphraseListener* listener);
+    QStatus ExportPrivateKey(qcc::KeyBlob& keyBlob, PassphraseListener* listener);
 
     /**
-     * Returns the PEM encoded string for a public key.
+     * Exports the PEM encoded string for a public key.
      *
      * @param pem   Returns the PEM encoded public key.
      * @return  - ER_OK if the key was encoded.
      *          - Other error status.
      */
-    QStatus PublicToPEM(qcc::String& pem);
+    QStatus ExportPEM(qcc::String& pem);
 
     /**
      * Returns the RSA modulus size in bytes. The size can be used to determine the buffer size that
@@ -215,38 +207,40 @@ class Crypto_RSA {
     QStatus PrivateDecrypt(const uint8_t* inData, size_t inLen, uint8_t* outData, size_t& outLen);
 
     /**
-     * Encrypt data using the private key.
-     *
-     * @param inData   The data to be encrypted
-     * @param inLen    The length of the data to be encrypted
-     * @param outData  The buffer to receive the encrypted data, must be <= GetSize()
-     * @param outLen   On input the length of outData, this must be >= GetSize(), on return the
-     *                 number of bytes on inData encrypted.
-     *
-     * @return  ER_OK if the data was encrypted.
-     */
-    QStatus PrivateEncrypt(const uint8_t* inData, size_t inLen, uint8_t* outData, size_t& outLen);
-
-    /**
-     * Decrypt data using the public key.
-     *
-     * @param inData   The data to be decrypted
-     * @param inLen    The length of the data to be decrypted
-     * @param outData  The buffer to receive the decrypted data, must be <= GetSize()
-     * @param outLen   On input the length of outData, this must be >= GetSize(), on return the
-     *                 number of bytes on inData decrypted.
-     *
-     * @return  ER_OK if the data was encrypted.
-     */
-    QStatus PublicDecrypt(const uint8_t* inData, size_t inLen, uint8_t* outData, size_t& outLen);
-
-    /**
      * Generate a self-issued X509 certificate for this RSA key.
      *
      * @param name  The common name for this certificate.
      * @param app   The application that is requesting this certificate.
      */
     QStatus MakeSelfCertificate(const qcc::String& name, const qcc::String& app);
+
+    /**
+     * Use this private key to sign a message digest and return the digital signature.
+     *
+     * @param digest    The digest to sign.
+     * @param digLen    The length of the digest to sign.
+     * @param signature Returns the digital signature.
+     * @param sigLen    On input the length of signature, this must be >= GetSize(), on return the
+     *                  number of bytes in the signature.
+     *
+     * @return     - ER_OK if the signature was generated.
+     *             - An error status indicating the error.
+     */
+    QStatus SignDigest(const uint8_t* digest, size_t digLen, uint8_t* signature, size_t& sigLen);
+
+    /**
+     * Use this private key to verify a message digest and return success or failure
+     *
+     * @param digest    The digest to sign.
+     * @param digLen    The length of the digest to sign.
+     * @param signature The digital signature to verify
+     * @param sigLen    The length of the signature.
+     *
+     * @return     - ER_OK if the signature was verified.
+     *             - ER_AUTH_FAIL if the verification was unsuccessful
+     *             - An error status indicating the error.
+     */
+    QStatus VerifyDigest(const uint8_t* digest, size_t digLen, const uint8_t* signature, size_t sigLen);
 
     /**
      * Use this private key to sign a document and return the digital signature.
@@ -292,22 +286,22 @@ class Crypto_RSA {
   private:
 
     /**
+     * Generate a public/private key pair
+     */
+    void Generate(uint32_t keyLen);
+
+    /**
      * Assignment operator is private
      */
-    Crypto_RSA& operator=(const Crypto_RSA& other) {
-        if (this != &other) {
-            key = other.key;
-        }
-        return *this;
-    }
+    Crypto_RSA& operator=(const Crypto_RSA& other);
 
     /**
      * Copy constructor is private
      */
-    Crypto_RSA(const Crypto_RSA& other) { key = other.key; }
+    Crypto_RSA(const Crypto_RSA& other);
 
+    size_t size;
     void* cert;
-
     void* key;
 };
 
@@ -342,6 +336,8 @@ class Crypto_AES  {
 
     /**
      * Data is encrypted or decrypted in 16 byte blocks.
+     *
+     * Note we depend on sizeof(Block) == 16
      */
     class Block {
       public:
@@ -439,7 +435,7 @@ class Crypto_AES  {
      * Convenience wrapper for encrypting and authenticating a header and message in-place.
      *
      * @param msg      Pointer to the entire message. The message buffer must be long enough to
-     *                 allow for the authentication field (of lenght authLen) to be appended.
+     *                 allow for the authentication field (of length authLen) to be appended.
      * @param msgLen   On input, the length in bytes of the plaintext message, on output the expanded
      *                 length of the encrypted message.
      * @param hdrLen   Length in bytes of the header portion of the message
@@ -513,19 +509,14 @@ class Crypto_AES  {
     Crypto_AES() { }
 
     /**
-     * Copy constructor is private and does nothing
+     * Copy constructor is private
      */
-    Crypto_AES(const Crypto_AES& other) { }
+    Crypto_AES(const Crypto_AES& other);
 
     /**
-     * Assigment operator is private and does nothing
+     * Assigment operator is private
      */
-    Crypto_AES& operator=(const Crypto_AES& other) { return *this; }
-
-    /**
-     * Internal function used by Encrypt_CCM and Decrypt_CCM
-     */
-    void Compute_CCM_AuthField(Block& T, uint8_t M, uint8_t L, const KeyBlob& nonce, const uint8_t* mData, size_t mLen, const uint8_t* addData, size_t addLen);
+    Crypto_AES& operator=(const Crypto_AES& other);
 
     /**
      * Flag indicating the mode for the class instance.
@@ -533,9 +524,14 @@ class Crypto_AES  {
     Mode mode;
 
     /**
+     * Opaque type for the internal state
+     */
+    struct KeyState;
+
+    /**
      * Private internal key state
      */
-    uint8_t* keyState;
+    KeyState* keyState;
 
 };
 
@@ -546,14 +542,14 @@ class Crypto_Hash {
   public:
 
     /**
-     * Default constructor initializes the HMAC context.
+     * Default constructor
      */
-    Crypto_Hash(void) : usingHMAC(false), usingMD(false) { }
+    Crypto_Hash() : MAC(false), initialized(false), ctx(NULL) { }
 
     /**
-     * The destructor cleans up the HMAC context.
+     * The destructor cleans up the context.
      */
-    virtual ~Crypto_Hash(void);
+    virtual ~Crypto_Hash();
 
     /**
      * Virtual initializer to be implemented by derivative classes.  The
@@ -578,15 +574,6 @@ class Crypto_Hash {
      * @return  Indication of success or failure.
      */
     QStatus Update(const uint8_t* buf, size_t bufSize);
-
-    /**
-     * Update the digest with the contents of a BIGNUM
-     *
-     * @param bn   The BIGNUM to hash.
-     *
-     * @return  Indication of success or failure.
-     */
-    QStatus Update(BIGNUM* bn);
 
     /**
      * Update the digest with the contents of a string
@@ -621,16 +608,15 @@ class Crypto_Hash {
   protected:
 
     /// Typedef for abstracting the hash algorithm specifier.
-    typedef const EVP_MD* (*Algorithm)(void);
+    typedef enum {
+        SHA1,    ///< SHA1 algorithm specifier
+        MD5,     ///< MD5 algorithm specifier
+        SHA256   ///< SHA256 algorithm specifier
+    } Algorithm;
 
-    static const Algorithm SHA1;        ///< SHA1 algorithm specifier
-    static const size_t SHA1_SIZE = SHA_DIGEST_LENGTH;      ///< SHA1 digest size.
-
-    static const Algorithm MD5;         ///< MD5 algorithm specifier
-    static const size_t MD5_SIZE = MD5_DIGEST_LENGTH;       ///< MD5 digest size.
-
-    static const Algorithm SHA256;      ///< SHA256 algorithm specifier
-    static const size_t SHA256_SIZE = SHA256_DIGEST_LENGTH;    ///< SHA256 digest size.
+    static const size_t SHA1_SIZE = 20;   ///< SHA1 digest size - 20 bytes == 160 bits
+    static const size_t MD5_SIZE = 16;    ///< MD5 digest size - 16 bytes == 128 bits
+    static const size_t SHA256_SIZE = 32; ///< SHA256 digest size - 32 bytes == 256 bits
 
     /**
      * The common initializer.  Derivative classes should call this from their
@@ -645,15 +631,13 @@ class Crypto_Hash {
     QStatus Init(Algorithm alg, const uint8_t* hmacKey = NULL, size_t keyLen = 0);
 
   private:
-    bool usingHMAC;     ///< Flag indicating if computing an HMAC
-    bool usingMD;       ///< Flag indicating if computing an MD hash.
+    bool MAC;          ///< Flag indicating if computing a MAC
+    bool initialized;  ///< Flag indicating hash has been initialized
 
-    /// Union of context storage for HMAC or MD.
-    union {
-        HMAC_CTX hmac;  ///< Storage for the HMAC context.
-        EVP_MD_CTX md;  ///< Storage for the MD context.
-    } ctx;
+    size_t digestSize;  ///< Digest size
+    struct Context;     ///< Opaque context type
 
+    Context* ctx;       ///< Pointer to context.
 };
 
 /**
@@ -807,20 +791,230 @@ class Crypto_SRP {
   private:
 
     /**
-     * Copy constructor is private and does nothing
+     * No copy constructor
      */
-    Crypto_SRP(const Crypto_SRP& other) { }
+    Crypto_SRP(const Crypto_SRP& other);
 
     /**
-     * Assigment operator is private and does nothing
+     * No assigment operator
      */
-    Crypto_SRP& operator=(const Crypto_SRP& other) { return *this; }
+    Crypto_SRP& operator=(const Crypto_SRP& other);
 
     void ServerCommon(qcc::String& toClient);
 
     class BN;
     BN* bn;
 
+};
+
+/**
+ *  ASN.1 encoding and decoding class. This implements encoding and decoding algorithms for
+ *  DER-formatted ASN.1 string and related helper functions.
+ */
+class Crypto_ASN1 {
+
+  public:
+
+    /**
+     * Decode a DER formatted ASN1 data blob returning the decoded values as a variable length list
+     * of argument. The expected structure of the ASN1 data blob is described by the syntax
+     * parameter. The variable argument list must conform to the argument types for each syntactic
+     * element as defined below.
+     *
+     * 'i'  ASN_INTEGER   An integer of 4 bytes or less the argument must be a pointer to a uint32
+     *
+     * 'l'  ASN_INTEGER   An arbitrary length integer, the argument must be a pointer to a qcc::String
+     *
+     * 'o'  ASN_OID       An ASN encoded object id, the argument must be a pointer to a qcc::String
+     *
+     * 'x'  ASN_OCTET     An octet string, the argument must be a pointer to a qcc::String
+     *
+     * 'b'  ASN_BITS      A bit string, the argument must be a pointer to a qcc::String followe by a
+     *                    pointer to a size_t value to receive the bit length.
+     *
+     * 'n'  ASN_NULL      Null, there is no argument for this item
+     *
+     * 'u'  ASN_UTF8      A utf8 string, the argument must be a pointer to a qcc::String
+     *
+     * 'a'  ASN_ASCII     A printable string, the argument must be a pointer to a qcc::String
+     *
+     * 'p'  ASN_PRINTABLE A printable string, the argument must be a pointer to a qcc::String
+     *
+     * 't'  ASN_UTC_TIME  A UTC time string, the argument must be a pointer to a qcc::String
+     *
+     * '('  ASN_SEQ       Indicates the start of a sequence, there are no arguments this item.
+     *
+     * ')'                Indicates the end of a sequence, there are no arguments this item.
+     *
+     * '{'  ASN_SET_OF    Indicates the start of a set-of, there are no arguments this item.
+     *
+     * '}'                Indicates the end of a set-of, there are no arguments this item.
+     *
+     * '?'                A single element that is extracted but not decoded, the argument must be a
+     *                    pointer to a qcc::String or NULL to ignore this item.
+     *
+     * '*'                Zero or more optional elements up to the end of the enclosing sequence or set
+     *                    are skipped.
+     *
+     * '/'                Before the final syntatic element of a sequence or set this indicates that
+     *                    the element is optional. If the element exists it is decoded. The argument
+     *                    must be a pointer to a qcc::String and type of the following element must
+     *                    be appropriate for this argument type. Note that is it not possible to
+     *                    distinguish between a missing element and a zero length element.
+     *
+     * @param syntax   The structure to use for the decoding operation.
+     * @param asn      The input data for the encoding
+     * @param asnLen   The length of the input data
+     * @param ...      The output arguments as required by the syntax parameter to receive the
+     *                 decode values.
+     *
+     * @return ER_OK if the decode succeeded.
+     *         An error status otherwise.
+     *
+     */
+    static QStatus Decode(const char* syntax, const uint8_t* asn, size_t asnLen, ...)
+    {
+        if (!syntax) {
+            return ER_FAIL;
+        }
+        va_list argp;
+        va_start(argp, asnLen);
+        QStatus status = DecodeV(syntax, asn, asnLen, &argp);
+        va_end(argp);
+        return status;
+    }
+
+    /**
+     * Variation on Decode method that takes a qcc::String argument.
+     *
+     * @param syntax   The structure to use for the decoding operation.
+     * @param asn      The input string for the encoding
+     * @param ...      The output arguments as required by the syntax parameter to receive the
+     *                 decode values.
+     *
+     * @return ER_OK if the decode succeeded.
+     *         An error status otherwise.
+     *
+     */
+    static QStatus Decode(const char* syntax, const qcc::String& asn, ...)
+    {
+        if (!syntax) {
+            return ER_FAIL;
+        }
+        va_list argp;
+        va_start(argp, asn);
+        QStatus status = DecodeV(syntax, (const uint8_t*)asn.data(), asn.size(), &argp);
+        va_end(argp);
+        return status;
+    }
+
+    /**
+     * Encode a variable length list of arguments into an ASN1 data blob. The structure of the ASN1
+     * data blob is described by the syntax parameter. The variable argument list must conform to
+     * the argument types for each syntactic element as defined below.
+     *
+     * 'i'  ASN_INTEGER   An integer of 4 bytes or less the argument must be a uint32
+     *
+     * 'l'  ASN_INTEGER   An arbitrary length integer, the argument must be a pointer to a qcc::String
+     *
+     * 'o'  ASN_OID       An ASN encoded object id, the argument must be a pointer to a qcc::String
+     *
+     * 'x'  ASN_OCTET     An octet string, the argument must be a pointer to a qcc::String
+     *
+     * 'b'  ASN_BITS      A bit string, the argument must be a pointer to a qcc::String followed by a
+     *                    size_t value that specifies the bit length.
+     *
+     * 'n'  ASN_NULL      Null, there is no argument for this item
+     *
+     * 'u'  ASN_UTF8      A utf8 string, the argument must be a pointer to a qcc::String
+     *
+     * 'a'  ASN_ASCII     A printable string, the argument must be a pointer to a qcc::String
+     *
+     * 'p'  ASN_PRINTABLE A printable string, the argument must be a pointer to a qcc::String
+     *
+     * 't'  ASN_UTC_TIME  A UTC time string, the argument must be a pointer to a qcc::String
+     *
+     * '('  ASN_SEQ       Indicates the start of a sequence, there are no arguments this item.
+     *
+     * ')'                Indicates the end of a sequence, there are no arguments this item.
+     *
+     * '{'  ASN_SET_OF    Indicates the start of a set-of, there are no arguments this item.
+     *
+     * '}'                Indicates the end of a set-of, there are no arguments this item.
+     *
+     *
+     * @param syntax   The structure to use for the encoding operation.
+     * @param asn      The output string for the encoding
+     * @param ...      The input arguments as required by the syntax parameter
+     *
+     * @return ER_OK if the encode succeeded.
+     *         An error status otherwise.
+     */
+    static QStatus Encode(const char* syntax, qcc::String& asn, ...)
+    {
+        if (!syntax) {
+            return ER_FAIL;
+        }
+        va_list argp;
+        va_start(argp, asn);
+        QStatus status = EncodeV(syntax, asn, &argp);
+        va_end(argp);
+        return status;
+    }
+
+    /**
+     * Decode a PEM base-64 ANSI string to binary.
+     *
+     * @param b64  The base-64 string to decode.
+     * @param bin  The binary output of the decoding.
+     *
+     * @return ER_OK if the decode succeeded.
+     *         An error status otherwise.
+     */
+    static QStatus DecodeBase64(const qcc::String& b64, qcc::String& bin);
+
+    /**
+     * Encode a binary string as a PEM base-64 ANSI string.
+     *
+     * @param bin  The binary string to encode.
+     * @param b64  The base-64 output of the decoding.
+     *
+     * @return ER_OK if the encode succeeded.
+     *         An error status otherwise.
+     */
+    static QStatus EncodeBase64(const qcc::String& bin, qcc::String& b64);
+
+    /*
+     * Render ASN.1 as a "human" readable string
+     */
+    static qcc::String ToString(const uint8_t* asn, size_t len, size_t indent = 0);
+
+  private:
+
+    static const uint8_t ASN_BOOLEAN   = 0x01;
+    static const uint8_t ASN_INTEGER   = 0x02;
+    static const uint8_t ASN_BITS      = 0x03;
+    static const uint8_t ASN_OCTETS    = 0x04;
+    static const uint8_t ASN_NULL      = 0x05;
+    static const uint8_t ASN_OID       = 0x06;
+    static const uint8_t ASN_UTF8      = 0x0C;
+    static const uint8_t ASN_SEQ       = 0x10;
+    static const uint8_t ASN_SET_OF    = 0x11;
+    static const uint8_t ASN_PRINTABLE = 0x13;
+    static const uint8_t ASN_ASCII     = 0x16;
+    static const uint8_t ASN_UTC_TIME  = 0x17;
+
+    static QStatus DecodeV(const char*& syntax, const uint8_t* asn, size_t asnLen, va_list* argpIn);
+
+    static QStatus EncodeV(const char*& syntax, qcc::String& asn, va_list* argpIn);
+
+    static qcc::String DecodeOID(const uint8_t* p, size_t len);
+
+    static QStatus EncodeOID(qcc::String& asn, const qcc::String& oid);
+
+    static bool DecodeLen(const uint8_t*& p, const uint8_t* eod, size_t& l);
+
+    static void EncodeLen(qcc::String& asn, size_t l);
 };
 
 /**
@@ -832,7 +1026,6 @@ class Crypto_SRP {
  * @return ER_OK if a random number was succesfully generated.
  */
 QStatus Crypto_GetRandomBytes(uint8_t* data, size_t len);
-
 
 }
 

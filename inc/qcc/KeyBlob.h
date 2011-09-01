@@ -47,7 +47,7 @@ class KeyBlob {
         EMPTY,    ///< Key blob is empty.
         GENERIC,  ///< Generic key blob - unknown type.
         AES,      ///< An AES key (length is obtained from the blob size)
-        PKCS8,    ///< PKCS8 encoded private key.
+        PRIVATE,  ///< An encrypted private key.
         PEM,      ///< PEM encoded public key cert.
         INVALID   ///< Invalid key bloby - This must be the last type
     } Type;

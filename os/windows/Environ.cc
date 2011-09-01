@@ -29,7 +29,7 @@
 
 #include <qcc/Debug.h>
 #include <qcc/Environ.h>
-#include <qcc/string.h>
+#include <qcc/String.h>
 #include <qcc/StringUtil.h>
 #include <qcc/Logger.h>
 

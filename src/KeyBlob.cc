@@ -30,6 +30,7 @@
 #include <qcc/KeyBlob.h>
 #include <qcc/Crypto.h>
 #include <qcc/String.h>
+#include <qcc/Util.h>
 #include <Status.h>
 
 using namespace std;

@@ -21,18 +21,10 @@
  ******************************************************************************/
 
 #include <assert.h>
-#include <ctype.h>
-
-#include <openssl/bn.h>
-#include <openssl/hmac.h>
-#include <openssl/sha.h>
-#include <openssl/md5.h>
-#include <openssl/rand.h>
 
 #include <qcc/platform.h>
 #include <qcc/Debug.h>
 #include <qcc/Crypto.h>
-#include <qcc/BigNum.h>
 #include <qcc/Util.h>
 
 #include <Status.h>
@@ -44,142 +36,6 @@ using namespace qcc;
 
 namespace qcc {
 
-const Crypto_Hash::Algorithm qcc::Crypto_Hash::SHA1 = EVP_sha1;
-const Crypto_Hash::Algorithm qcc::Crypto_Hash::MD5 = EVP_md5;
-const Crypto_Hash::Algorithm qcc::Crypto_Hash::SHA256 = EVP_sha256;
-
-QStatus Crypto_Hash::Init(Algorithm alg, const uint8_t* hmacKey, size_t keyLen)
-{
-    QStatus status = ER_OK;
-
-    if (hmacKey == NULL) {
-        assert(keyLen == 0);
-        if (EVP_DigestInit(&ctx.md, (*alg)()) == 0) {
-            status = ER_CRYPTO_ERROR;
-            QCC_LogError(status, ("Initializing hash digest"));
-        }
-        usingMD = true;
-    } else {
-        assert(keyLen > 0);
-        HMAC_CTX_init(&ctx.hmac);
-        HMAC_Init_ex(&ctx.hmac, hmacKey, keyLen, (*alg)(), NULL);
-        usingHMAC = true;
-    }
-    return status;
-}
-
-Crypto_Hash::~Crypto_Hash(void)
-{
-    if (usingHMAC) {
-        HMAC_CTX_cleanup(&ctx.hmac);
-    } else if (usingMD) {
-        EVP_MD_CTX_cleanup(&ctx.md);
-    }
-}
-
-Crypto_Hash& Crypto_Hash::operator=(const Crypto_Hash& other)
-{
-    if (other.usingHMAC) {
-#if OPENSSL_VERSION_NUMBER < 0x1000000
-        usingHMAC = false;
-#else
-        HMAC_CTX_copy(&ctx.hmac, (HMAC_CTX*)&other.ctx.hmac);
-        usingHMAC = true;
-#endif
-        usingMD = false;
-    } else if (other.usingMD) {
-        EVP_MD_CTX_copy(&ctx.md, &other.ctx.md);
-        usingMD = true;
-        usingHMAC = false;
-    } else {
-        usingMD = false;
-        usingHMAC = false;
-    }
-    return *this;
-}
-
-Crypto_Hash::Crypto_Hash(const Crypto_Hash& other)
-{
-    if (other.usingHMAC) {
-#if OPENSSL_VERSION_NUMBER < 0x1000000
-        usingHMAC = false;
-#else
-        HMAC_CTX_copy(&ctx.hmac, (HMAC_CTX*)&other.ctx.hmac);
-        usingHMAC = true;
-#endif
-        usingMD = false;
-    } else if (other.usingMD) {
-        EVP_MD_CTX_copy(&ctx.md, &other.ctx.md);
-        usingMD = true;
-        usingHMAC = false;
-    } else {
-        usingMD = false;
-        usingHMAC = false;
-    }
-}
-
-
-QStatus Crypto_Hash::Update(const uint8_t* buf, size_t bufSize)
-{
-    QStatus status = ER_OK;
-    assert(buf != NULL);
-
-    if (usingHMAC) {
-        HMAC_Update(&ctx.hmac, buf, bufSize);
-    } else if (usingMD) {
-        if (EVP_DigestUpdate(&ctx.md, buf, bufSize) == 0) {
-            status = ER_CRYPTO_ERROR;
-            QCC_LogError(status, ("Updating hash digest"));
-        }
-    } else {
-        status = ER_CRYPTO_HASH_UNINITIALIZED;
-        QCC_LogError(status, ("Hash function not initialized"));
-    }
-    return status;
-}
-
-QStatus Crypto_Hash::Update(BIGNUM* bn)
-{
-    QStatus status;
-    if (bn) {
-        size_t len = BN_num_bytes(bn);
-        uint8_t* buf = new uint8_t[BN_num_bytes(bn)];
-        BN_bn2bin(bn, buf);
-        status = Update(buf, len);
-        delete [] buf;
-    } else {
-        status = ER_BAD_ARG_1;
-    }
-    return status;
-}
-
-QStatus Crypto_Hash::Update(const qcc::String& str)
-{
-    return Update((const uint8_t*)str.data(), str.size());
-}
-
-QStatus Crypto_Hash::GetDigest(uint8_t* digest)
-{
-    QStatus status = ER_OK;
-    assert(digest != NULL);
-    assert(usingHMAC || usingMD);
-
-    if (usingHMAC) {
-        HMAC_Final(&ctx.hmac, digest, NULL);
-        usingHMAC = false;
-    } else if (usingMD) {
-        if (EVP_DigestFinal(&ctx.md, digest, NULL) == 0) {
-            status = ER_CRYPTO_ERROR;
-            QCC_LogError(status, ("Finalizing hash digest"));
-        }
-        usingMD = false;
-    } else {
-        status = ER_CRYPTO_HASH_UNINITIALIZED;
-        QCC_LogError(status, ("Hash function not initialized"));
-    }
-    return status;
-}
-
 QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, const qcc::String& seed, uint8_t* out, size_t outLen)
 {
     if (!label) {
@@ -190,8 +46,9 @@ QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, co
     }
     Crypto_SHA256 hash;
     uint8_t digest[Crypto_SHA256::DIGEST_SIZE];
+    size_t len = 0;
 
-    for (size_t len = 0; len < outLen; len += sizeof(digest)) {
+    while (outLen) {
         /*
          * Initialize SHA1 in HMAC mode with the secret
          */
@@ -199,29 +56,18 @@ QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, co
         /*
          * If this is not the first iteration hash in the digest from the previous iteration.
          */
-        if (len > 0) {
+        if (len) {
             hash.Update(digest, sizeof(digest));
         }
         hash.Update((const uint8_t*)label, strlen(label));
         hash.Update((const uint8_t*)seed.data(), seed.size());
         hash.GetDigest(digest);
-        memcpy(out, digest, (std::min)(sizeof(digest), outLen - len));
-        out += sizeof(digest);
+        len =  (std::min)(sizeof(digest), outLen);
+        memcpy(out, digest, len);
+        outLen -= len;
+        out += len;
     }
     return ER_OK;
-}
-
-QStatus Crypto_GetRandomBytes(uint8_t* data, size_t len)
-{
-    QStatus status = ER_OK;
-    BIGNUM* rand = BN_new();
-    if (BN_rand(rand, len * 8, -1, 0)) {
-        BN_bn2bin(rand, data);
-    } else {
-        status = ER_CRYPTO_ERROR;
-    }
-    BN_free(rand);
-    return status;
 }
 
 }
