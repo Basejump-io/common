@@ -324,22 +324,21 @@ class Crypto_AES  {
     static const size_t AES128_SIZE = (128 / 8);
 
     /**
-     * Flag to constructor indicating key is being used to encryption
+     * AES modes
      */
-    static const bool ENCRYPT = true;
+    typedef enum {
+        ECB_ENCRYPT, ///< Flag to constructor indicating key is being used for ECB encryption
+        ECB_DECRYPT, ///< Flag to constructor indicating key is being used for ECB decryption
+        CCM          ///< Flag to constructor indicating key is being used CCM mode
+    } Mode;
 
     /**
-     * Flag to constructor indicating key is being used to decryption
-     */
-    static const bool DECRYPT = false;
-
-    /**
-     * CryptoAES constructor. A specific class instance can be used to either encrypt or decrypt.
+     * CryptoAES constructor.
      *
-     * @param key      The AES key
-     * @param encrypt  Indicates if the class instance is for encrypting or decrypting.
+     * @param key   The AES key
+     * @param mode  Specifies the operation mode.
      */
-    Crypto_AES(const KeyBlob& key, bool encrypt);
+    Crypto_AES(const KeyBlob& key, Mode mode);
 
     /**
      * Data is encrypted or decrypted in 16 byte blocks.
@@ -529,9 +528,9 @@ class Crypto_AES  {
     void Compute_CCM_AuthField(Block& T, uint8_t M, uint8_t L, const KeyBlob& nonce, const uint8_t* mData, size_t mLen, const uint8_t* addData, size_t addLen);
 
     /**
-     * Flag indicating if the class instance is encrypting or decrypting
+     * Flag indicating the mode for the class instance.
      */
-    bool encrypt;
+    Mode mode;
 
     /**
      * Private internal key state

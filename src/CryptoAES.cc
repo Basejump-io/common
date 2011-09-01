@@ -52,10 +52,10 @@ static void Trace(const char* tag, void* data, size_t len)
 #define Trace(x, y, z)
 #endif
 
-Crypto_AES::Crypto_AES(const KeyBlob& key, bool encrypt) : encrypt(encrypt), keyState(NULL)
+Crypto_AES::Crypto_AES(const KeyBlob& key, Mode mode) : mode(mode), keyState(NULL)
 {
     keyState = new uint8_t[sizeof(AES_KEY)];
-    if (encrypt) {
+    if ((mode == ECB_ENCRYPT) || (mode == CCM)) {
         AES_set_encrypt_key((unsigned char*)key.GetData(), key.GetSize() * 8, (AES_KEY*)keyState);
     } else {
         AES_set_decrypt_key((unsigned char*)key.GetData(), key.GetSize() * 8, (AES_KEY*)keyState);
@@ -75,7 +75,7 @@ QStatus Crypto_AES::Encrypt(const Block* in, Block* out, uint32_t numBlocks)
     /*
      * Check we are initialized for encryption
      */
-    if (!encrypt) {
+    if (mode != ECB_ENCRYPT) {
         return ER_CRYPTO_ERROR;
     }
     while (numBlocks--) {
@@ -123,7 +123,7 @@ QStatus Crypto_AES::Decrypt(const Block* in, Block* out, uint32_t numBlocks)
     /*
      * Check we are initialized for decryption
      */
-    if (encrypt) {
+    if (mode != ECB_DECRYPT) {
         return ER_CRYPTO_ERROR;
     }
     while (numBlocks--) {
@@ -270,9 +270,9 @@ static inline uint8_t LengthOctetsFor(size_t len)
 QStatus Crypto_AES::Encrypt_CCM(const void* in, void* out, size_t& len, const KeyBlob& nonce, const void* addData, size_t addLen, uint8_t authLen)
 {
     /*
-     * Check we are initialized for encryption
+     * Check we are initialized for CCM
      */
-    if (!encrypt) {
+    if (mode != CCM) {
         return ER_CRYPTO_ERROR;
     }
     size_t nLen = nonce.GetSize();
@@ -321,9 +321,9 @@ QStatus Crypto_AES::Encrypt_CCM(const void* in, void* out, size_t& len, const Ke
 QStatus Crypto_AES::Decrypt_CCM(const void* in, void* out, size_t& len, const KeyBlob& nonce, const void* addData, size_t addLen, uint8_t authLen)
 {
     /*
-     * Check we are initialized for encryption - CCM only uses AES encryption.
+     * Check we are initialized for CCM
      */
-    if (!encrypt) {
+    if (mode != CCM) {
         return ER_CRYPTO_ERROR;
     }
     size_t nLen = nonce.GetSize();
