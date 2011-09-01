@@ -437,6 +437,21 @@ double qcc::StringToDouble(const qcc::String& inStr)
 }
 
 
+qcc::String qcc::LineBreak(const qcc::String& inStr, size_t maxLen, size_t indent)
+{
+    qcc::String indentStr(' ', indent);
+    qcc::String outStr;
+    outStr.reserve(inStr.size() + maxLen + (inStr.size() / maxLen) * (indent + 1));
+    size_t pos = 0;
+    while (pos < inStr.size()) {
+        outStr += indentStr + inStr.substr(pos, maxLen);
+        outStr.push_back('\n');
+        pos += maxLen;
+    }
+    return outStr;
+
+}
+
 qcc::String qcc::Trim(const qcc::String& str)
 {
     size_t start = str.find_first_not_of(" \t\n\r\v");

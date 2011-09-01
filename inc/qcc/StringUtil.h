@@ -184,6 +184,17 @@ qcc::String Trim(const qcc::String& inStr);
  */
 bool IsWhite(char c, const char* whiteChars = 0);
 
+/**
+ * Format a string for output by inserting newlines into a string a regular intervals.
+ *
+ * @param inStr   The string to format.
+ * @param maxLen  The maximum length before inserting a newline.
+ * @param indent  An optional indendation
+ *
+ * @return  The formatted string.
+ */
+qcc::String LineBreak(const qcc::String& inStr, size_t maxLen = 64, size_t indent = 0);
+
 }   /* End namespace */
 
 #endif
