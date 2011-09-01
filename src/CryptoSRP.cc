@@ -27,11 +27,10 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <math.h>
-#include <openssl/bn.h>
-#include <openssl/sha.h>
 
 #include <qcc/Debug.h>
 #include <qcc/Crypto.h>
+#include <qcc/BigNum.h>
 #include <qcc/KeyBlob.h>
 #include <qcc/String.h>
 #include <qcc/StringUtil.h>
@@ -105,34 +104,30 @@ const uint8_t test_s[] = {
     0xBE, 0xB2, 0x53, 0x79, 0xD1, 0xA8, 0x58, 0x1E, 0xB5, 0xA7, 0x27, 0x67, 0x3A, 0x24, 0x41, 0xEE,
 };
 
+static const bool PAD = true;
 
 /* We only trust primes that we know */
-static bool IsValidPrimeGroup(BIGNUM* N, BIGNUM* g)
+static bool IsValidPrimeGroup(BigNum& N, BigNum& g)
 {
-    BIGNUM* tmp = BN_new();
     bool ok = true;
-    size_t len = BN_num_bits(N);
-    BN_ULONG group;
+    uint32_t group;
+    BigNum prime;
 
-    switch (len) {
+    switch (N.bit_len()) {
     case 1024:
-        BN_bin2bn(Prime1024, sizeof(Prime1024), tmp);
+        prime.set_bytes(Prime1024, sizeof(Prime1024));
         group = 2;
         break;
 
     case 1536:
-        BN_bin2bn(Prime1536, sizeof(Prime1536), tmp);
+        prime.set_bytes(Prime1536, sizeof(Prime1536));
         group = 2;
         break;
 
     default:
         ok = false;
     }
-    if (ok) {
-        ok = (BN_cmp(N, tmp) == 0) && BN_is_word(g, group);
-    }
-    BN_free(tmp);
-    return ok;
+    return ok && (g == group) && (N == prime);
 }
 
 
@@ -145,81 +140,50 @@ static const int SALT_LEN = 40;
 
 
 class Crypto_SRP::BN {
-
   public:
-    BN_CTX* ctx;
-    BIGNUM* a;
-    BIGNUM* b;
-    BIGNUM* g;
-    BIGNUM* k;
-    BIGNUM* s;
-    BIGNUM* u;
-    BIGNUM* v;
-    BIGNUM* x;
-    BIGNUM* A;
-    BIGNUM* B;
-    BIGNUM* N;
-    BIGNUM* pms;
+    BigNum a;
+    BigNum b;
+    BigNum g;
+    BigNum k;
+    BigNum s;
+    BigNum u;
+    BigNum v;
+    BigNum x;
+    BigNum A;
+    BigNum B;
+    BigNum N;
+    BigNum pms;
 
-    BN() {
-        ctx = BN_CTX_new();
-        BN_CTX_start(ctx);
-        a = BN_CTX_get(ctx);
-        b = BN_CTX_get(ctx);
-        g = BN_CTX_get(ctx);
-        k = BN_CTX_get(ctx);
-        s = BN_CTX_get(ctx);
-        u = BN_CTX_get(ctx);
-        v = BN_CTX_get(ctx);
-        x = BN_CTX_get(ctx);
-        A = BN_CTX_get(ctx);
-        B = BN_CTX_get(ctx);
-        N = BN_CTX_get(ctx);
-        pms = BN_CTX_get(ctx);
-    }
-
-    ~BN() {
-        BN_CTX_end(ctx);
-        BN_CTX_free(ctx);
+    void Dump(const char* label) {
+        printf("**** %s ****\n", label);
+        printf("s = %s\n", s.get_hex().c_str());
+        printf("N = %s\n", N.get_hex().c_str());
+        printf("g = %s\n", g.get_hex().c_str());
+        printf("k = %s\n", k.get_hex().c_str());
+        printf("x = %s\n", x.get_hex().c_str());
+        printf("v = %s\n", v.get_hex().c_str());
+        printf("a = %s\n", a.get_hex().c_str());
+        printf("b = %s\n", b.get_hex().c_str());
+        printf("A = %s\n", A.get_hex().c_str());
+        printf("B = %s\n", B.get_hex().c_str());
+        printf("u = %s\n", u.get_hex().c_str());
+        printf("premaster secret = %s\n", pms.get_hex().c_str());
     }
 };
 
-static bool PAD(BIGNUM* v, uint8_t* buf, size_t len)
-{
-    size_t sz = BN_num_bytes(v);
-    if (sz > len) {
-        return false;
-    } else {
-        BN_bn2bin(v, buf + (len - sz));
-        memset(buf, 0, (len - sz));
-        return true;
-    }
-}
-
-static qcc::String& operator+=(qcc::String& str, BIGNUM* bn)
-{
-    char* hex;
-    hex = BN_bn2hex(bn);
-    str += hex;
-    OPENSSL_free(hex);
-    return str;
-}
-
 /*
- * Parse 4 BIGNUMs from ":" seperated hex-encoded string.
+ * Parse 4 BigNums from ":" seperated hex-encoded string.
  */
-static QStatus Parse_Parameters(qcc::String str, BIGNUM* bn1, BIGNUM* bn2, BIGNUM* bn3, BIGNUM* bn4)
+static QStatus Parse_Parameters(qcc::String str, BigNum& bn1, BigNum& bn2, BigNum& bn3, BigNum& bn4)
 {
-    BIGNUM* bn[4] = { bn1, bn2, bn3, bn4 };
+    BigNum* bn[4] = { &bn1, &bn2, &bn3, &bn4 };
     size_t i;
 
     for (i = 0; i < ArraySize(bn); ++i) {
-        qcc::String val = HexStringToByteString(str);
-        if (val.empty()) {
+        size_t pos = str.find_first_of(':');
+        if (!bn[i]->set_hex(str.substr(0, pos))) {
             return ER_BAD_STRING_ENCODING;
         }
-        BN_bin2bn((const uint8_t*)val.data(), val.size(), bn[i]);
-        size_t pos = str.find_first_of(':');
         if (pos == qcc::String::npos) {
             break;
         }
@@ -238,18 +202,7 @@ Crypto_SRP::Crypto_SRP() : bn(new BN) {
 Crypto_SRP::~Crypto_SRP()
 {
     if (test) {
-        printf("s = %s\n", BN_bn2hex(bn->s));
-        printf("N = %s\n", BN_bn2hex(bn->N));
-        printf("g = %s\n", BN_bn2hex(bn->g));
-        printf("k = %s\n", BN_bn2hex(bn->k));
-        printf("x = %s\n", BN_bn2hex(bn->x));
-        printf("v = %s\n", BN_bn2hex(bn->v));
-        printf("a = %s\n", BN_bn2hex(bn->a));
-        printf("b = %s\n", BN_bn2hex(bn->b));
-        printf("A = %s\n", BN_bn2hex(bn->A));
-        printf("B = %s\n", BN_bn2hex(bn->B));
-        printf("u = %s\n", BN_bn2hex(bn->u));
-        printf("premaster secret = %s\n", BN_bn2hex(bn->pms));
+        bn->Dump("");
     }
     delete bn;
 }
@@ -276,50 +229,57 @@ QStatus Crypto_SRP::ClientInit(const qcc::String& fromServer, qcc::String& toSer
     /*
      * Check that B is valid - B is computed %N so should be <= N and cannot be zero
      */
-    if (BN_is_zero(bn->B) || (BN_cmp(bn->B, bn->N) >= 0)) {
+    if ((bn->B == 0) || (bn->B >= bn->N)) {
         return ER_CRYPTO_ILLEGAL_PARAMETERS;
     }
 
     /* Generate client random number */
     if (test) {
-        BN_bin2bn(test_a, sizeof(test_a), bn->a);
+        bn->a.set_bytes(test_a, sizeof(test_a));
     } else {
-        BN_rand(bn->a, 32, -1, 0);
+        bn->a.gen_rand(32);
     }
 
     /* Compute A = g^a % N */
-    BN_mod_exp(bn->A, bn->g, bn->a, bn->N, bn->ctx);
+    bn->A = bn->g.mod_exp(bn->a, bn->N);
 
     /* Compose string A to send to server */
-    toServer.erase();
-    toServer += bn->A;
+    toServer = bn->A.get_hex();
 
     return ER_OK;
+}
+
+static void Update(Crypto_SHA1& sha1, const BigNum& n)
+{
+    size_t len = n.byte_len();
+    uint8_t* buf = new uint8_t[len];
+    n.get_bytes(buf, len);
+    sha1.Update(buf, len);
 }
 
 QStatus Crypto_SRP::ClientFinish(const qcc::String& id, const qcc::String& pwd)
 {
     Crypto_SHA1 sha1;
-    size_t lenN = BN_num_bytes(bn->N);
+    size_t lenN = bn->N.byte_len();
     uint8_t digest[Crypto_SHA1::DIGEST_SIZE];
     uint8_t* buf = new uint8_t[lenN];
 
     /* Compute u = SHA1(PAD(A) | PAD(B)); */
     sha1.Init();
-    PAD(bn->A, buf, lenN);
+    bn->A.get_bytes(buf, lenN, PAD);
     sha1.Update(buf, lenN);
-    PAD(bn->B, buf, lenN);
+    bn->B.get_bytes(buf, lenN, PAD);
     sha1.Update(buf, lenN);
     sha1.GetDigest(digest);
-    BN_bin2bn(digest, Crypto_SHA1::DIGEST_SIZE, bn->u);
+    bn->u.set_bytes(digest, Crypto_SHA1::DIGEST_SIZE);
 
     /* Compute k = SHA1(N | PAD(g)) */
     sha1.Init();
-    sha1.Update(bn->N);
-    PAD(bn->g, buf, lenN);
+    Update(sha1, bn->N);
+    bn->g.get_bytes(buf, lenN, PAD);
     sha1.Update(buf, lenN);
     sha1.GetDigest(digest);
-    BN_bin2bn(digest, Crypto_SHA1::DIGEST_SIZE, bn->k);
+    bn->k.set_bytes(digest, Crypto_SHA1::DIGEST_SIZE);
 
     /* Compute x = SHA1(s | (SHA1(I | ":" | P)) */
     sha1.Init();
@@ -329,27 +289,22 @@ QStatus Crypto_SRP::ClientFinish(const qcc::String& id, const qcc::String& pwd)
     sha1.GetDigest(digest);
     /* outer SHA1 */
     sha1.Init();
-    sha1.Update(bn->s);
+    Update(sha1, bn->s);
     sha1.Update(digest, sizeof(digest));
     sha1.GetDigest(digest);
-    BN_bin2bn(digest, Crypto_SHA1::DIGEST_SIZE, bn->x);
+    bn->x.set_bytes(digest, Crypto_SHA1::DIGEST_SIZE);
 
     /* Calculate premaster secret for client = (B - (k * g^x)) ^ (a + (u * x)) % N  */
 
     /* (B - (k * g^x)) */
-    BIGNUM* tmp1 = BN_new();
-    BN_mod_exp(tmp1, bn->g, bn->x, bn->N, bn->ctx);
-    BN_mul(tmp1, tmp1, bn->k, bn->ctx);
-    BN_mod_sub(tmp1, bn->B, tmp1, bn->N, bn->ctx);
-
+    BigNum tmp1 = (bn->B - bn->k * bn->g.mod_exp(bn->x, bn->N)) % bn->N;
+    if (tmp1 < 0) {
+        tmp1 += bn->N;
+    }
     /* (a + (u * x)) */
-    BIGNUM* tmp2 = BN_new();
-    BN_mul(tmp2, bn->u, bn->x, bn->ctx);
-    BN_add(tmp2, tmp2, bn->a);
+    BigNum tmp2 = bn->a + (bn->u * bn->x);
 
-    BN_mod_exp(bn->pms, tmp1, tmp2, bn->N, bn->ctx);
-    BN_free(tmp1);
-    BN_free(tmp2);
+    bn->pms = tmp1.mod_exp(tmp2, bn->N);
 
     delete [] buf;
 
@@ -361,42 +316,38 @@ QStatus Crypto_SRP::ClientFinish(const qcc::String& id, const qcc::String& pwd)
  */
 void Crypto_SRP::ServerCommon(qcc::String& toClient)
 {
-    size_t lenN = BN_num_bytes(bn->N);
+    size_t lenN = bn->N.byte_len();
     Crypto_SHA1 sha1;
     uint8_t digest[Crypto_SHA1::DIGEST_SIZE];
     uint8_t* buf = new uint8_t[lenN];
 
     /* Generate server random number */
     if (test) {
-        BN_bin2bn(test_b, sizeof(test_b), bn->b);
+        bn->b.set_bytes(test_b, sizeof(test_b));
     } else {
-        BN_rand(bn->b, 32, -1, 0);
+        bn->b.gen_rand(32);
     }
 
     /* Compute k = SHA1(N | PAD(g)) */
     sha1.Init();
-    sha1.Update(bn->N);
-    PAD(bn->g, buf, lenN);
+    Update(sha1, bn->N);
+    bn->g.get_bytes(buf, lenN, PAD);
     sha1.Update(buf, lenN);
     sha1.GetDigest(digest);
-    BN_bin2bn(digest, Crypto_SHA1::DIGEST_SIZE, bn->k);
+    bn->k.set_bytes(digest, Crypto_SHA1::DIGEST_SIZE);
 
     /* Compute B = (k*v + g^b % N) %N */
-    BIGNUM* tmp = BN_new();
-    BN_mod_exp(bn->B, bn->g, bn->b, bn->N, bn->ctx);
-    BN_mul(tmp, bn->k, bn->v, bn->ctx);
-    BN_mod_add(bn->B, tmp, bn->B, bn->N, bn->ctx);
-    BN_free(tmp);
+    bn->B = (bn->k * bn->v + bn->g.mod_exp(bn->b, bn->N)) % bn->N;
 
     /* Compose string s:B to send to client */
     toClient.erase();
-    toClient += bn->N;
+    toClient += bn->N.get_hex();
     toClient += ":";
-    toClient += bn->g;
+    toClient += bn->g.get_hex();
     toClient += ":";
-    toClient += bn->s;
+    toClient += bn->s.get_hex();
     toClient += ":";
-    toClient += bn->B;
+    toClient += bn->B.get_hex();
 
     delete [] buf;
 }
@@ -418,14 +369,14 @@ QStatus Crypto_SRP::ServerInit(const qcc::String& id, const qcc::String& pwd, qc
     uint8_t digest[Crypto_SHA1::DIGEST_SIZE];
 
     /* Prime and generator */
-    BN_bin2bn(Prime1024, sizeof(Prime1024), bn->N);
-    BN_set_word(bn->g, 2);
+    bn->N.set_bytes(Prime1024, sizeof(Prime1024));
+    bn->g = 2;
 
     /* Generate the salt */
     if (test) {
-        BN_bin2bn(test_s, sizeof(test_s), bn->s);
+        bn->s.set_bytes(test_s, sizeof(test_s));
     } else {
-        BN_rand(bn->s, SALT_LEN, -1, 0);
+        bn->s.gen_rand(SALT_LEN);
     }
 
     /* Compute x = SHA1(s | (SHA1(I | ":" | P)) */
@@ -436,13 +387,13 @@ QStatus Crypto_SRP::ServerInit(const qcc::String& id, const qcc::String& pwd, qc
     sha1.GetDigest(digest);
     /* outer SHA1 */
     sha1.Init();
-    sha1.Update(bn->s);
+    Update(sha1, bn->s);
     sha1.Update(digest, sizeof(digest));
     sha1.GetDigest(digest);
-    BN_bin2bn(digest, Crypto_SHA1::DIGEST_SIZE, bn->x);
+    bn->x.set_bytes(digest, Crypto_SHA1::DIGEST_SIZE);
 
     /* Compute v = g^x % N */
-    BN_mod_exp(bn->v, bn->g, bn->x, bn->N, bn->ctx);
+    bn->v = bn->g.mod_exp(bn->x, bn->N);
 
     ServerCommon(toClient);
     return ER_OK;
@@ -453,13 +404,13 @@ qcc::String Crypto_SRP::ServerGetVerifier()
 {
     qcc::String verifier;
 
-    verifier += bn->N;
+    verifier += bn->N.get_hex();
     verifier += ":";
-    verifier += bn->g;
+    verifier += bn->g.get_hex();
     verifier += ":";
-    verifier += bn->s;
+    verifier += bn->s.get_hex();
     verifier += ":";
-    verifier += bn->v;
+    verifier += bn->v.get_hex();
 
     return verifier;
 }
@@ -470,16 +421,15 @@ QStatus Crypto_SRP::ServerFinish(const qcc::String fromClient)
     uint8_t digest[Crypto_SHA1::DIGEST_SIZE];
     qcc::String str = fromClient;
     Crypto_SHA1 sha1;
-    size_t lenN = BN_num_bytes(bn->N);
+    size_t lenN = bn->N.byte_len();
 
     /* Parse out A */
-    qcc::String val = HexStringToByteString(str);
-    BN_bin2bn((const uint8_t*)val.data(), val.size(), bn->A);
+    bn->A.set_hex(fromClient);
 
     /*
-     * Check that A is valid - A is computed %N so should be <= N and cannot be zero.
+     * Check that A is valid - A is computed %N so should be < N and cannot be zero.
      */
-    if (BN_is_zero(bn->A) || (BN_cmp(bn->A, bn->N) >= 0)) {
+    if ((bn->A == 0) || (bn->A >= bn->N)) {
         return ER_CRYPTO_ILLEGAL_PARAMETERS;
     }
 
@@ -487,33 +437,30 @@ QStatus Crypto_SRP::ServerFinish(const qcc::String fromClient)
 
     /* Compute u = SHA1(PAD(A) | PAD(B)); */
     sha1.Init();
-    PAD(bn->A, buf, lenN);
+    bn->A.get_bytes(buf, lenN, PAD);
     sha1.Update(buf, lenN);
-    PAD(bn->B, buf, lenN);
+    bn->B.get_bytes(buf, lenN, PAD);
     sha1.Update(buf, lenN);
     sha1.GetDigest(digest);
-    BN_bin2bn(digest, Crypto_SHA1::DIGEST_SIZE, bn->u);
+    bn->u.set_bytes(digest, Crypto_SHA1::DIGEST_SIZE);
+
+    delete [] buf;
 
     /* Calculate premaster secret for server = ((A * v^u) ^ b %N) */
 
     /* tmp = (A * v^u) */
-    BIGNUM* tmp = BN_new();
-    BN_mod_exp(tmp, bn->v, bn->u, bn->N, bn->ctx);
-    BN_mod_mul(tmp, tmp, bn->A, bn->N, bn->ctx);
+    BigNum tmp = (bn->A * bn->v.mod_exp(bn->u, bn->N)) % bn->N;
     /* pms = tmp ^ b % N  */
-    BN_mod_exp(bn->pms, tmp, bn->b, bn->N, bn->ctx);
-    BN_free(tmp);
-
-    delete [] buf;
+    bn->pms = tmp.mod_exp(bn->b, bn->N);
 
     return ER_OK;
 }
 
 void Crypto_SRP::GetPremasterSecret(KeyBlob& premaster)
 {
-    size_t sz = BN_num_bytes(bn->pms);
+    size_t sz = bn->pms.byte_len();
     uint8_t* pms = new uint8_t[sz];
-    BN_bn2bin(bn->pms, pms);
+    bn->pms.get_bytes(pms, sz);
     premaster.Set(pms, sz, KeyBlob::GENERIC);
     delete [] pms;
 }
@@ -550,13 +497,13 @@ QStatus Crypto_SRP::TestVector()
         QCC_LogError(status, ("SRP ClientFinish failed"));
         goto TestFail;
     }
-    BN_bin2bn(test_pms, sizeof(test_pms), bn->pms);
-    if ((BN_cmp(bn->pms, client->bn->pms) != 0)) {
+    bn->pms.set_bytes(test_pms, sizeof(test_pms));
+    if (bn->pms != client->bn->pms) {
         status = ER_FAIL;
         QCC_LogError(status, ("SRP client premaster secret is incorrect"));
         goto TestFail;
     }
-    if ((BN_cmp(bn->pms, server->bn->pms) != 0)) {
+    if (bn->pms != server->bn->pms) {
         status = ER_FAIL;
         QCC_LogError(status, ("SRP server premaster secret is incorrect"));
         goto TestFail;
