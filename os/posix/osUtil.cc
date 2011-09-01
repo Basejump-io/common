@@ -195,10 +195,3 @@ QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, co
     }
     return ER_OK;
 }
-
-QStatus qcc::GetPlatformEntropy(uint8_t* data, size_t& len)
-{
-    /* Not adding any platform entropy */
-    len = 0;
-    return ER_OK;
-}

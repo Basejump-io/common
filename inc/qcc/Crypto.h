@@ -541,142 +541,6 @@ class Crypto_AES  {
 };
 
 /**
- * Wrapper class wraps the BIGNUM interface from the OpenSSL library.
- */
-class Crypto_BigNum {
-  public:
-    /**
-     * Default constuctor allocates space and initializes the big number storage.
-     */
-    Crypto_BigNum(void) : num(BN_new()) { }
-
-    /**
-     * The copy constructor initializes the big number storage to reference a
-     * copy of the initializer big number.
-     *
-     * @param other The other big number used for initialization.
-     */
-    Crypto_BigNum(const Crypto_BigNum& other) : num(BN_dup(other.num)) { }
-
-    /**
-     * The destructor releases the memory used for the big number storage.
-     */
-    ~Crypto_BigNum(void) { BN_free(num); }
-
-    /**
-     * Overload the assignment operator to properly copy the big number value into local storage.
-     *
-     * @param other Reference to the big number to copy the value from.
-     *
-     * @return  A const reference to our self.
-     */
-    const Crypto_BigNum& operator=(const Crypto_BigNum& other)
-    {
-        if (&other != this) {
-            BN_copy(num, other.num);
-        }
-        return *this;
-    }
-
-    /**
-     * Compare another BigNum value with our own value.
-     *
-     * @return  -1 for *this < other, 0 for *this == other, and 1 for *this > other.
-     */
-    int Compare(const Crypto_BigNum& other) const;
-
-    /**
-     * Determine if another big number has the same value as we do.
-     *
-     * @param other The other big number for comparison.
-     *
-     * @return  "true" if the values are the same.
-     */
-    bool operator==(const Crypto_BigNum& other) const { return Compare(other) == 0; }
-
-    /**
-     * Determine if another big number has a different value than we do.
-     *
-     * @param other The other big number for comparison.
-     *
-     * @return  "true" if the values are different.
-     */
-    bool operator!=(const Crypto_BigNum& other) const { return Compare(other) != 0; }
-
-    /**
-     * Determine if *this > other.
-     *
-     * @param other The other big number for comparison.
-     *
-     * @return  "true" if *this > other.
-     */
-    bool operator>(const Crypto_BigNum& other) const { return Compare(other) > 0; }
-
-    /**
-     * Determine if *this >= other.
-     *
-     * @param other The other big number for comparison.
-     *
-     * @return  "true" if *this >= other.
-     */
-    bool operator>=(const Crypto_BigNum& other) const { return Compare(other) >= 0; }
-
-    /**
-     * Determine if *this < other.
-     *
-     * @param other The other big number for comparison.
-     *
-     * @return  "true" if *this < other.
-     */
-    bool operator<(const Crypto_BigNum& other) const { return Compare(other) < 0; }
-
-    /**
-     * Determine if *this <= other.
-     *
-     * @param other The other big number for comparison.
-     *
-     * @return  "true" if *this <= other.
-     */
-    bool operator<=(const Crypto_BigNum& other) const { return Compare(other) <= 0; }
-
-    /**
-     * Set the big number to a cryptographically random number of a specified
-     * number of bits.
-     *
-     * @param bits  The size of the number in bits.
-     */
-    void GenerateRandomValue(size_t bits);
-
-    /**
-     * Convert a number of bytes in to a big number value.
-     *
-     * @param buf       An array of octets containing the number to be
-     *                  converted in big-endian order.
-     * @param bufSize   The number of octets to convert.
-     */
-    void Parse(const uint8_t buf[], size_t bufSize) { num = BN_bin2bn(buf, bufSize, num); }
-
-    /**
-     * Convert a big number into an array of octets in big-endian order.
-     *
-     * @param buf       An array to store the big number.
-     * @param bufSize   The number of octets to convert.
-     *
-     * @return  The number of octets actually converted.
-     */
-    size_t RenderBinary(uint8_t buf[], size_t bufSize) const;
-
-    /**
-     * Render a big number as a string in big-endian order
-     */
-    qcc::String RenderString(bool toLower = false);
-
-  private:
-    BIGNUM* num;    ///< Storage for the big number.
-
-};
-
-/**
  * Generic hash calculation interface abstraction class.
  */
 class Crypto_Hash {
@@ -959,6 +823,16 @@ class Crypto_SRP {
     BN* bn;
 
 };
+
+/**
+ * Call platform specific API to get cryptographically random data.
+ *
+ * @param data  A buffer to receive the pseuod random number data.
+ * @param len   The length of the buffer.
+ *
+ * @return ER_OK if a random number was succesfully generated.
+ */
+QStatus Crypto_GetRandomBytes(uint8_t* data, size_t len);
 
 
 }

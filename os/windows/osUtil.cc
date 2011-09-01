@@ -27,13 +27,12 @@
 #include <process.h>
 #include <lmcons.h>
 #define SECURITY_WIN32
-#include <wincrypt.h>
 #include <security.h>
 #include <secext.h>
 
-#include <qcc/Crypto.h>
 #include <qcc/Util.h>
 #include <qcc/String.h>
+#include <qcc/Crypto.h>
 #include <qcc/Debug.h>
 
 
@@ -41,9 +40,7 @@
 #define QCC_MODULE  "UTIL"
 
 
-namespace qcc {
-
-uint32_t GetPid()
+uint32_t qcc::GetPid()
 {
     return static_cast<uint32_t>(_getpid());
 }
@@ -51,7 +48,7 @@ uint32_t GetPid()
 static uint32_t ComputeId(const char* buf, size_t len)
 {
     QCC_DbgPrintf(("ComputeId %s", buf));
-    uint32_t digest[Crypto_SHA1::DIGEST_SIZE / sizeof(uint32_t)];
+    uint32_t digest[qcc::Crypto_SHA1::DIGEST_SIZE / sizeof(uint32_t)];
     qcc::Crypto_SHA1 sha1;
     sha1.Init();
     sha1.Update((const uint8_t*)buf, (size_t)len);
@@ -59,7 +56,7 @@ static uint32_t ComputeId(const char* buf, size_t len)
     return digest[0];
 }
 
-uint32_t GetUid()
+uint32_t qcc::GetUid()
 {
     /*
      * Windows has no equivalent of getuid so fake one by creating a hash of the user name.
@@ -92,12 +89,12 @@ uint32_t qcc::GetGid()
     }
 }
 
-uint32_t GetUsersUid(const char* name)
+uint32_t qcc::GetUsersUid(const char* name)
 {
     return ComputeId(name, strlen(name));
 }
 
-uint32_t GetUsersGid(const char* name)
+uint32_t qcc::GetUsersGid(const char* name)
 {
     return ComputeId(name, strlen(name));
 }
@@ -107,35 +104,19 @@ qcc::String qcc::GetHomeDir()
     return Environ::GetAppEnviron()->Find("USERPROFILE");
 }
 
-QStatus GetDirListing(const char* path, DirListing& listing)
+QStatus qcc::GetDirListing(const char* path, DirListing& listing)
 {
     return ER_NOT_IMPLEMENTED;
 }
 
 
-QStatus Exec(const char* exec, const ExecArgs& args, const qcc::Environ& envs)
+QStatus qcc::Exec(const char* exec, const ExecArgs& args, const qcc::Environ& envs)
 {
     return ER_NOT_IMPLEMENTED;
 }
 
 
-QStatus ExecAs(const char* user, const char* exec, const ExecArgs& args, const qcc::Environ& envs)
+QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, const qcc::Environ& envs)
 {
     return ER_NOT_IMPLEMENTED;
-}
-
-QStatus GetPlatformEntropy(uint8_t* data, size_t& len)
-{
-    QStatus status = ER_OS_ERROR;
-    HCRYPTPROV ctx;
-    if (CryptAcquireContext(&ctx, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
-        if (CryptGenRandom(ctx, len, data)) {
-            status = ER_OK;
-        }
-        CryptReleaseContext(ctx, 0);
-    }
-    return status;
-
-}
-
 }

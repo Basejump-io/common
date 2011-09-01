@@ -32,6 +32,7 @@
 #include <qcc/platform.h>
 #include <qcc/Debug.h>
 #include <qcc/Crypto.h>
+#include <qcc/BigNum.h>
 #include <qcc/Util.h>
 
 #include <Status.h>
@@ -179,56 +180,6 @@ QStatus Crypto_Hash::GetDigest(uint8_t* digest)
     return status;
 }
 
-int Crypto_BigNum::Compare(const Crypto_BigNum& other) const
-{
-    if ((num == NULL) && (other.num == NULL)) {
-        return 0;
-    } else if (num == NULL) {
-        return -1;
-    } else if (other.num == NULL) {
-        return 1;
-    } else {
-        return BN_cmp(num, other.num);
-    }
-}
-
-size_t Crypto_BigNum::RenderBinary(uint8_t buf[], size_t bufSize) const
-{
-    size_t size = BN_num_bytes(num);
-    if (size > bufSize) {
-        uint8_t* tmp = new uint8_t[size];
-        BN_bn2bin(num, tmp);
-        memcpy(buf, tmp, bufSize);
-        delete [] tmp;
-        return bufSize;
-    } else {
-        BN_bn2bin(num, buf);
-        return size;
-    }
-}
-
-qcc::String Crypto_BigNum::RenderString(bool toLower)
-{
-    char* str = BN_bn2hex(num);
-    if (toLower) {
-        char* p = str;
-        while (char c = *p) {
-            *p++ = tolower(c);
-        }
-    }
-    qcc::String outStr = str;
-    OPENSSL_free(str);
-    return outStr;
-}
-
-qcc::String RandHexString(size_t len, bool toLower)
-{
-    Crypto_BigNum bigNum;
-    bigNum.GenerateRandomValue(len * 8);
-    return bigNum.RenderString(toLower);
-}
-
-
 QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, const qcc::String& seed, uint8_t* out, size_t outLen)
 {
     if (!label) {
@@ -260,33 +211,17 @@ QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, co
     return ER_OK;
 }
 
-
-static const size_t ENTROPY_BYTES = 1024;
-
-void Crypto_BigNum::GenerateRandomValue(size_t bits)
+QStatus Crypto_GetRandomBytes(uint8_t* data, size_t len)
 {
-    static bool initialized = false;
-    if (!initialized) {
-        /*
-         * OpenSSL initializes the PRNG with platform-specific entropy. Here we call a
-         * platform specific function to obtain additional entropy contributions.
-         */
-        uint8_t* entropy = new uint8_t[ENTROPY_BYTES];
-        size_t num = ENTROPY_BYTES;
-        QStatus status = GetPlatformEntropy(entropy, num);
-        if (status != ER_OK) {
-            QCC_LogError(status, ("Failed to get platform-specific entropy"));
-        } else {
-            /*
-             * If the platform can provide additional entropy add it here
-             */
-            if (num) {
-                RAND_add(entropy, num, double(num));
-            }
-        }
-        delete [] entropy;
+    QStatus status = ER_OK;
+    BIGNUM* rand = BN_new();
+    if (BN_rand(rand, len * 8, -1, 0)) {
+        BN_bn2bin(rand, data);
+    } else {
+        status = ER_CRYPTO_ERROR;
     }
-    BN_rand(num, bits, -1, 0);
+    BN_free(rand);
+    return status;
 }
 
 }

@@ -25,19 +25,22 @@
 #include <qcc/platform.h>
 
 #include <qcc/String.h>
-#include <qcc/Crypto.h>
+#include <qcc/StringUtil.h>
 #include <qcc/Util.h>
+#include <qcc/Crypto.h>
 
 #define QCC_MODULE  "UTIL"
 
 using namespace std;
 
 
+// Non-secure random number generator
 uint8_t qcc::Rand8()
 {
     return (uint8_t)(qcc::Rand16() >> 8);
 }
 
+// Non-secure random number generator
 uint16_t qcc::Rand16()
 {
     static bool seeded = false;
@@ -50,23 +53,26 @@ uint16_t qcc::Rand16()
 
 uint32_t qcc::Rand32()
 {
-    uint32_t r = 0;
-    Crypto_BigNum bigNum;
-    bigNum.GenerateRandomValue(32);
-    bigNum.RenderBinary((uint8_t*)&r, sizeof(r));
+    uint32_t r;
+    qcc::Crypto_GetRandomBytes((uint8_t*)&r, sizeof(r));
     return r;
 }
-
 
 uint64_t qcc::Rand64()
 {
-    uint64_t r = 0;
-    Crypto_BigNum bigNum;
-    bigNum.GenerateRandomValue(64);
-    bigNum.RenderBinary((uint8_t*)&r, sizeof(r));
+    uint64_t r;
+    qcc::Crypto_GetRandomBytes((uint8_t*)&r, sizeof(r));
     return r;
 }
 
+qcc::String qcc::RandHexString(size_t len, bool toLower)
+{
+    uint8_t* bytes = new uint8_t[len];
+    qcc::Crypto_GetRandomBytes(bytes, len);
+    qcc::String str = qcc::BytesToHexString(bytes, len, toLower, 0);
+    delete [] bytes;
+    return str;
+}
 
 qcc::String qcc::RandomString(const char* prefix, size_t len)
 {
@@ -74,10 +80,7 @@ qcc::String qcc::RandomString(const char* prefix, size_t len)
     static const char c[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_+";
     qcc::String str(prefix);
     uint8_t* bits = new uint8_t[len];
-    Crypto_BigNum bigNum;
-    bigNum.GenerateRandomValue(8 * len);
-    bigNum.RenderBinary(bits, len);
-
+    qcc::Crypto_GetRandomBytes(bits, len);
     for (size_t i = 0; i < len; ++i) {
         str += c[bits[i] & 0x3f];
     }

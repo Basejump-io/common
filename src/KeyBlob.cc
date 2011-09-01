@@ -90,11 +90,9 @@ void KeyBlob::Rand(const size_t len, const Type initType)
     Erase();
     if (initType != EMPTY) {
         blobType = initType;
-        Crypto_BigNum bigNum;
-        bigNum.GenerateRandomValue(len * 8);
         size = (uint16_t)len;
         data = new uint8_t[len];
-        bigNum.RenderBinary(data, len);
+        Crypto_GetRandomBytes(data, len);
     }
 }
 

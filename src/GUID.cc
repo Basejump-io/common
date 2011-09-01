@@ -36,9 +36,7 @@ namespace qcc {
 
 GUID::GUID() : value(), shortValue()
 {
-    Crypto_BigNum val;
-    val.GenerateRandomValue(8 * SIZE);
-    val.RenderBinary(guid, SIZE);
+    Crypto_GetRandomBytes(guid, SIZE);
 }
 
 GUID::GUID(uint8_t init) : value(), shortValue()
