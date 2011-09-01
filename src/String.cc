@@ -117,6 +117,21 @@ String& String::operator=(const String& assignFromMe)
     return *this;
 }
 
+String& String::assign(const char* str, size_t len)
+{
+    if (context == NULL) {
+        append(str, len);
+    } else if (context->refCount == 1) {
+        context->offset = 0;
+        append(str, len);
+    } else {
+        /* Decrement ref of current context */
+        DecRef(context);
+        NewContext(str, len, len);
+    }
+    return *this;
+}
+
 char& String::operator[](size_t pos)
 {
     if (context && (1 != context->refCount)) {
@@ -191,6 +206,18 @@ int String::compare(size_t pos, size_t n, const String& s, size_t sPos, size_t s
         }
     }
     return ret;
+}
+
+size_t String::secure_clear()
+{
+    uint32_t refs = 1;
+    if (context) {
+        memset(context->c_str, 0, context->capacity);
+        context->offset = 0;
+        refs = context->refCount;
+        DecRef(context);
+    }
+    return refs - 1;
 }
 
 void String::clear(size_t sizeHint)
@@ -415,6 +442,23 @@ String String::substr(size_t pos, size_t n) const
 {
     if (pos <= size()) {
         return String(context->c_str + pos, MIN(n, size() - pos));
+    } else {
+        return String();
+    }
+}
+
+String String::revsubstr(size_t pos, size_t n) const
+{
+    if (pos <= size()) {
+        size_t l = MIN(n, size() - pos);
+        String rev("", 0, l);
+        char* p = context->c_str + pos + l;
+        char* q = rev.context->c_str;
+        rev.context->offset = l;
+        while (l--) {
+            *q++ = *--p;
+        }
+        return rev;
     } else {
         return String();
     }

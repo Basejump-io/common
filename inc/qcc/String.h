@@ -92,6 +92,23 @@ class String {
     String& operator=(const String& assignFromMe);
 
     /**
+     * Assign a value to a string
+     *
+     * @param str  Value to assign to string.
+     * @param len  Number of characters to assign or 0 to insert up to first nul byte in str.
+     * @return  Reference to this string.
+     */
+    String& assign(const char* str, size_t len);
+
+    /**
+     * Assign a nul-terminated string value to a string
+     *
+     * @param str  Value to assign to string.
+     * @return  Reference to this string.
+     */
+    String& assign(const char* str) { return assign(str, 0); }
+
+    /**
      * Get the current storage capacity for this string.
      *
      * @return  Amount of storage allocated to this string.
@@ -132,6 +149,24 @@ class String {
      * @param sizeHint   Allocation size hint used if string must be realloced.
      */
     void clear(size_t sizeHint = MinCapacity);
+
+    /**
+     * Unless you are working with passwords or cryptographic keys you should probably not be
+     * calling this function and should call String::clear() instead.
+     *
+     * Clears the context of a string by zeroing out the internal string and setting the length to
+     * zero. This function is intended for use by security related functions for zeroing out
+     * sensitive information such as passwords and cryptographic keys immediately after they have
+     * been used to minimize the time that sensitive information is in memory. This function has
+     * the side effect of clearing all copies of this string that may have result from string
+     * assignment operations. To aid in verifying the behavior will be as expected this function
+     * returns a count of the number of strings that reference the same internal string data. If
+     * this value is not zero then there are other copies of the string that were also cleared.
+     *
+     * @return  The number of other string instances that were cleared as a side-effect of clearing
+     *          this string.
+     */
+    size_t secure_clear();
 
     /**
      * Append to string.
@@ -359,6 +394,15 @@ class String {
      * @return  Substring of this string.
      */
     String substr(size_t pos = 0, size_t n = npos) const;
+
+    /**
+     * Return a substring of this string with the order of the characters reversed.
+     *
+     * @param  pos  Starting position of substring.
+     * @param  n    Number of bytes in substring.
+     * @return  The reversed substring of this string.
+     */
+    String revsubstr(size_t pos = 0, size_t n = npos) const;
 
     /**
      * Compare this string with other.
