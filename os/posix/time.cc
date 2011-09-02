@@ -75,7 +75,7 @@ void qcc::GetTimeNow(Timespec* ts)
     ts->mseconds = _ts.tv_nsec / 1000000;
 }
 
-qcc::String UTCTime()
+qcc::String qcc::UTCTime()
 {
     static const char* Day[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
     static const char* Month[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
