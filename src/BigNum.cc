@@ -187,9 +187,12 @@ BigNum& BigNum::zero_ext(size_t size)
 
 BigNum& BigNum::reset(size_t len, bool neg, bool clear)
 {
-    // Reuse storage if it is big enough.
-    if (storage && (storage->size < len)) {
-        delete storage;
+    // Reuse storage only if it is big enough and has only one reference
+    if (storage && ((storage->size < len) || (storage->refCount > 1))) {
+        if (storage->DecRef()) {
+            storage->Storage::~Storage();
+            free(storage);
+        }
         storage = NULL;
     }
     if (storage) {
