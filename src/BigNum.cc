@@ -88,6 +88,15 @@ class BigNum::Storage {
 
 };
 
+
+BigNum::~BigNum()
+{
+    if (storage && storage->DecRef()) {
+        storage->Storage::~Storage();
+        free(storage);
+    }
+}
+
 // Private constructor that allocates storage
 BigNum::BigNum(size_t len, bool neg) : length(len), neg(neg), storage(Storage::New(len))
 {

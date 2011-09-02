@@ -223,6 +223,9 @@ class BigNum {
         return (d < length) && (digits[d] & (1 << (index & 0x1F)));
     }
 
+    // Destructor
+    ~BigNum();
+
   private:
 
     // Compute invariant required for Mongtomery reduction
