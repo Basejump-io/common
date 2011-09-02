@@ -130,8 +130,6 @@ inline int64_t operator-(const Timespec& ts1, const Timespec& ts2)
     return ((int64_t)ts1.seconds - (int64_t)ts2.seconds) * 1000 + (int64_t)ts1.mseconds - (int64_t)ts2.mseconds;
 }
 
-}
-
 /**
  * Return a formatted string for current UTC date and time. Format conforms to RFC 1123
  * e.g. "Tue, 30 Aug 2011 17:01:45 GMT"
@@ -140,4 +138,5 @@ inline int64_t operator-(const Timespec& ts1, const Timespec& ts2)
  */
 qcc::String UTCTime();
 
+}
 #endif
