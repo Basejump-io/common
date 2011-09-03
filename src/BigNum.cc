@@ -1083,6 +1083,8 @@ BigNum& BigNum::monty_mul(BigNum& r, const BigNum& n, const BigNum& m, uint32_t 
     BigNum y = (n.length < len) ? n.clone(len - n.length) : n;
 
     r.reset(len + 1);
+    // This avoids a final shift right
+    ++r.digits;
     for (size_t i = 0; i < len; ++i) {
         uint32_t X = x.digits[i];
         uint32_t u = ((uint64_t)r.digits[0] + (uint64_t)X * (uint64_t)y.digits[0]) * rho;
