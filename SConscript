@@ -38,6 +38,8 @@ if env['OS'] == 'windows':
         print 'Using OPENSSL crypto libraries'
 elif env['OS'] == 'linux':
     env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto'])
+elif env['OS'] == 'darwin':
+    env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto'])
 elif env['OS'] == 'android':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc'])
 elif env['OS'] == 'android_donut':
