@@ -83,14 +83,14 @@ class ManagedObj {
      * wraps it in a new ManagedObject with 1 reference.
      * @param other   ManagedObject to make a deep copy of.
      */
-    ManagedObj<T>(const ManagedObj<T>& other, bool isDeep)
+    ManagedObj<T>(const ManagedObj<T>&other, bool isDeep)
     {
         if (isDeep) {
             /* Deep copy */
             const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
             context = reinterpret_cast<ManagedCtx*>(malloc(offset + sizeof(T)));
             context = new (context) ManagedCtx(1);
-            object = new ((char*)context + offset) T(*other);
+            object = new ((char*)context + offset)T(*other);
         } else {
             /* Normal copy constructor (inc ref) of existing object */
             context = other.context;
