@@ -761,8 +761,8 @@ BigNum BigNum::div(const BigNum& divisor, BigNum& rem) const
         if (x.digits[i] == ymsd) {
             qdigit = 0xFFFFFFFF;
         } else {
-            uint64_t z = ((uint64_t)x.digits[i] << 32) + (uint64_t)x.digits[i - 1];
-            qdigit = (uint32_t)(z / ymsd);
+            uint64_t z = ((uint64_t)x.digits[i] << 32) + x.digits[i - 1];
+            qdigit = z / ymsd;
         }
         // Adjust estimate
         xm3.digits = &x.digits[i - 2];
@@ -1086,14 +1086,14 @@ BigNum& BigNum::monty_mul(BigNum& r, const BigNum& n, const BigNum& m, uint32_t 
     // This avoids a final shift right
     ++r.digits;
     for (size_t i = 0; i < len; ++i) {
-        uint32_t X = x.digits[i];
-        uint32_t u = ((uint64_t)r.digits[0] + (uint64_t)X * (uint64_t)y.digits[0]) * rho;
+        uint64_t X = x.digits[i];
+        uint32_t u = (r.digits[0] + X * y.digits[0]) * rho;
         uint64_t carry = 0;
         uint64_t R;
         uint32_t* rd = r.digits;
         for (size_t j = 0; j < len; ++j, ++rd) {
-            uint64_t Y = (uint64_t)y.digits[j] * X;
-            uint64_t M = (uint64_t)m.digits[j] * u;
+            uint64_t Y = X * y.digits[j];
+            uint64_t M = (uint64_t)u * m.digits[j];
             R = (uint64_t)*rd + carry + (uint32_t)Y + (uint32_t)M;
             carry = (R >> 32) + (Y >> 32) + (M >> 32);
             *(rd - 1) = (uint32_t)R;
