@@ -65,23 +65,24 @@ static qcc::String StrError()
 
 }
 
-static void MakeSockAddr(const IPAddress& addr, uint16_t port,
-                         sockaddr_in* addrBuf, socklen_t& addrSize)
+static void MakeSockAddr(const IPAddress& addr,
+                         uint16_t port,
+                         SOCKADDR_STORAGE* addrBuf, 
+                         socklen_t& addrSize)
 {
+    memset(addrBuf, 0, addrSize);
     if (addr.IsIPv4()) {
         struct sockaddr_in* sa = reinterpret_cast<struct sockaddr_in*>(addrBuf);
-        assert(addrSize >= sizeof(*sa));
         sa->sin_family = AF_INET;
         sa->sin_port = htons(port);
         sa->sin_addr.s_addr = addr.GetIPv4AddressNetOrder();
+        addrSize = sizeof(*sa);
     } else {
         struct sockaddr_in6* sa = reinterpret_cast<struct sockaddr_in6*>(addrBuf);
-        assert(addrSize >= sizeof(*sa));
         sa->sin6_family = AF_INET6;
         sa->sin6_port = htons(port);
-        sa->sin6_flowinfo = 0;  // TODO: What should go here???
         addr.RenderIPv6Binary(sa->sin6_addr.s6_addr, sizeof(sa->sin6_addr.s6_addr));
-        sa->sin6_scope_id = 0;  // TODO: What should go here???
+        addrSize = sizeof(*sa);
     }
 }
 
@@ -177,7 +178,7 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
 {
     QStatus status = ER_OK;
     int ret;
-    sockaddr_in addr;
+    SOCKADDR_STORAGE addr;
     socklen_t addrLen = sizeof(addr);
 
     QCC_DbgTrace(("Connect(sockfd = %d, remoteAddr = %s, remotePort = %hu)",
@@ -228,7 +229,7 @@ QStatus Bind(SocketFd sockfd, const IPAddress& localAddr, uint16_t localPort)
 {
     QStatus status = ER_OK;
     int ret;
-    sockaddr_in addr;
+    SOCKADDR_STORAGE addr;
     socklen_t addrLen = sizeof(addr);
 
     QCC_DbgTrace(("Bind(sockfd = %d, localAddr = %s, localPort = %hu)",
@@ -459,7 +460,7 @@ QStatus SendTo(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
                const void* buf, size_t len, size_t& sent)
 {
     QStatus status = ER_OK;
-    sockaddr_in addr;
+    SOCKADDR_STORAGE addr;
     socklen_t addrLen = sizeof(addr);
     size_t ret;
 
@@ -546,7 +547,7 @@ QStatus SendSG(SocketFd sockfd, const ScatterGatherList& sg, size_t& sent)
 QStatus SendToSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
                  const ScatterGatherList& sg, size_t& sent)
 {
-    sockaddr_in addr;
+    SOCKADDR_STORAGE addr;
     socklen_t addrLen = sizeof(addr);
 
     QCC_DbgTrace(("SendToSG(sockfd = %d, remoteAddr = %s, remotePort = %u, sg, sent = <>)",
