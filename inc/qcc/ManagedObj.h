@@ -78,10 +78,19 @@ class ManagedObj {
     }
 
     /**
+     * Create a copy of managed object T.
+     *
+     * If isDeep is true
      * Create a deep (clone) copy of a managed object.
-     * A ManagedObject created using this constructor copies the underlying T object and
-     * wraps it in a new ManagedObject with 1 reference.
-     * @param other   ManagedObject to make a deep copy of.
+     * A ManagedObject created using this constructor copies the underlying T
+     * object and wraps it in a new ManagedObject with 1 reference.
+     *
+     * if isDeep is false
+     * Do not make a deep copy of the managed object instead make a new reference
+     * to the existing object and increment the reference counter by +1.
+     *
+     * @param other   ManagedObject to make a copy of.
+     * @param isDeep  Specify if this is a deep (clone) copy or a normal copy
      */
     ManagedObj<T>(const ManagedObj<T>&other, bool isDeep)
     {
