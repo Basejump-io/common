@@ -228,9 +228,6 @@ class BigNum {
 
   private:
 
-    // Compute invariant required for Mongtomery reduction
-    uint32_t monty_rho() const;
-
     // Montgomery multiplication
     // @param r    Returns the Montgomery product
     // @param n    The multiplicand

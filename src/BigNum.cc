@@ -267,7 +267,6 @@ bool BigNum::set_hex(const qcc::String& number)
             } else if (*p >= 'A' && *p <= 'F') {
                 n |=  (*p + 10 - 'A') << i;
             } else {
-                //printf("invalid char %d\n", *p);
                 delete [] digits;
                 digits = NULL;
                 length = 0;
@@ -729,14 +728,12 @@ BigNum BigNum::div(const BigNum& divisor, BigNum& rem) const
     // Cheap right shift of x rather than more expensive left shift of y
     x.digits += d;
     x.length -= d;
-    //printf("y %s\n", y.get_hex().c_str());
     while (x >= y) {
         ++q.digits[d];
         x.sub(y);
     }
     x.digits -= d;
     x.length += d;
-    //printf("x %s\n", x.get_hex().c_str());
 
     // y[t]b + y[t-1] - i.e. the two most significant digits of y
     BigNum y2;
@@ -1056,16 +1053,13 @@ uint32_t BigNum::num_trailing_zeroes() const
     return 0;
 }
 
-uint32_t BigNum::monty_rho() const
+static uint32_t monty_rho(uint64_t b)
 {
-    uint64_t x;
-    uint64_t b = digits[0];
-
-    // No modular inversion for even values
+    // Modular inversion not defined for even values
     if (!(b & 1)) {
         return 0;
     }
-    x = (((b + 2) & 4) << 1) + b;
+    uint64_t x = (((b + 2) & 4) << 1) + b;
     x *= 2 - b * x;
     x *= 2 - b * x;
     x *= 2 - b * x;
@@ -1114,7 +1108,7 @@ BigNum& BigNum::monty_mul(BigNum& r, const BigNum& n, const BigNum& m, uint32_t 
 BigNum BigNum::monty_mod_exp(const BigNum& e, const BigNum& m) const
 {
     assert(m.is_odd());
-    uint32_t rho = m.monty_rho();
+    uint32_t rho = monty_rho(m.digits[0]);
 
     BigNum R = 1;
     BigNum RR = 1;
