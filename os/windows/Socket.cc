@@ -71,7 +71,7 @@ static qcc::String StrError()
 
 static void MakeSockAddr(const IPAddress& addr,
                          uint16_t port,
-                         SOCKADDR_STORAGE* addrBuf, 
+                         SOCKADDR_STORAGE* addrBuf,
                          socklen_t& addrSize)
 {
     memset(addrBuf, 0, addrSize);
