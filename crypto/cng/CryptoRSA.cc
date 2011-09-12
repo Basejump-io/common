@@ -162,7 +162,7 @@ QStatus Crypto_RSA::MakeSelfCertificate(const qcc::String& commonName, const qcc
     if (nkey) {
         qcc::String names;
         // ASN.1 encode the name strings
-        Crypto_ASN1::Encode("({(op)}{(op)})", names, &OID_CN, &commonName, &OID_ORG, &app);
+        Crypto_ASN1::Encode(names, "({(op)}{(op)})", &OID_CN, &commonName, &OID_ORG, &app);
         CERT_NAME_BLOB namesBlob = { names.size(), (PBYTE)names.data() };
         // Initialize the provider info struct.
         CRYPT_KEY_PROV_INFO provInfo;
@@ -434,16 +434,16 @@ static QStatus DecryptPriv(BCRYPT_KEY_HANDLE kdKey, qcc::String& ivec, const uin
     // Check if the key is legacy or pkcs#8 encapsulated
     if (legacy) {
         // See RFC 3447 for documentation on this formatting
-        status = Crypto_ASN1::Decode("(ill?ll*)", buf, len, &version, &n, &e, NULL, &p, &q);
+        status = Crypto_ASN1::Decode(buf, len, "(ill?ll*)", &version, &n, &e, NULL, &p, &q);
     } else {
         qcc::String oid;
-        status = Crypto_ASN1::Decode("(i(on)x)", buf, len, &version, &oid, &pk);
+        status = Crypto_ASN1::Decode(buf, len, "(i(on)x)", &version, &oid, &pk);
         if (status == ER_OK) {
             if (oid != szOID_RSA_RSA) {
                 QCC_LogError(status, ("Key was not an RSA private key"));
                 goto ExitDecryptPriv;
             }
-            status = Crypto_ASN1::Decode("(ill?ll*)", pk, &version, &n, &e, NULL, &p, &q);
+            status = Crypto_ASN1::Decode(pk, "(ill?ll*)", &version, &n, &e, NULL, &p, &q);
         }
     }
     // Up to this point all failures are considered to be authentication failures
@@ -555,7 +555,7 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, const qcc::String& pas
         // Find out what we are decoding
         qcc::String oid;
         qcc::String args;
-        status = Crypto_ASN1::Decode("((o?)x)", der, &oid, &args, &pk);
+        status = Crypto_ASN1::Decode(der, "((o?)x)", &oid, &args, &pk);
         if (status != ER_OK) {
             return status;
         }
@@ -564,7 +564,7 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, const qcc::String& pas
             qcc::String prfOid;
             qcc::String algOid;
             qcc::String salt;
-            status = Crypto_ASN1::Decode("((o(xi/o))(ox))", args, &oid, &salt, &iter, &prfOid, &algOid, &ivec);
+            status = Crypto_ASN1::Decode(args, "((o(xi/o))(ox))", &oid, &salt, &iter, &prfOid, &algOid, &ivec);
             if (status == ER_OK) {
                 if (prfOid.empty()) {
                     prfOid = OID_HMAC_SHA1; // The default for PBKDFK2
@@ -572,7 +572,7 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, const qcc::String& pas
                 kdKey = pbkd.DerivePBKDF2(prfOid, algOid, passphrase, salt, iter);
             }
         } else if (oid == OID_PBE_MD5_DES_CBC) {
-            status = Crypto_ASN1::Decode("(xi)", args, &ivec, &iter);
+            status = Crypto_ASN1::Decode(args, "(xi)", &ivec, &iter);
             if (status == ER_OK) {
                 kdKey = pbkd.DerivePBKDF1("DES-CBC", passphrase, ivec, iter);
             }
@@ -655,7 +655,7 @@ QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, const qcc::String& p
 
         // Encode the private key components in PKCS#8 order
         qcc::String pk;
-        status = Crypto_ASN1::Encode("(illllllll)", pk, 0, &n, &e, &d, &p, &q, &e1, &e1, &c);
+        status = Crypto_ASN1::Encode(pk, "(illllllll)", 0, &n, &e, &d, &p, &q, &e1, &e1, &c);
 
         // Clear out secret stuff we no longer need
         p.secure_clear();
@@ -668,7 +668,7 @@ QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, const qcc::String& p
         // Encode public key algorithm information
         qcc::String oid = szOID_RSA_RSA;
         qcc::String pkInfo;
-        status = Crypto_ASN1::Encode("(i(on)x)", pkInfo, 0, &oid, &pk);
+        status = Crypto_ASN1::Encode(pkInfo, "(i(on)x)", 0, &oid, &pk);
         pk.secure_clear();
 
         // Encrypt the private key information
@@ -684,7 +684,7 @@ QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, const qcc::String& p
             pkInfo.assign((char*)buf, outLen);
             // ANS.1 encode the entire PKCS8 structure
             qcc::String der;
-            status = Crypto_ASN1::Encode("((o((o(xi))(ox)))x)", der, &OID_PBES2, &OID_PKDF2, &salt, iter, &OID_AES_CBC, &ivec, &pkInfo);
+            status = Crypto_ASN1::Encode(der, "((o((o(xi))(ox)))x)", &OID_PBES2, &OID_PKDF2, &salt, iter, &OID_AES_CBC, &ivec, &pkInfo);
             // Convert to base 64 and wrap with PEM header and trailer
             qcc::String pem;
             status = Crypto_ASN1::EncodeBase64(der, pem);

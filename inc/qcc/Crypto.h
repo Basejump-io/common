@@ -862,9 +862,9 @@ class Crypto_ASN1 {
      *                    be appropriate for this argument type. Note that is it not possible to
      *                    distinguish between a missing element and a zero length element.
      *
-     * @param syntax   The structure to use for the decoding operation.
      * @param asn      The input data for the encoding
      * @param asnLen   The length of the input data
+     * @param syntax   The structure to use for the decoding operation.
      * @param ...      The output arguments as required by the syntax parameter to receive the
      *                 decode values.
      *
@@ -872,13 +872,16 @@ class Crypto_ASN1 {
      *         An error status otherwise.
      *
      */
-    static QStatus Decode(const char* syntax, const uint8_t* asn, size_t asnLen, ...)
+    static QStatus Decode(const uint8_t* asn, size_t asnLen, const char* syntax, ...)
     {
         if (!syntax) {
-            return ER_FAIL;
+            return ER_BAD_ARG_1;
+        }
+        if (!asn) {
+            return ER_BAD_ARG_2;
         }
         va_list argp;
-        va_start(argp, asnLen);
+        va_start(argp, syntax);
         QStatus status = DecodeV(syntax, asn, asnLen, &argp);
         va_end(argp);
         return status;
@@ -887,8 +890,8 @@ class Crypto_ASN1 {
     /**
      * Variation on Decode method that takes a qcc::String argument.
      *
-     * @param syntax   The structure to use for the decoding operation.
      * @param asn      The input string for the encoding
+     * @param syntax   The structure to use for the decoding operation.
      * @param ...      The output arguments as required by the syntax parameter to receive the
      *                 decode values.
      *
@@ -896,13 +899,13 @@ class Crypto_ASN1 {
      *         An error status otherwise.
      *
      */
-    static QStatus Decode(const char* syntax, const qcc::String& asn, ...)
+    static QStatus Decode(const qcc::String& asn, const char* syntax, ...)
     {
         if (!syntax) {
-            return ER_FAIL;
+            return ER_BAD_ARG_1;
         }
         va_list argp;
-        va_start(argp, asn);
+        va_start(argp, syntax);
         QStatus status = DecodeV(syntax, (const uint8_t*)asn.data(), asn.size(), &argp);
         va_end(argp);
         return status;
@@ -943,20 +946,20 @@ class Crypto_ASN1 {
      * '}'                Indicates the end of a set-of, there are no arguments this item.
      *
      *
-     * @param syntax   The structure to use for the encoding operation.
      * @param asn      The output string for the encoding
+     * @param syntax   The structure to use for the encoding operation.
      * @param ...      The input arguments as required by the syntax parameter
      *
      * @return ER_OK if the encode succeeded.
      *         An error status otherwise.
      */
-    static QStatus Encode(const char* syntax, qcc::String& asn, ...)
+    static QStatus Encode(qcc::String& asn, const char* syntax, ...)
     {
         if (!syntax) {
             return ER_FAIL;
         }
         va_list argp;
-        va_start(argp, asn);
+        va_start(argp, syntax);
         QStatus status = EncodeV(syntax, asn, &argp);
         va_end(argp);
         return status;
