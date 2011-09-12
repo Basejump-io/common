@@ -216,6 +216,7 @@ size_t String::secure_clear()
         context->offset = 0;
         refs = context->refCount;
         DecRef(context);
+        context = NULL;
     }
     return refs - 1;
 }
