@@ -20,7 +20,7 @@ Import('env')
 env['CRYPTO'] = 'openssl'
 
 # Platform specifics for common
-if env['OS'] == 'windows':
+if env['OS_GROUP'] == 'windows':
     vars = Variables()
     vars.Add(PathVariable('OPENSSL_BASE', 'Base OpenSSL directory (windows only)', os.environ.get('OPENSSL_BASE')))
     vars.Update(env)
@@ -28,9 +28,14 @@ if env['OS'] == 'windows':
     env.AppendUnique(LIBS = ['setupapi', 'user32', 'winmm', 'ws2_32', 'iphlpapi', 'secur32', 'Advapi32'])
     # Key of presence of OPENSSL_BASE to decide if to use openssl or window CNG crypto
     if '' == env.subst('$OPENSSL_BASE'):
-        env.AppendUnique(LIBS = ['bcrypt', 'ncrypt', 'crypt32'])
-        env['CRYPTO'] = 'cng'
-        print 'Using CNG crypto libraries'
+        if env['OS'] == 'winxp':
+            # Must specify OPENSSL_BASE for winXP
+            print 'Must specify OPENSSL_BASE when building for WindowsXP'
+            Exit()
+        else:
+            env.AppendUnique(LIBS = ['bcrypt', 'ncrypt', 'crypt32'])
+            env['CRYPTO'] = 'cng'
+            print 'Using CNG crypto libraries'
     else:
         env.Append(CPPPATH = ['$OPENSSL_BASE/include'])
         env.Append(LIBPATH = ['$OPENSSL_BASE/lib'])
@@ -71,7 +76,7 @@ hdrs = { 'qcc': env.File(['inc/qcc/Log.h',
                                       'inc/qcc/${OS_GROUP}/platform_types.h',
                                       'inc/qcc/${OS_GROUP}/unicode.h']) }
 
-if env['OS'] == 'windows':
+if env['OS_GROUP'] == 'windows':
     hdrs['qcc/${OS_GROUP}'] += env.File(['inc/qcc/${OS_GROUP}/mapping.h'])
 
 env.Append(CPPPATH = [env.Dir('inc')])
