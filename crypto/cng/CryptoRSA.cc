@@ -597,7 +597,7 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, PassphraseListener* li
         if (listener->GetPassphrase(passphrase, false)) {
             status = ImportPKCS8(pkcs8, passphrase);
         } else {
-            status = ER_AUTH_FAIL;
+            status = ER_AUTH_USER_REJECT;
         }
         passphrase.secure_clear();
     } else {
@@ -708,7 +708,7 @@ QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, PassphraseListener* 
         if (listener->GetPassphrase(passphrase, true)) {
             status = ExportPrivateKey(keyBlob, passphrase);
         } else {
-            status = ER_AUTH_FAIL;
+            status = ER_AUTH_USER_REJECT;
         }
         passphrase.secure_clear();
     } else {
@@ -734,7 +734,7 @@ QStatus Crypto_RSA::ImportPrivateKey(const qcc::KeyBlob& keyBlob, PassphraseList
         if (listener->GetPassphrase(passphrase, false)) {
             status = ImportPrivateKey(keyBlob, passphrase);
         } else {
-            status = ER_AUTH_FAIL;
+            status = ER_AUTH_USER_REJECT;
         }
         passphrase.secure_clear();
     } else {
