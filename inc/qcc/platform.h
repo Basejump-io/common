@@ -46,10 +46,15 @@
 
 #define QCC_DEPRECATED(func) __declspec(deprecated) func /**< mark a function as deprecated in msvc. */
 
-#else // Some unknown compiler
+#else /* Some unknown compiler */
 
 #define QCC_DEPRECATED(func); /**< mark a function as deprecated. */
 
-#endif // Compiler type
+#endif /* Compiler type */
+
+/* Boolean type for C */
+typedef int32_t QC_BOOL;
+#define QC_TRUE 1
+#define QC_FALSE 0
 
 #endif // _QCC_PLATFORM_H
