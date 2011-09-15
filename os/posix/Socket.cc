@@ -467,13 +467,13 @@ QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent)
                 ret = select(sockfd + 1, NULL, &set, NULL, NULL);
                 if (ret == -1) {
                     status = ER_OS_ERROR;
-                    QCC_LogError(status, ("Send (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
+                    QCC_DbgHLPrintf(("Send (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
                     break;
                 }
                 continue;
             }
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Send (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
+            QCC_DbgHLPrintf(("Send (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
         } else {
             sent = static_cast<size_t>(ret);
         }
@@ -596,7 +596,7 @@ QStatus Recv(SocketFd sockfd, void* buf, size_t len, size_t& received)
 
     if (ret == -1) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Recv (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
+        QCC_DbgHLPrintf(("Recv (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
     } else {
         received = static_cast<size_t>(ret);
     }
@@ -624,8 +624,7 @@ QStatus RecvFrom(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
                    reinterpret_cast<struct sockaddr*>(&addr), &addrLen);
     if (ret == -1) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("RecvFrom (sockfd = %u): %d - %s",
-                              sockfd, errno, strerror(errno)));
+        QCC_DbgHLPrintf(("RecvFrom (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
     } else {
         received = static_cast<size_t>(ret);
         GetSockAddr(&addr, addrLen, remoteAddr, remotePort);
@@ -668,7 +667,7 @@ static QStatus RecvSGCommon(SocketFd sockfd, struct sockaddr_storage* addr, sock
     ret = recvmsg(static_cast<int>(sockfd), &msg, 0);
     if (ret == -1) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("RecvSGCommon (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
+        QCC_DbgHLPrintf(("RecvSGCommon (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
     } else {
         received = static_cast<size_t>(ret);
         sg.SetDataSize(static_cast<size_t>(ret));
@@ -750,7 +749,7 @@ QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, So
             status = ER_WOULDBLOCK;
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Receiving file descriptors: %d - %s", errno, strerror(errno)));
+            QCC_DbgHLPrintf(("RecvWithFds (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
         }
     } else {
         struct cmsghdr* cmsg;
@@ -812,7 +811,7 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
     ssize_t ret = sendmsg(sockfd, &msg, 0);
     if (ret == -1) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Sending file descriptor: %d - %s", errno, strerror(errno)));
+        QCC_DbgHLPrintf(("SendWithFds (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
     } else {
         sent = static_cast<size_t>(ret);
     }
