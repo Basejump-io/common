@@ -211,7 +211,7 @@ QStatus Crypto_RSA::ImportPEM(const qcc::String& pem)
         return status;
     }
     // Extract the public key info from the certificate
-    CERT_CONTEXT* ctx = (CERT_CONTEXT*)CertCreateContext(CERT_STORE_CERTIFICATE_CONTEXT, X509_ASN_ENCODING, (PBYTE)der.data(), der.size(), CERT_CREATE_CONTEXT_NOCOPY_FLAG, NULL);
+    CERT_CONTEXT* ctx = (CERT_CONTEXT*)CertCreateContext(CERT_STORE_CERTIFICATE_CONTEXT, X509_ASN_ENCODING, (PBYTE)der.data(), der.size(), 0, NULL);
     if (ctx) {
         cert = (void*)ctx;
         CERT_INFO* info = ctx->pCertInfo;
