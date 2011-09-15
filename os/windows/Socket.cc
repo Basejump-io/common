@@ -133,11 +133,11 @@ static QStatus GetSockAddr(const SOCKADDR_STORAGE* addrBuf, socklen_t addrSize,
     char hostname[NI_MAXHOST];
     char servInfo[NI_MAXSERV];
 
-    DWORD dwRetval = getnameinfo((struct sockaddr*) addrBuf,
-                                 sizeof (struct sockaddr),
-                                 hostname,
-                                 NI_MAXHOST, servInfo,
-                                 NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
+    DWORD dwRetval = getnameinfo((struct sockaddr*)addrBuf,
+                                 sizeof (SOCKADDR_STORAGE),
+                                 hostname, NI_MAXHOST,
+                                 servInfo, NI_MAXSERV,
+                                 NI_NUMERICHOST | NI_NUMERICSERV);
 
     if (dwRetval != 0) {
         status = ER_OS_ERROR;
