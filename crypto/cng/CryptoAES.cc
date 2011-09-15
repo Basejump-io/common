@@ -56,10 +56,11 @@ class Crypto_AES::KeyState {
     }
 
     ~KeyState() {
-        delete [] keyObj;
+        // Must destroy the handle BEFORE freeing the key object
         if (handle) {
             BCryptDestroyKey(handle);
         }
+        delete [] keyObj;
     }
 
     BCRYPT_KEY_HANDLE handle;
