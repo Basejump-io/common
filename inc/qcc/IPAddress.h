@@ -49,14 +49,9 @@ namespace qcc {
  */
 class IPAddress {
   public:
+
     static const size_t IPv4_SIZE = 4;  ///< Size of IPv4 address.
     static const size_t IPv6_SIZE = 16; ///< Size of IPv6 address.
-
-  private:
-    uint8_t addr[IPv6_SIZE];    ///< Storage for IP address.
-    uint16_t addrSize;          ///< IP address size (indirectly indicates IPv4 vs. IPv6).
-
-  public:
     /**
      * Default constructor initializes an invalid IP address.  Generally, this
      * should not be used but is still made available if needed.
@@ -75,10 +70,11 @@ class IPAddress {
      * Using this method instead of using the constructor allows
      * errors to be returned.
      *
-     * @param addrString  IP address (V4 or V6) or hostname.
+     * @param addrString     IP address (V4 or V6) or hostname if allowHostnames == true.
+     * @param allowHostnames If true allows addresses to be specified as host names.
      * @return ER_OK if successful.
      */
-    QStatus SetAddress(const qcc::String& addrString);
+    QStatus SetAddress(const qcc::String& addrString, bool allowHostnames = true);
 
     /**
      * Consruct IPAddress based on a buffer containing an IPv4 or IPv6 address.
@@ -86,37 +82,14 @@ class IPAddress {
      * @param addrBuf       Pointer to the buffer with the IP address.
      * @param addrBufSize   Size of the address buffer.
      */
-    IPAddress(const uint8_t* addrBuf, size_t addrBufSize)
-    {
-        assert(addrBuf != NULL);
-        assert(addrBufSize == IPv4_SIZE || addrBufSize == IPv6_SIZE);
-        addrSize = (uint16_t)addrBufSize;
-        if (addrSize == IPv4_SIZE) {
-            // Encode the IPv4 address in the IPv6 address space for easy
-            // conversion.
-            memset(addr, 0, sizeof(addr) - 6);
-            memset(&addr[IPv6_SIZE - IPv4_SIZE - sizeof(uint16_t)], 0xff, sizeof(uint16_t));
-        }
-        memcpy(&addr[IPv6_SIZE - addrSize], addrBuf, addrSize);
-    }
+    IPAddress(const uint8_t* addrBuf, size_t addrBufSize);
 
     /**
      * Construct and IPv4 address from a 32-bit integer.
      *
      * @param ipv4Addr  32-bit integer representation of the IP address.
      */
-    IPAddress(uint32_t ipv4Addr)
-    {
-        addrSize = IPv4_SIZE;
-        memset(addr, 0, sizeof(addr) - 6);
-        addr[IPv6_SIZE - IPv4_SIZE - sizeof(uint16_t) + 0] = 0xff;
-        addr[IPv6_SIZE - IPv4_SIZE - sizeof(uint16_t) + 1] = 0xff;
-        addr[IPv6_SIZE - IPv4_SIZE + 0] = (uint8_t)((ipv4Addr >> 24) & 0xff);
-        addr[IPv6_SIZE - IPv4_SIZE + 1] = (uint8_t)((ipv4Addr >> 16) & 0xff);
-        addr[IPv6_SIZE - IPv4_SIZE + 2] = (uint8_t)((ipv4Addr >> 8) & 0xff);
-        addr[IPv6_SIZE - IPv4_SIZE + 3] = (uint8_t)(ipv4Addr & 0xff);
-    }
-
+    IPAddress(uint32_t ipv4Addr);
 
     /**
      * Compare equality between 2 IPAddress's.
@@ -131,7 +104,6 @@ class IPAddress {
                 (memcmp(GetIPReference(), other.GetIPReference(), Size()) == 0));
     }
 
-
     /**
      * Compare inequality between 2 IPAddress's.
      *
@@ -140,7 +112,6 @@ class IPAddress {
      * @return  'true' if they are not the same, 'false' otherwise.
      */
     bool operator!=(const IPAddress& other) const { return !(*this == other); }
-
 
     /**
      * Get the size of the IP address.
@@ -200,7 +171,6 @@ class IPAddress {
      */
     static qcc::String IPv6ToString(const uint8_t addrBuf[]);
 
-
     /**
      * Renders the IPv4 address in binary format into a buffer.
      *
@@ -209,20 +179,7 @@ class IPAddress {
      *
      * @return  Status indicating success or failure.
      */
-    QStatus RenderIPv4Binary(uint8_t addrBuf[], size_t addrBufSize) const
-    {
-        QStatus status = ER_OK;
-        assert(addrSize == IPv4_SIZE);
-        if (addrBufSize < IPv4_SIZE) {
-            status = ER_BUFFER_TOO_SMALL;
-            QCC_LogError(status, ("Copying IPv4 address to buffer"));
-            goto exit;
-        }
-        memcpy(addrBuf, &addr[IPv6_SIZE - IPv4_SIZE], IPv4_SIZE);
-
-    exit:
-        return status;
-    }
+    QStatus RenderIPv4Binary(uint8_t addrBuf[], size_t addrBufSize) const;
 
     /**
      * Renders the IPv6 address in binary format into a buffer.
@@ -232,20 +189,7 @@ class IPAddress {
      *
      * @return  Status indicating success or failure.
      */
-    QStatus RenderIPv6Binary(uint8_t addrBuf[], size_t addrBufSize) const
-    {
-        QStatus status = ER_OK;
-        assert(addrSize == IPv6_SIZE);
-        if (addrBufSize < IPv6_SIZE) {
-            status = ER_BUFFER_TOO_SMALL;
-            QCC_LogError(status, ("Copying IPv6 address to buffer"));
-            goto exit;
-        }
-        memcpy(addrBuf, addr, IPv6_SIZE);
-
-    exit:
-        return status;
-    }
+    QStatus RenderIPv6Binary(uint8_t addrBuf[], size_t addrBufSize) const;
 
     /**
      * Renders the IP address (IPv4 or IPv6) in binary format into a buffer.
@@ -255,75 +199,42 @@ class IPAddress {
      *
      * @return  Status indicating success or failure.
      */
-    QStatus RenderIPBinary(uint8_t addrBuf[], size_t addrBufSize) const
-    {
-        QStatus status = ER_OK;
-        if (addrBufSize < addrSize) {
-            status = ER_BUFFER_TOO_SMALL;
-            QCC_LogError(status, ("Copying IP address to buffer"));
-            goto exit;
-        }
-        memcpy(addrBuf, &addr[IPv6_SIZE - addrSize], addrSize);
-
-    exit:
-        return status;
-    }
-
+    QStatus RenderIPBinary(uint8_t addrBuf[], size_t addrBufSize) const;
 
     /**
      * Get a direct reference to the IPv6 address.
      *
      * @return  A constant pointer to the address buffer.
      */
-    const uint8_t* GetIPv6Reference(void) const
-    {
-        return addr;
-    }
+    const uint8_t* GetIPv6Reference(void) const { return addr; }
 
     /**
      * Get a direct reference to the IPv4 address.
      *
      * @return  A constant pointer to the address buffer.
      */
-    const uint8_t* GetIPv4Reference(void) const
-    {
-        return &addr[IPv6_SIZE - IPv4_SIZE];
-    }
+    const uint8_t* GetIPv4Reference(void) const { return &addr[IPv6_SIZE - IPv4_SIZE]; }
 
     /**
      * Get a direct reference to the IP address.
      *
      * @return  A constant pointer to the address buffer.
      */
-    const uint8_t* GetIPReference(void) const
-    {
-        return &addr[IPv6_SIZE - addrSize];
-    }
+    const uint8_t* GetIPReference(void) const { return &addr[IPv6_SIZE - addrSize]; }
 
     /**
      * Get the IPv4 address as a 32-bit unsigned integer in CPU order.
      *
      * @return  A 32-bit unsigned integer representation of the IPv4 address.
      */
-    uint32_t GetIPv4AddressCPUOrder(void) const
-    {
-        return ((static_cast<uint32_t>(addr[IPv6_SIZE - IPv4_SIZE + 0]) << 24) |
-                (static_cast<uint32_t>(addr[IPv6_SIZE - IPv4_SIZE + 1]) << 16) |
-                (static_cast<uint32_t>(addr[IPv6_SIZE - IPv4_SIZE + 2]) << 8) |
-                static_cast<uint32_t>(addr[IPv6_SIZE - IPv4_SIZE + 3]));
-    }
+    uint32_t GetIPv4AddressCPUOrder(void) const;
 
     /**
      * Get the IPv4 address as a 32-bit unsigned integer in network order.
      *
      * @return  A 32-bit unsigned integer representation of the IPv4 address.
      */
-    uint32_t GetIPv4AddressNetOrder(void) const
-    {
-        uint32_t addr4;
-        memcpy(&addr4, &addr[IPv6_SIZE - IPv4_SIZE], IPv4_SIZE);
-        return addr4;
-    }
+    uint32_t GetIPv4AddressNetOrder(void) const;
 
     /**
      * Convert the IP address to an IPv4 address.
@@ -344,10 +255,12 @@ class IPAddress {
      *
      * @return  The address family for this address.
      */
-    AddressFamily GetAddressFamily(void) const
-    {
-        return (IsIPv4() ? QCC_AF_INET : QCC_AF_INET6);
-    }
+    AddressFamily GetAddressFamily(void) const { return (IsIPv4() ? QCC_AF_INET : QCC_AF_INET6); }
+
+  private:
+    uint8_t addr[IPv6_SIZE];    ///< Storage for IP address.
+    uint16_t addrSize;          ///< IP address size (indirectly indicates IPv4 vs. IPv6).
+
 };
 
 
@@ -355,7 +268,25 @@ class IPAddress {
  * IpEndpoint describes an address/port endpoint for an IP-based connection.
  *
  */
-struct IPEndpoint {
+class IPEndpoint {
+  public:
+
+    /**
+     * Construct and IPEndpoint from a string and port
+     *
+     * @param addrString  The address
+     * @param port        The port
+     */
+    IPEndpoint(const qcc::String& addrString, uint16_t port) : addr(addrString), port(port) { }
+
+    /**
+     * Construct and IPEndpoint from a address and port
+     *
+     * @param addrString  The address
+     * @param port        The port
+     */
+    IPEndpoint(qcc::IPAddress& addr, uint16_t port) : addr(addr), port(port) { }
+
     /** Address */
     qcc::IPAddress addr;
 
@@ -367,11 +298,7 @@ struct IPEndpoint {
      * @param other  Endpoint to compare with.
      * @return true iff other equals this IPAddress.
      */
-    bool operator==(const qcc::IPEndpoint& other) const
-    {
-        return ((addr == other.addr) &&
-                (port == other.port));
-    }
+    bool operator==(const qcc::IPEndpoint& other) const { return ((addr == other.addr) && (port == other.port)); }
 
 };
 
