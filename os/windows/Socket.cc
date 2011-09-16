@@ -786,7 +786,8 @@ QStatus RecvFromSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
 
 int InetPtoN(int af, const char* src, void* dst)
 {
-    int err;
+    int err = -1;
+    WSAIncRefCount();
     if (af == AF_INET6) {
         struct sockaddr_in6 sin6;
         int sin6Len = sizeof(sin6);
@@ -795,10 +796,8 @@ int InetPtoN(int af, const char* src, void* dst)
         err = WSAStringToAddressA((LPSTR)src, AF_INET6, NULL, (struct sockaddr*)&sin6, &sin6Len);
         if (!err) {
             memcpy(dst, &sin6.sin6_addr, sizeof(sin6.sin6_addr));
-            return 1;
         }
-    }
-    if (af == AF_INET) {
+    } else if (af == AF_INET) {
         struct sockaddr_in sin;
         int sinLen = sizeof(sin);
         memset(&sin, 0, sinLen);
@@ -806,10 +805,10 @@ int InetPtoN(int af, const char* src, void* dst)
         err = WSAStringToAddressA((LPSTR)src, AF_INET, NULL, (struct sockaddr*)&sin, &sinLen);
         if (!err) {
             memcpy(dst, &sin.sin_addr, sizeof(sin.sin_addr));
-            return 1;
         }
     }
-    return -1;
+    WSADecRefCount();
+    return err ? -1 : 1;
 }
 
 const char* InetNtoP(int af, const void* src, char* dst, socklen_t size)
