@@ -46,4 +46,9 @@ typedef UINT_PTR SocketFd;                ///< Socket file descriptor type. */
 #undef min
 #undef max
 
+#ifndef PRIi64 /* From C9x inttypes.h */
+#define PRIi64 "I64i"
+#define PRIu64 "I64u"
+#endif
+
 #endif
