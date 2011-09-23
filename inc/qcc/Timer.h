@@ -142,7 +142,7 @@ class Alarm {
 };
 
 
-class Timer : public Thread {
+class Timer : public Thread, public ThreadListener {
 
   public:
 
@@ -152,7 +152,27 @@ class Timer : public Thread {
      * @param name          Name for the thread.
      * @param expireOnExit  If true call all pending alarms when this thread exits.
      */
-    Timer(const char* name = "timer", bool expireOnExit = false) : Thread(name), currentAlarm(NULL), expireOnExit(expireOnExit) { }
+    Timer(const char* name = "timer", bool expireOnExit = false) : Thread(name), currentAlarm(NULL), expireOnExit(expireOnExit), listener(NULL) { }
+
+    /**
+     * Call Run() in its own thread with 'arg' as its argument.
+     * Passed in arguments that are pointers to memory must either
+     * have their ownership passed to Run, or must remain allocated
+     * for the duration of the thread.  If the memory pointed to by
+     * 'arg' is to be accessed by more than one threading resource,
+     * then it must be protected through the use of Mutex's.<p>
+     *
+     * Subclasses that override this method should call the base class
+     * implementation of Start.
+     *
+     * @param arg        The one and only parameter that 'func' will be called with
+     *                   (defaults to NULL).
+     *
+     * @param listener   Listener to be informed of Thread events (defaults to NULL).
+     *
+     * @return  Indication of whether creation of the thread succeeded or not.
+     */
+    virtual QStatus Start(void* arg = NULL, ThreadListener* listener = NULL);
 
     /**
      * Associate an alarm with a timer.
@@ -188,6 +208,13 @@ class Timer : public Thread {
      */
     bool HasAlarm(const Alarm& alarm);
 
+    /**
+     * Called when the timer thread is about to exit.
+     *
+     * @param thread   Thread that has exited.
+     */
+    void ThreadExit(Thread* thread);
+
   protected:
 
     /**
@@ -203,6 +230,7 @@ class Timer : public Thread {
     std::set<Alarm, std::less<Alarm> >  alarms;
     Alarm* currentAlarm;
     bool expireOnExit;
+    ThreadListener* listener;
 };
 
 }

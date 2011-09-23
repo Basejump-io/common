@@ -32,6 +32,12 @@
 using namespace std;
 using namespace qcc;
 
+QStatus Timer::Start(void* arg, ThreadListener* listener)
+{
+    this->listener = listener;
+    return Thread::Start(arg, this);
+}
+
 QStatus Timer::AddAlarm(const Alarm& alarm)
 {
     lock.Lock();
@@ -148,6 +154,14 @@ ThreadReturn STDCALL Timer::Run(void* arg)
         }
         lock.Lock();
     }
+    lock.Unlock();
+
+    return (ThreadReturn) 0;
+}
+
+void Timer::ThreadExit(Thread* thread)
+{
+    lock.Lock();
     if (expireOnExit) {
         /* Call all alarms */
         while (!alarms.empty()) {
@@ -164,8 +178,7 @@ ThreadReturn STDCALL Timer::Run(void* arg)
     }
     lock.Unlock();
 
-    return (ThreadReturn) 0;
+    if (listener) {
+        listener->ThreadExit(thread);
+    }
 }
-
-
-
