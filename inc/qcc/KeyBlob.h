@@ -207,7 +207,7 @@ class KeyBlob {
      *
      * @param expiresInSeconds The number of seconds that the key will expire in. The max uint32
      *                         value indicates there is no expiration time.
-     * @param minExpiration    Optional minimum expiration time. 
+     * @param minExpiration    Optional minimum expiration time.
      */
     void SetExpiration(uint32_t expiresInSeconds, uint32_t minExpiration = MIN_EXPIRATION_DEFAULT) {
         if (expiresInSeconds == 0xFFFFFFFF) {
