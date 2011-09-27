@@ -22,6 +22,8 @@
  *    limitations under the License.
  ******************************************************************************/
 
+#include <algorithm>
+
 #include <qcc/platform.h>
 
 #include <assert.h>
@@ -188,11 +190,44 @@ class KeyBlob {
     KeyBlob& operator=(const KeyBlob& other);
 
     /**
-     * Set an expiration date/time on a key blob.
+     * Set an absolute expiration date/time on a key blob.
      *
      * @param expires The expiration date/time.
      */
     void SetExpiration(const Timespec& expires) { expiration = expires; }
+
+    /**
+     * Default minimun expiration time for a key. If keys are expired too quickly they can end up
+     * expiring before they get used for the first time so the default should allow for this.
+     */
+    static const uint32_t MIN_EXPIRATION_DEFAULT = 30;
+
+    /**
+     * Set a relative expiration date/time on a key blob.
+     *
+     * @param expiresInSeconds The number of seconds that the key will expire in. The max uint32
+     *                         value indicates there is no expiration time.
+     * @param minExpiration    Optional minimum expiration time. 
+     */
+    void SetExpiration(uint32_t expiresInSeconds, uint32_t minExpiration = MIN_EXPIRATION_DEFAULT) {
+        if (expiresInSeconds == 0xFFFFFFFF) {
+            expiration.seconds = 0;
+        } else {
+            expiration = Timespec((uint64_t) std::max(minExpiration, expiresInSeconds) * 1000, TIME_RELATIVE);
+        }
+    }
+
+    /**
+     * Get an expiration date/time of a key blob if one was set.
+     *
+     * @param expires Retruns the expiration date/time if one was set.
+     *
+     * @return  true if an expiration time is set for this key blob.
+     */
+    bool GetExpiration(Timespec& expires) const {
+        expires = expiration;
+        return expiration.seconds != 0;
+    }
 
     /**
      * Set a tag on the keyblob. A tag in an arbitrary string of 63 characters or less. The
