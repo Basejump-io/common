@@ -813,6 +813,8 @@ int InetPtoN(int af, const char* src, void* dst)
 
 const char* InetNtoP(int af, const void* src, char* dst, socklen_t size)
 {
+    int err = -1;
+    WSAIncRefCount();
     DWORD sz = (DWORD)size;
     if (af == AF_INET6) {
         struct sockaddr_in6 sin6;
@@ -820,20 +822,16 @@ const char* InetNtoP(int af, const void* src, char* dst, socklen_t size)
         sin6.sin6_family = AF_INET6;
         sin6.sin6_flowinfo = 0;
         memcpy(&sin6.sin6_addr, src, sizeof(sin6.sin6_addr));
-        if (WSAAddressToStringA((struct sockaddr*)&sin6, sizeof(sin6), NULL, dst, &sz) == 0) {
-            return dst;
-        }
-    }
-    if (af == AF_INET) {
+        err = WSAAddressToStringA((struct sockaddr*)&sin6, sizeof(sin6), NULL, dst, &sz);
+    } else if (af == AF_INET) {
         struct sockaddr_in sin;
         memset(&sin, 0, sizeof(sin));
         sin.sin_family = AF_INET;
         memcpy(&sin.sin_addr, src, sizeof(sin.sin_addr));
-        if (WSAAddressToStringA((struct sockaddr*)&sin, sizeof(sin), NULL, dst, &sz) == 0) {
-            return dst;
-        }
+        err = WSAAddressToStringA((struct sockaddr*)&sin, sizeof(sin), NULL, dst, &sz);
     }
-    return NULL;
+    WSADecRefCount();
+    return err ? NULL : dst;
 }
 
 QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, SocketFd* fdList, size_t maxFds, size_t& recvdFds)
