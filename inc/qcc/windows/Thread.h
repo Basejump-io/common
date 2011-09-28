@@ -42,6 +42,8 @@
  */
 #define sleep(x) Sleep(x)
 
+namespace qcc {
+
 typedef HANDLE ThreadHandle;            ///< Window process handle typedef.
 
 /**
@@ -49,5 +51,6 @@ typedef HANDLE ThreadHandle;            ///< Window process handle typedef.
  */
 typedef unsigned int ThreadInternalReturn;
 
+}
 
 #endif
