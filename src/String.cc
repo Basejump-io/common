@@ -25,7 +25,7 @@
 #include <string.h>
 #include <new>
 
-#if defined(WIN32) || (defined(QCC_OS_DARWIN) && MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_7)
+#if defined(WIN32) || (defined(QCC_OS_DARWIN) && MAC_OS_X_VERSION_MAX_ALLOWED < 1070)
 /*
  * memmem not provided on Windows
  */

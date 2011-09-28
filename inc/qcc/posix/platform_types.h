@@ -22,6 +22,9 @@
  *    limitations under the License.
  ******************************************************************************/
 
+#if defined(QCC_OS_DARWIN)
+#include <AvailabilityMacros.h>
+#endif
 #include <stdint.h>
 #include <stddef.h>
 #include <unistd.h>
