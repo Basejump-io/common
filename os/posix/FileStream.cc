@@ -185,7 +185,7 @@ FileSink::FileSink(qcc::String fileName, Mode mode)
     }
 
     /* Create and open the file */
-    fd = open(fileName.c_str(), O_CREAT | O_WRONLY, fileMode);
+    fd = open(fileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC, fileMode);
     if (0 > fd) {
         QCC_LogError(ER_OS_ERROR, ("open(%s) failed with '%s'", fileName.c_str(), strerror(errno)));
     }

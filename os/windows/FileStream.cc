@@ -235,7 +235,7 @@ FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALU
                          GENERIC_WRITE,
                          FILE_SHARE_READ,
                          NULL,
-                         OPEN_ALWAYS,
+                         CREATE_ALWAYS,
                          attributes,
                          INVALID_HANDLE_VALUE);
 
