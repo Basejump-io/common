@@ -200,9 +200,9 @@ FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALU
 
     /* Create the intermediate directories */
     size_t begin = skip;
-    
+
     /* Skip creating c:\ */
-    if (fileName[begin+1] == ':') {
+    if (fileName[begin + 1] == ':') {
         begin += 2;
     }
 
