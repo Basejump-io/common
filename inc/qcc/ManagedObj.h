@@ -327,6 +327,14 @@ class ManagedObj {
      */
     bool operator==(const ManagedObj<T>& other) const { return (object == other.object) || (*object == *other.object); }
 
+
+    /**
+     * Returns true if the two managed objects managed the same object
+     * @param other  The other managed object to compare.
+     * @return  true if the managed objects refer to the same underlying object.
+     */
+    bool iden(const ManagedObj<T>& other) const { return (object == other.object); }
+
     /**
      * Inequality for managed objects is whatever inequality means for @<T@>
      * @param other  The other managed object to compare.
