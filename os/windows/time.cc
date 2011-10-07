@@ -54,6 +54,30 @@ uint32_t qcc::GetTimestamp(void)
     return ret_val + base;
 }
 
+uint64_t qcc::GetTimestamp64(void)
+{
+    static uint32_t base = 0;
+    struct _timeb timebuffer;
+    uint64_t ret_val;
+
+    _ftime(&timebuffer);
+
+    ret_val = ((uint64_t)timebuffer.time) * 1000;
+    ret_val += timebuffer.millitm;
+
+#ifdef RANDOM_TIMESTAMPS
+    /*
+     * Randomize time base
+     */
+    while (!base) {
+        srand(ret_val);
+        base = rand() | (rand() << 16);
+    }
+#endif
+
+    return ret_val + base;
+}
+
 void qcc::GetTimeNow(Timespec* ts)
 {
     struct _timeb timebuffer;

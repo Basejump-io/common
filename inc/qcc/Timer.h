@@ -35,12 +35,15 @@ namespace qcc {
 /** @internal Forward declaration */
 class Timer;
 class Alarm;
+class TimerThread;
+
 
 /**
  * An alarm listener is capable of receiving alarm callbacks
  */
 class AlarmListener {
     friend class Timer;
+    friend class TimerThread;
 
   public:
     /**
@@ -61,6 +64,7 @@ class AlarmListener {
 
 class Alarm {
     friend class Timer;
+    friend class TimerThread;
 
   public:
 
@@ -142,7 +146,8 @@ class Alarm {
 };
 
 
-class Timer : public Thread, public ThreadListener {
+class Timer : public ThreadListener {
+    friend class TimerThread;
 
   public:
 
@@ -151,28 +156,43 @@ class Timer : public Thread, public ThreadListener {
      *
      * @param name          Name for the thread.
      * @param expireOnExit  If true call all pending alarms when this thread exits.
+     * @param concurency    Dispatch up to this number of alarms concurently (using multiple threads).
      */
-    Timer(const char* name = "timer", bool expireOnExit = false) : Thread(name), currentAlarm(NULL), expireOnExit(expireOnExit), listener(NULL) { }
+    Timer(const char* name = "timer", bool expireOnExit = false, uint32_t concurency = 1);
 
     /**
-     * Call Run() in its own thread with 'arg' as its argument.
-     * Passed in arguments that are pointers to memory must either
-     * have their ownership passed to Run, or must remain allocated
-     * for the duration of the thread.  If the memory pointed to by
-     * 'arg' is to be accessed by more than one threading resource,
-     * then it must be protected through the use of Mutex's.<p>
-     *
-     * Subclasses that override this method should call the base class
-     * implementation of Start.
-     *
-     * @param arg        The one and only parameter that 'func' will be called with
-     *                   (defaults to NULL).
-     *
-     * @param listener   Listener to be informed of Thread events (defaults to NULL).
-     *
-     * @return  Indication of whether creation of the thread succeeded or not.
+     * Destructor.
      */
-    virtual QStatus Start(void* arg = NULL, ThreadListener* listener = NULL);
+    ~Timer();
+
+    /**
+     * Start the timer.
+     *
+     * @return  ER_OK if successful.
+     */
+    QStatus Start();
+
+    /**
+     * Stop the timer (and its associated threads).
+     *
+     * @return ER_OK if successful.
+     */
+    QStatus Stop();
+
+    /**
+     * Join the timer.
+     * Block the caller until all the timer's threads are stopped.
+     *
+     * @return ER_OK if successful.
+     */
+    QStatus Join();
+
+    /**
+     * Return true if Timer is running.
+     *
+     * @return true iff timer is running.
+     */
+    bool IsRunning() const { return isRunning; }
 
     /**
      * Associate an alarm with a timer.
@@ -197,7 +217,14 @@ class Timer : public Thread, public ThreadListener {
      * @param listener  The specific listener.
      * @param alarm     Alarm that was removed
      */
-    bool RemoveAlarm(AlarmListener* listener, Alarm& alarm);
+    bool RemoveAlarm(const AlarmListener& listener, Alarm& alarm);
+
+    /**
+     * Remove all pending alarms with a given alarm listener.
+     *
+     * @param listener   AlarmListener whose alarms will be removed from this timer.
+     */
+    void RemoveAlarmsWithListener(const AlarmListener& listener);
 
     /*
      * Test if the specified alarm is associated with this timer.
@@ -209,28 +236,22 @@ class Timer : public Thread, public ThreadListener {
     bool HasAlarm(const Alarm& alarm);
 
     /**
-     * Called when the timer thread is about to exit.
-     *
-     * @param thread   Thread that has exited.
+     * TimerThread ThreadExit callback.
+     * For internal use only.
      */
-    void ThreadExit(Thread* thread);
-
-  protected:
-
-    /**
-     * Thread entry point.
-     *
-     * @param arg  Unused thread arg
-     */
-    ThreadReturn STDCALL Run(void* arg);
+    void ThreadExit(qcc::Thread* thread);
 
   private:
 
     Mutex lock;
-    std::set<Alarm, std::less<Alarm> >  alarms;
+    std::multiset<Alarm, std::less<Alarm> >  alarms;
     Alarm* currentAlarm;
     bool expireOnExit;
-    ThreadListener* listener;
+    uint32_t concurency;
+    std::vector<TimerThread*> timerThreads;
+    bool isRunning;
+    int32_t controllerIdx;
+    qcc::Timespec yieldControllerTime;
 };
 
 }

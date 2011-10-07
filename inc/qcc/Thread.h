@@ -320,7 +320,6 @@ class Thread {
         int32_t count;              ///< Number of threads that have joined this one
     };
     JoinContext* joinCtx;
-    bool threadOwnsJoinCtx;         ///< true if Thread object is responsible for deallocating joinCtx
 #endif
 
     /**

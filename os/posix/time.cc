@@ -67,6 +67,23 @@ uint32_t qcc::GetTimestamp(void)
     return ret_val;
 }
 
+uint64_t qcc::GetTimestamp64(void)
+{
+    struct timespec ts;
+    uint64_t ret_val;
+
+    platform_gettime(&ts);
+
+    if (0 == s_clockOffset) {
+        s_clockOffset = ts.tv_sec;
+    }
+
+    ret_val = ((uint32_t)(ts.tv_sec - s_clockOffset)) * 1000;
+    ret_val += (uint32_t)ts.tv_nsec / 1000000;
+
+    return ret_val;
+}
+
 void qcc::GetTimeNow(Timespec* ts)
 {
     struct timespec _ts;

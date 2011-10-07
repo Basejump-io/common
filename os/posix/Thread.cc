@@ -118,8 +118,7 @@ Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExterna
     isExternal(isExternal),
     noBlockResource(NULL),
     alertCode(0),
-    joinCtx(NULL),
-    threadOwnsJoinCtx(true)
+    joinCtx(NULL)
 {
     /* If this is an external thread, add it to the thread list here since Run will not be called */
     QCC_DbgHLPrintf(("Thread::Thread() created %s - %x -- started:%d running:%d joined:%d", funcName.c_str(), handle, started, running, joined));
@@ -138,19 +137,7 @@ Thread::~Thread(void)
 
     if (!isExternal) {
         Stop();
-        if (handle != pthread_self()) {
-            Join();
-        } else if (threadOwnsJoinCtx) {
-            JoinContext* jc = joinCtx;
-            joinCtx = NULL;
-            delete jc;
-            if (handle) {
-                pthread_detach(handle);
-            }
-            ++joined;
-        } else {
-            QCC_LogError(ER_FAIL, ("Thread destructor (%p) exiting with pending joined threads", this));
-        }
+        Join();
     }
     QCC_DbgHLPrintf(("Thread::~Thread() destroyed %s - %x -- started:%d running:%d joined:%d", funcName.c_str(), handle, started, running, joined));
 }
@@ -253,7 +240,6 @@ QStatus Thread::Start(void* arg, ThreadListener* listener)
             Join();
         }
         joinCtx = new JoinContext();
-        threadOwnsJoinCtx = true;
 
         /*  Reset the stop event so the thread doesn't start out alerted. */
         stopEvent.ResetEvent();
@@ -379,7 +365,29 @@ QStatus Thread::Join(void)
         usleep(1000 * 5);
     }
 
-    assert(handle != pthread_self());
+    /* Threads that join themselves must detach without blocking in JoinContext.lock */
+    if (handle == pthread_self()) {
+        JoinContext* jc = joinCtx;
+        if (jc) {
+            IncrementAndFetch(&jc->count);
+            if (!jc->hasBeenJoined) {
+                jc->hasBeenJoined = true;
+                int ret = pthread_detach(handle);
+                if (ret == 0) {
+                    ++joined;
+                } else {
+                    status = ER_OS_ERROR;
+                    QCC_LogError(status, ("Detaching thread: %d - %s", ret, strerror(ret)));
+                }
+            }
+            if (0 == DecrementAndFetch(&jc->count)) {
+                joinCtx = NULL;
+                delete jc;
+            }
+        }
+        handle = 0;
+        isStopping = false;
+    }
 
     /*
      * Unfortunately, POSIX pthread_join can only be called once for a given thread. This is quite
@@ -393,11 +401,10 @@ QStatus Thread::Join(void)
         JoinContext* jc = joinCtx;
         if (jc) {
             IncrementAndFetch(&jc->count);
-            threadOwnsJoinCtx = false;
             jc->lock.Lock();
             if (!jc->hasBeenJoined) {
-                ret = pthread_join(handle, NULL);
                 jc->hasBeenJoined = true;
+                ret = pthread_join(handle, NULL);
                 ++joined;
             }
             jc->lock.Unlock();

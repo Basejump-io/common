@@ -105,9 +105,16 @@ struct Timespec {
 
 /**
  * Return (non-absolute) timestamp in milliseconds.
+ * Deprecated due to rollover every 8 days.
  * @return  timestamp in milliseconds.
  */
 uint32_t GetTimestamp(void);
+
+/**
+ * Return (non-absolute) timestamp in milliseconds.
+ * @return  timestamp in milliseconds.
+ */
+uint64_t GetTimestamp64(void);
 
 inline Timespec operator+(const Timespec& tsa, const Timespec& tsb)
 {

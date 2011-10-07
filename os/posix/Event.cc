@@ -331,13 +331,13 @@ static void destroyPipe(int rdFd, int wrFd)
 #endif
 }
 
-Event::Event() : fd(-1), signalFd(-1), ioFd(-1), eventType(GEN_PURPOSE)
+Event::Event() : fd(-1), signalFd(-1), ioFd(-1), eventType(GEN_PURPOSE), numThreads(0)
 {
     createPipe(&fd, &signalFd);
 }
 
 Event::Event(int ioFd, EventType eventType, bool genPurpose)
-    : fd(-1), signalFd(-1), ioFd(ioFd), eventType(eventType), timestamp(0), period(0)
+    : fd(-1), signalFd(-1), ioFd(ioFd), eventType(eventType), timestamp(0), period(0), numThreads(0)
 {
     if (genPurpose) {
         createPipe(&fd, &signalFd);
@@ -345,7 +345,7 @@ Event::Event(int ioFd, EventType eventType, bool genPurpose)
 }
 
 Event::Event(Event& event, EventType eventType, bool genPurpose)
-    : fd(-1), signalFd(-1), ioFd(event.ioFd), eventType(eventType), timestamp(0), period(0)
+    : fd(-1), signalFd(-1), ioFd(event.ioFd), eventType(eventType), timestamp(0), period(0), numThreads(0)
 {
     if (genPurpose) {
         createPipe(&fd, &signalFd);
@@ -358,7 +358,8 @@ Event::Event(uint32_t timestamp, uint32_t period)
     ioFd(-1),
     eventType(TIMED),
     timestamp(WAIT_FOREVER == timestamp ? WAIT_FOREVER : GetTimestamp() + timestamp),
-    period(period)
+    period(period),
+    numThreads(0)
 {
 }
 

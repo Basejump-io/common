@@ -31,12 +31,13 @@
 #include <signal.h>
 #include <stdio.h>
 #include <vector>
+#include <deque>
 
 #include <qcc/Debug.h>
 #include <qcc/FileStream.h>
 #include <qcc/ManagedObj.h>
 #include <qcc/String.h>
-
+#include <qcc/Timer.h>
 #include <Status.h>
 
 #define QCC_MODULE "COMMON"
@@ -291,6 +292,126 @@ static QStatus testFileSink()
     return ER_OK;
 }
 
+static std::deque<std::pair<QStatus, Alarm> > triggeredAlarms;
+static Mutex triggeredAlarmsLock;
+
+static bool testNextAlarm(const Timespec& expectedTime, void* context)
+{
+    static const int jitter = 100;
+
+    bool ret = false;
+    triggeredAlarmsLock.Lock();
+    uint32_t startTime = GetTimestamp();
+    while (triggeredAlarms.empty() && (GetTimestamp() < (startTime + 20000))) {
+        triggeredAlarmsLock.Unlock();
+        qcc::Sleep(5);
+        triggeredAlarmsLock.Lock();
+    }
+    if (!triggeredAlarms.empty()) {
+        pair<QStatus, Alarm> p = triggeredAlarms.front();
+        triggeredAlarms.pop_front();
+        Timespec ts;
+        GetTimeNow(&ts);
+        uint64_t alarmTime = ts.GetAbsoluteMillis();
+        uint64_t expectedTimeMs = expectedTime.GetAbsoluteMillis();
+        ret = (p.first == ER_OK) && (context == p.second.GetContext()) && (alarmTime >= expectedTimeMs) && (alarmTime < (expectedTimeMs + jitter));
+        if (!ret) {
+            printf("Failed Triggered Alarm: status=%s, a.alarmTime=%lu, a.context=%p, expectedTimeMs=%lu\n",
+                   QCC_StatusText(p.first), alarmTime, p.second.GetContext(), expectedTimeMs);
+        }
+    }
+    triggeredAlarmsLock.Unlock();
+    return ret;
+}
+
+class MyAlarmListener : public AlarmListener {
+  public:
+    MyAlarmListener(uint32_t delay) : AlarmListener(), delay(delay)
+    {
+    }
+    void AlarmTriggered(const Alarm& alarm, QStatus reason)
+    {
+        triggeredAlarmsLock.Lock();
+        triggeredAlarms.push_back(pair<QStatus, Alarm>(reason, alarm));
+        triggeredAlarmsLock.Unlock();
+        qcc::Sleep(delay);
+    }
+  private:
+    const uint32_t delay;
+};
+
+static QStatus testTimer()
+{
+    Timer t1;
+    Timespec ts;
+    QStatus status = t1.Start();
+    TEST_ASSERT(status == ER_OK);
+
+    MyAlarmListener alarmListener1(1);
+    MyAlarmListener alarmListener10(10000);
+
+    /* Simple relative alarm */
+    void* context = (void*) 0x12345678;
+    Alarm a1(1000, &alarmListener1, 0, context);
+    status = t1.AddAlarm(a1);
+    TEST_ASSERT(status == ER_OK);
+    GetTimeNow(&ts);
+    TEST_ASSERT(testNextAlarm(ts + 1000, context));
+
+    /* Recurring simple alarm */
+    Alarm a2(1000, &alarmListener1, 1000);
+    status = t1.AddAlarm(a2);
+    TEST_ASSERT(status == ER_OK);
+    GetTimeNow(&ts);
+    TEST_ASSERT(testNextAlarm(ts + 1000, 0));
+    TEST_ASSERT(testNextAlarm(ts + 2000, 0));
+    TEST_ASSERT(testNextAlarm(ts + 3000, 0));
+    TEST_ASSERT(testNextAlarm(ts + 4000, 0));
+    t1.RemoveAlarm(a2);
+
+    /* Stop and Start */
+    status = t1.Stop();
+    TEST_ASSERT(status == ER_OK);
+    status = t1.Join();
+    TEST_ASSERT(status == ER_OK);
+    status = t1.Start();
+    TEST_ASSERT(status == ER_OK);
+
+    /* Test concurrency */
+    Timer t2("testTimer", true, 3);
+    status = t2.Start();
+    TEST_ASSERT(status == ER_OK);
+
+    Alarm a3(1, &alarmListener10);
+    status = t2.AddAlarm(a3);
+    TEST_ASSERT(status == ER_OK);
+    Alarm a4(1, &alarmListener10);
+    status = t2.AddAlarm(a4);
+    TEST_ASSERT(status == ER_OK);
+    Alarm a5(1, &alarmListener10);
+    status = t2.AddAlarm(a5);
+    TEST_ASSERT(status == ER_OK);
+    Alarm a6(1, &alarmListener10);
+    status = t2.AddAlarm(a6);
+    TEST_ASSERT(status == ER_OK);
+    Alarm a7(1, &alarmListener10);
+    status = t2.AddAlarm(a7);
+    TEST_ASSERT(status == ER_OK);
+    Alarm a8(1, &alarmListener10);
+    status = t2.AddAlarm(a8);
+    TEST_ASSERT(status == ER_OK);
+
+    GetTimeNow(&ts);
+    TEST_ASSERT(testNextAlarm(ts + 1, 0));
+    TEST_ASSERT(testNextAlarm(ts + 1, 0));
+    TEST_ASSERT(testNextAlarm(ts + 1, 0));
+    TEST_ASSERT(testNextAlarm(ts + 10001, 0));
+    TEST_ASSERT(testNextAlarm(ts + 10001, 0));
+    TEST_ASSERT(testNextAlarm(ts + 10001, 0));
+
+    return status;
+}
+
 /* Test structure describes an individual test */
 struct Test {
 
@@ -305,7 +426,8 @@ struct Test {
 static Test tests[] = {
     Test("ManagedObj", testManagedObj, "Test ManagedObj implementation"),
     Test("String",     testString,     "Test String implementation"),
-    Test("FileSink",   testFileSink,   "Test FileSink implementation")
+    Test("FileSink",   testFileSink,   "Test FileSink implementation"),
+    Test("Timer",      testTimer,      "Test Timer implementation")
 };
 
 
