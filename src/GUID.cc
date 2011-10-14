@@ -1,7 +1,7 @@
 /**
  * @file GUID.cc
  *
- * Implements GUID
+ * Implements GUID128
  */
 
 /******************************************************************************
@@ -34,17 +34,17 @@ using namespace qcc;
 
 namespace qcc {
 
-GUID::GUID() : value(), shortValue()
+GUID128::GUID128() : value(), shortValue()
 {
     Crypto_GetRandomBytes(guid, SIZE);
 }
 
-GUID::GUID(uint8_t init) : value(), shortValue()
+GUID128::GUID128(uint8_t init) : value(), shortValue()
 {
     memset(guid, init, SIZE);
 }
 
-bool GUID::Compare(const qcc::String& other)
+bool GUID128::Compare(const qcc::String& other)
 {
     uint8_t them[SIZE];
     if (HexStringToBytes(other, them, SIZE) == SIZE) {
@@ -54,7 +54,7 @@ bool GUID::Compare(const qcc::String& other)
     }
 }
 
-bool GUID::IsGUID(const qcc::String& str, bool exactLen)
+bool GUID128::IsGUID(const qcc::String& str, bool exactLen)
 {
     if (exactLen && str.length() != (2 * SIZE)) {
         return false;
@@ -64,7 +64,7 @@ bool GUID::IsGUID(const qcc::String& str, bool exactLen)
     }
 }
 
-const qcc::String& GUID::ToString() const
+const qcc::String& GUID128::ToString() const
 {
     if (value.empty()) {
         value = BytesToHexString(guid, SIZE, true);
@@ -73,7 +73,7 @@ const qcc::String& GUID::ToString() const
 }
 
 
-const qcc::String& GUID::ToShortString() const
+const qcc::String& GUID128::ToShortString() const
 {
     if (shortValue.empty()) {
         char outBytes[SHORT_SIZE + 1];
@@ -97,7 +97,7 @@ const qcc::String& GUID::ToShortString() const
     return shortValue;
 }
 
-GUID::GUID(const qcc::String& hexStr) : value(), shortValue()
+GUID128::GUID128(const qcc::String& hexStr) : value(), shortValue()
 {
     size_t size = HexStringToBytes(hexStr, guid, SIZE);
     if (size < SIZE) {
@@ -105,7 +105,7 @@ GUID::GUID(const qcc::String& hexStr) : value(), shortValue()
     }
 }
 
-GUID& GUID::operator =(const GUID& other)
+GUID128& GUID128::operator =(const GUID128& other)
 {
     if (this != &other) {
         memcpy(guid, other.guid, sizeof(guid));
@@ -113,12 +113,12 @@ GUID& GUID::operator =(const GUID& other)
     return *this;
 }
 
-GUID::GUID(const GUID& other) : value(), shortValue()
+GUID128::GUID128(const GUID128& other) : value(), shortValue()
 {
     memcpy(guid, other.guid, sizeof(guid));
 }
 
-uint8_t* GUID::Render(uint8_t* data, size_t len) const
+uint8_t* GUID128::Render(uint8_t* data, size_t len) const
 {
     if (len < SIZE) {
         len = SIZE;
@@ -127,7 +127,7 @@ uint8_t* GUID::Render(uint8_t* data, size_t len) const
     return data;
 }
 
-void GUID::SetBytes(const uint8_t* rawBytes)
+void GUID128::SetBytes(const uint8_t* rawBytes)
 {
     ::memcpy(guid, rawBytes, SIZE);
     value.clear();
