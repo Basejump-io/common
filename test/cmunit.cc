@@ -399,7 +399,7 @@ static QStatus testTimer()
     TEST_ASSERT(status == ER_OK);
     Alarm a8(1, &alarmListener10);
     status = t2.AddAlarm(a8);
-    TEST_ASSERT(status == ER_OK);
+    TEST_ASSERT(status == ER_FAIL);
 
     GetTimeNow(&ts);
     TEST_ASSERT(testNextAlarm(ts + 1, 0));
@@ -454,5 +454,12 @@ int main(int argc, char** argv)
         }
     }
     QCC_DbgPrintf(("There were %d test failures\n", testsFailed));
+
+    if(testsFailed){
+      printf("\n FAILED \n");
+    } else {
+       printf("\n PASSED \n");
+    }
+
     return testsFailed;
 }
