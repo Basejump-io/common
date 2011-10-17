@@ -454,11 +454,11 @@ int main(int argc, char** argv)
         }
     }
     QCC_DbgPrintf(("There were %d test failures\n", testsFailed));
-
-    if(testsFailed){
-      printf("\n FAILED \n");
+ 
+    if (testsFailed) {
+        printf("\n FAILED \n");
     } else {
-       printf("\n PASSED \n");
+        printf("\n PASSED \n");
     }
 
     return testsFailed;
