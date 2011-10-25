@@ -29,6 +29,12 @@
 #include <qcc/Mutex.h>
 #include <Status.h>
 
+#include <map>
+
+#ifndef NDEBUG
+#include <qcc/LockTrace.h>
+#endif
+
 #if defined(QCC_OS_GROUP_POSIX)
 #include <qcc/posix/Thread.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
@@ -289,6 +295,14 @@ class Thread {
      */
     void RemoveAuxListener(ThreadListener* listener);
 
+#ifndef NDEBUG
+    /**
+     * Support for debugging deadlocks
+     */
+    qcc::LockTrace lockTrace;
+#endif
+
+
   protected:
 
     Event stopEvent;            ///< Event that indicates a stop request when set.
@@ -341,6 +355,12 @@ class Thread {
     };
     JoinContext* joinCtx;
 #endif
+
+    /** Lock that protects global list of Threads and their handles */
+    static qcc::Mutex threadListLock;
+
+    /** Thread list */
+    static std::map<unsigned int, Thread*> threadList;
 
     /**
      * C callable thread entry point.

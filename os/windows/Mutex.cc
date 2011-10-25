@@ -35,58 +35,70 @@ using namespace qcc;
 
 void Mutex::Init()
 {
-    /* default security attributes, initially not owned, unnamed mutex */
-    mutex = CreateMutex(NULL, FALSE, NULL);
-    if (!mutex) {
+    if (InitializeCriticalSectionAndSpinCount(&mutex, 100)) {
+        initialized = true;
+    } else {
         char buf[80];
         uint32_t ret = GetLastError();
         strerror_r(ret, buf, sizeof(buf));
         // Can't use ER_LogError() since it uses mutexs under the hood.
-        printf("**** Mutex attribute initialization failure: %u - %s", ret, buf);
+        printf("**** Mutex initialization failure: %u - %s", ret, buf);
     }
 
 }
 
 Mutex::~Mutex()
 {
-    if (mutex && !CloseHandle(mutex)) {
-        char buf[80];
-        uint32_t ret = GetLastError();
-        strerror_r(ret, buf, sizeof(buf));
-        // Can't use ER_LogError() since it uses mutexs under the hood.
-        printf("***** Mutex(0x%x) destruction failure: %u - %s", mutex, ret, buf);
+    if (initialized) {
+        initialized = false;
+        DeleteCriticalSection(&mutex);
     }
 }
 
 QStatus Mutex::Lock(void)
 {
-    if (!mutex) {
+    if (!initialized) {
         return ER_INIT_FAILED;
     }
-    uint32_t waitResult = WaitForSingleObject(mutex, INFINITE);
-    if (waitResult != WAIT_OBJECT_0) {
-        char buf[80];
-        uint32_t ret = GetLastError();
-        strerror_r(ret, buf, sizeof(buf));
-        // Can't use ER_LogError() since it uses mutexs under the hood.
-        printf("***** Thread %d Mutex(0x%x) lock failure: %u - %s", GetCurrentThreadId(), mutex, ret, buf);
-        return ER_OS_ERROR;
-    }
+    EnterCriticalSection(&mutex);
     return ER_OK;
+}
+
+QStatus Mutex::Lock(const char* file, uint32_t line)
+{
+    QStatus status;
+    if (TryLock()) {
+        status = ER_OK;
+    } else {
+        Thread::GetThread()->lockTrace.Waiting(this, file, line);
+        status = Lock();
+    }
+    Thread::GetThread()->lockTrace.Acquired(this, file, line);
+    return status;
 }
 
 QStatus Mutex::Unlock(void)
 {
-    if (!mutex) {
+    if (!initialized) {
         return ER_INIT_FAILED;
     }
-    if (!ReleaseMutex(mutex)) {
-        char buf[80];
-        uint32_t ret = GetLastError();
-        strerror_r(ret, buf, sizeof(buf));
-        // Can't use ER_LogError() since it uses mutexs under the hood.
-        printf("***** Thread %d Mutex(0x%x) unlock failure: %u - %s", GetCurrentThreadId(), mutex, ret, buf);
-        return ER_OS_ERROR;
-    }
+    LeaveCriticalSection(&mutex);
     return ER_OK;
+}
+
+QStatus Mutex::Unlock(const char* file, uint32_t line)
+{
+    if (!initialized) {
+        return ER_INIT_FAILED;
+    }
+    Thread::GetThread()->lockTrace.Releasing(this, file, line);
+    return Unlock();
+}
+
+bool Mutex::TryLock(void)
+{
+    if (!initialized) {
+        return false;
+    }
+    return TryEnterCriticalSection(&mutex);
 }

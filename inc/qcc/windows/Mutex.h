@@ -32,7 +32,11 @@
 
 namespace qcc {
 
+#ifndef NDEBUG
+#define MUTEX_CONTEXT __FILE__, __LINE__
+#else
 #define MUTEX_CONTEXT
+#endif
 
 /**
  * The Windows implementation of a Mutex abstraction class.
@@ -43,7 +47,7 @@ class Mutex {
     /**
      * Constructor
      */
-    Mutex() { Init(); }
+    Mutex() : initialized(false) { Init(); }
 
     /**
      * Destructor
@@ -58,6 +62,7 @@ class Mutex {
      * @return  ER_OK if the lock was acquired, ER_OS_ERROR if the underlying
      *          OS reports an error.
      */
+    QStatus Lock(const char* file, uint32_t line);
     QStatus Lock(void);
 
     /**
@@ -68,7 +73,16 @@ class Mutex {
      * @return  ER_OK if the lock was acquired, ER_OS_ERROR if the underlying
      *          OS reports an error.
      */
+    QStatus Unlock(const char* file, uint32_t line);
     QStatus Unlock(void);
+
+    /**
+     * Attempt to acquire a lock on a mutex. If another thread is holding the lock
+     * this function return false otherwise the lock is acquired and the function returns true.
+     *
+     * @return  True if the lock was acquired.
+     */
+    bool TryLock();
 
     /**
      * Mutex copy constructor creates a new mutex.
@@ -81,8 +95,9 @@ class Mutex {
     Mutex& operator=(const Mutex& other) { Init(); return *this; }
 
   private:
-    HANDLE mutex; ///< Mutex variable.
-    void Init();  ///< initialize a mutex
+    bool initialized;
+    CRITICAL_SECTION mutex; ///< Mutex variable.
+    void Init();            ///< initialize a mutex
 
 };
 

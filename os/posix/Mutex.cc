@@ -95,6 +95,19 @@ QStatus Mutex::Lock()
     return ER_OK;
 }
 
+QStatus Mutex::Lock(const char* file, uint32_t line)
+{
+    QStatus status;
+    if (TryLock()) {
+        status = ER_OK;
+    } else {
+        Thread::GetThread()->lockTrace.Waiting(this, file, line);
+        status = Lock();
+    }
+    Thread::GetThread()->lockTrace.Acquired(this, file, line);
+    return status;
+}
+
 QStatus Mutex::Unlock()
 {
     if (!isInitialized) {
@@ -112,3 +125,19 @@ QStatus Mutex::Unlock()
     return ER_OK;
 }
 
+QStatus Mutex::Unlock(const char* file, uint32_t line)
+{
+    if (!initialized) {
+        return ER_INIT_FAILED;
+    }
+    Thread::GetThread()->lockTrace.Releasing(this, file, line);
+    return Unlock();
+}
+
+bool Mutex::TryLock(void)
+{
+    if (!initialized) {
+        return false;
+    }
+    return pthread_mutex_trylock(&mutex) != EBUSY;
+}

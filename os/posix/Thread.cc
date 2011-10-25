@@ -51,10 +51,10 @@ static uint32_t running = 0;
 static uint32_t joined = 0;
 
 /** Mutex that protects global thread list */
-static Mutex threadListLock;
+Mutex Thread::threadListLock;
 
 /** Global thread list */
-static map<ThreadHandle, Thread*> threadList;
+map<ThreadHandle, Thread*> Thread::threadList;
 
 void Thread::SigHandler(int signal)
 {
@@ -75,7 +75,7 @@ Thread* Thread::GetThread()
 {
     Thread* ret = NULL;
 
-    /* Find thread on threadList */
+    /* Find thread on Thread::threadList */
     threadListLock.Lock();
     map<ThreadHandle, Thread*>::const_iterator iter = threadList.find(pthread_self());
     if (iter != threadList.end()) {
@@ -107,6 +107,9 @@ void Thread::CleanExternalThreads()
 }
 
 Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExternal) :
+#ifndef NDEBUG
+    lockTrace(isExternal ? qcc::U32ToString(GetCurrentThreadId()) : funcName, &threadList, &threadListLock),
+#endif
     stopEvent(),
     state(isExternal ? RUNNING : INITIAL),
     isStopping(false),
