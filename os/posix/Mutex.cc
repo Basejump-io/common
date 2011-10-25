@@ -26,8 +26,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <qcc/Thread.h>
 #include <qcc/Mutex.h>
-#include <qcc/StringUtil.h>
 
 #include <Status.h>
 
@@ -97,6 +97,9 @@ QStatus Mutex::Lock()
 
 QStatus Mutex::Lock(const char* file, uint32_t line)
 {
+    if (!isInitialized) {
+        return ER_INIT_FAILED;
+    }
     QStatus status;
     if (TryLock()) {
         status = ER_OK;
@@ -127,7 +130,7 @@ QStatus Mutex::Unlock()
 
 QStatus Mutex::Unlock(const char* file, uint32_t line)
 {
-    if (!initialized) {
+    if (!isInitialized) {
         return ER_INIT_FAILED;
     }
     Thread::GetThread()->lockTrace.Releasing(this, file, line);
@@ -136,8 +139,8 @@ QStatus Mutex::Unlock(const char* file, uint32_t line)
 
 bool Mutex::TryLock(void)
 {
-    if (!initialized) {
+    if (!isInitialized) {
         return false;
     }
-    return pthread_mutex_trylock(&mutex) != EBUSY;
+    return pthread_mutex_trylock(&mutex) == 0;
 }

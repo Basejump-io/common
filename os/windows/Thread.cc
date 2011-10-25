@@ -54,7 +54,7 @@ static const uint32_t MAX_SELECT_WAIT_MS = 10000;
 Mutex Thread::threadListLock;
 
 /** Thread list */
-map<unsigned int, Thread*> Thread::threadList;
+map<ThreadHandle, Thread*> Thread::threadList;
 
 QStatus Sleep(uint32_t ms) {
     ::sleep(ms);
@@ -68,7 +68,7 @@ Thread* Thread::GetThread()
 
     /* Find thread on threadList */
     threadListLock.Lock();
-    map<unsigned int, Thread*>::const_iterator iter = threadList.find(id);
+    map<ThreadHandle, Thread*>::const_iterator iter = threadList.find((ThreadHandle)id);
     if (iter != threadList.end()) {
         ret = iter->second;
     }
@@ -89,7 +89,7 @@ Thread* Thread::GetThread()
 void Thread::CleanExternalThreads()
 {
     threadListLock.Lock();
-    map<unsigned int, Thread*>::iterator it = threadList.begin();
+    map<ThreadHandle, Thread*>::iterator it = threadList.begin();
     while (it != threadList.end()) {
         if (it->second->isExternal) {
             delete it->second;
@@ -103,7 +103,7 @@ void Thread::CleanExternalThreads()
 
 Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExternal) :
 #ifndef NDEBUG
-    lockTrace(isExternal ? qcc::U32ToString(GetCurrentThreadId()) : funcName, &threadList, &threadListLock),
+    lockTrace(this),
 #endif
     state(isExternal ? RUNNING : DEAD),
     isStopping(false),
@@ -125,7 +125,7 @@ Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExterna
      */
     if (isExternal) {
         threadListLock.Lock();
-        threadList[threadId] = this;
+        threadList[(ThreadHandle)threadId] = this;
         threadListLock.Unlock();
     }
     QCC_DbgHLPrintf(("Thread::Thread() [%s,%x]", GetName().c_str(), this));
@@ -158,7 +158,7 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
 
     /* Add this Thread to list of running threads */
     threadListLock.Lock();
-    threadList[thread->threadId] = thread;
+    threadList[(ThreadHandle)thread->threadId] = thread;
     thread->state = RUNNING;
     threadListLock.Unlock();
 
@@ -195,7 +195,7 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     /* Remove this Thread from list of running threads */
     QCC_DbgPrintf(("Removing %x", threadId));
     threadListLock.Lock();
-    threadList.erase(threadId);
+    threadList.erase((ThreadHandle)threadId);
     threadListLock.Unlock();
 
     _endthreadex(retVal);
@@ -292,7 +292,7 @@ QStatus Thread::Kill(void)
         state = DEAD;
         isStopping = false;
         /* Remove this Thread from list of running threads */
-        threadList.erase(threadId);
+        threadList.erase((ThreadHandle)threadId);
     }
     threadListLock.Unlock();
 

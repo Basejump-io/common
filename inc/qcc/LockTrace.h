@@ -37,11 +37,7 @@ class LockTrace {
 
   public:
 
-    LockTrace(qcc::String& threadName, std::map<unsigned int, qcc::Thread*>* threadList, qcc::Mutex* threadListLock):
-        threadName(threadName),
-        threadList(threadList),
-        threadListLock(threadListLock)
-        {}
+    LockTrace(Thread* thread) : thread(thread) { }
 
     /**
      * Called when a mutex has been acquired
@@ -75,27 +71,18 @@ class LockTrace {
      */
     void Dump();
 
-    /**
-     * Dump lock trace information for all threads
-     */
-    void DumpAll();
-
   private:
 
     struct Info {
-        Info(const qcc::Mutex* mutex, qcc::String file, uint32_t line) : mutex(mutex), file(file), line(line) {}
+        Info(const qcc::Mutex* mutex, qcc::String file, uint32_t line) : mutex(mutex), file(file), line(line) { }
         const qcc::Mutex* mutex;
         qcc::String file;
         uint32_t line;
     };
 
-    qcc::String threadName;
+    Thread* thread;
 
     std::deque<Info> queue;
-
-    std::map<unsigned int, qcc::Thread*>* threadList;
-
-    qcc::Mutex* threadListLock;
 
 };
 

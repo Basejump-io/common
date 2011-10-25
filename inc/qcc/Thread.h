@@ -300,6 +300,17 @@ class Thread {
      * Support for debugging deadlocks
      */
     qcc::LockTrace lockTrace;
+
+    static void DumpLocks()
+    {
+        threadListLock.Lock();
+        std::map<ThreadHandle, Thread*>::iterator iter = threadList.begin();
+        while (iter != threadList.end()) {
+            iter->second->lockTrace.Dump();
+            ++iter;
+        }
+        threadListLock.Unlock();
+    }
 #endif
 
 
@@ -360,7 +371,7 @@ class Thread {
     static qcc::Mutex threadListLock;
 
     /** Thread list */
-    static std::map<unsigned int, Thread*> threadList;
+    static std::map<ThreadHandle, Thread*> threadList;
 
     /**
      * C callable thread entry point.

@@ -38,7 +38,7 @@ void LockTrace::Acquired(qcc::Mutex* mutex, qcc::String file, uint32_t line)
 void LockTrace::Waiting(qcc::Mutex* mutex, qcc::String file, uint32_t line)
 {
     QCC_LogError(ER_WARNING, ("Lock %u requested at %s:%u already held by another thread", mutex, file.c_str(), line));
-    DumpAll();
+    Thread::DumpLocks();
 }
 
 void LockTrace::Releasing(qcc::Mutex* mutex, qcc::String file, uint32_t line)
@@ -69,21 +69,10 @@ void LockTrace::Dump()
 {
     if (!queue.empty()) {
         std::deque<Info>::iterator iter = queue.begin();
-        QCC_DbgPrintf(("Lock trace for thread %s", threadName.c_str()));
+        QCC_DbgPrintf(("Lock trace for thread %s", thread->GetThreadName()));
         while (iter != queue.end()) {
             QCC_DbgPrintf(("   Lock %u held by %s:%u", iter->mutex, iter->file.c_str(), iter->line));
             ++iter;
         }
     }
-}
-
-void LockTrace::DumpAll()
-{
-    threadListLock->Lock();
-    std::map<unsigned int, Thread*>::iterator iter = threadList->begin();
-    while (iter != threadList->end()) {
-        iter->second->lockTrace.Dump();
-        ++iter;
-    }
-    threadListLock->Unlock();
 }
