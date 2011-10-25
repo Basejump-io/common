@@ -355,7 +355,7 @@ qcc::String BigNum::get_hex(bool toLower) const
 
     for (size_t n = length; n > 0; --n) {
         char i[9];
-        sprintf(i, fmt, digits[n - 1]);
+        snprintf(i, 9, fmt, digits[n - 1]);
         str += i;
     }
     // Trim leading zeroes

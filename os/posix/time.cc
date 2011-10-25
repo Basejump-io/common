@@ -100,7 +100,7 @@ qcc::String qcc::UTCTime()
     time_t t;
     time(&t);
     struct tm* utc = gmtime(&t);
-    sprintf(buf, "%s, %d %s %d %02d:%02d:%02d GMT",
+    snprintf(buf, 32, "%s, %02d %s %04d %02d:%02d:%02d GMT",
             Day[utc->tm_wday],
             utc->tm_mday,
             Month[utc->tm_mon],

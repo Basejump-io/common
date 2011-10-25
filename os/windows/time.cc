@@ -95,7 +95,7 @@ qcc::String qcc::UTCTime()
     char buf[32];
     SYSTEMTIME systime;
     GetSystemTime(&systime);
-    sprintf(buf, "%s, %d %s %d %02d:%02d:%02d GMT",
+    snprintf(buf, 32, "%s, %02d %s %04d %02d:%02d:%02d GMT",
             Day[systime.wDayOfWeek],
             systime.wDay,
             Month[systime.wMonth - 1],
