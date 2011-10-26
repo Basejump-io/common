@@ -101,13 +101,13 @@ qcc::String qcc::UTCTime()
     time(&t);
     struct tm* utc = gmtime(&t);
     snprintf(buf, 32, "%s, %02d %s %04d %02d:%02d:%02d GMT",
-            Day[utc->tm_wday],
-            utc->tm_mday,
-            Month[utc->tm_mon],
-            1900 + utc->tm_year,
-            utc->tm_hour,
-            utc->tm_min,
-            utc->tm_sec);
+             Day[utc->tm_wday],
+             utc->tm_mday,
+             Month[utc->tm_mon],
+             1900 + utc->tm_year,
+             utc->tm_hour,
+             utc->tm_min,
+             utc->tm_sec);
 
     return buf;
 }

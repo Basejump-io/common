@@ -96,13 +96,13 @@ qcc::String qcc::UTCTime()
     SYSTEMTIME systime;
     GetSystemTime(&systime);
     snprintf(buf, 32, "%s, %02d %s %04d %02d:%02d:%02d GMT",
-            Day[systime.wDayOfWeek],
-            systime.wDay,
-            Month[systime.wMonth - 1],
-            systime.wYear,
-            systime.wHour,
-            systime.wMinute,
-            systime.wSecond);
+             Day[systime.wDayOfWeek],
+             systime.wDay,
+             Month[systime.wMonth - 1],
+             systime.wYear,
+             systime.wHour,
+             systime.wMinute,
+             systime.wSecond);
 
     return buf;
 }
