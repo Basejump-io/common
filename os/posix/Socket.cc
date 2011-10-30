@@ -461,13 +461,19 @@ QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent)
         ret = send(static_cast<int>(sockfd), buf, len, MSG_NOSIGNAL);
         if (ret == -1) {
             if (errno == EAGAIN) {
-                fd_set set;
-                FD_ZERO(&set);
-                FD_SET(sockfd, &set);
-                ret = select(sockfd + 1, NULL, &set, NULL, NULL);
+                int stopFd = Thread::GetThread()->GetStopEvent().GetFD();
+                fd_set wrSet, rdSet;
+                FD_ZERO(&wrSet);
+                FD_SET(sockfd, &wrSet);
+                FD_ZERO(&rdSet);
+                FD_SET(stopFd, &rdSet);
+                ret = select(std::max(sockfd, stopFd) + 1, &rdSet, &wrSet, NULL, NULL);
                 if (ret == -1) {
                     status = ER_OS_ERROR;
                     QCC_DbgHLPrintf(("Send (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
+                    break;
+                } else if (FD_ISSET(stopFd, &rdSet)) {
+                    status = ER_ALERTED_THREAD;
                     break;
                 }
                 continue;
