@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * Define a class that abstract's SSL sockets.
+ * Define a class that helps handle differences in wchar_t on different OSs
  */
 
 /******************************************************************************
@@ -22,15 +22,15 @@
  *    limitations under the License.
  ******************************************************************************/
 
-#ifndef _QCC_SSLSOCKET_H
-#define _QCC_SSLSOCKET_H
+#ifndef _QCC_UNICODE_H
+#define _QCC_UNICODE_H
 
 #include <qcc/platform.h>
 
 #if defined(QCC_OS_GROUP_POSIX)
-#include <qcc/posix/SslSocket.h>
+#include <qcc/posix/unicode.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
-#include <qcc/windows/SslSocket.h>
+#include <qcc/windows/unicode.h>
 #else
 #error No OS GROUP defined.
 #endif

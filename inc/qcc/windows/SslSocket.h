@@ -21,7 +21,6 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
-
 #ifndef _QCC_SSLSOCKET_H
 #define _QCC_SSLSOCKET_H
 

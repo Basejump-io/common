@@ -42,7 +42,7 @@ if env['OS_GROUP'] == 'windows':
         env.AppendUnique(LIBS = ['libeay32', 'ssleay32'])
         print 'Using OPENSSL crypto libraries'
 elif env['OS'] == 'linux':
-    env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto'])
+    env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto', 'ssl'])
 elif env['OS'] == 'darwin':
     env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto'])
 elif env['OS'] == 'android':

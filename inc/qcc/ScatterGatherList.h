@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <list>
+#include <string.h>
 
 #include <qcc/Debug.h>
 #include <qcc/SocketTypes.h>
