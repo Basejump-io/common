@@ -34,4 +34,22 @@
 #error No OS GROUP defined.
 #endif
 
+#if defined(__GNUC__)
+
+#if (__GNUC__ >= 4) || ((_GNUC__ == 3) && (__GNUC_MINOR__ >= 1))
+#define QCC_DEPRECATED(func) func __attribute__((deprecated)) /**< mark a function as deprecated in gcc. */
+#else
+#define QCC_DEPRECATED(func) func /**< not all gcc versions support the deprecated attribute. */
 #endif
+
+#elif defined(_MSC_VER)
+
+#define QCC_DEPRECATED(func) __declspec(deprecated) func /**< mark a function as deprecated in msvc. */
+
+#else // Some unknown compiler
+
+#define QCC_DEPRECATED(func); /**< unknown compiler. */
+
+#endif // Compiler type
+
+#endif // _QCC_PLATFORM_H
