@@ -56,7 +56,7 @@ uint32_t GetLastError();
 /**
  * Map the error number last set by the underlying system to an OS- and
  * locale-dependent error message String.
- * 
+ *
  * @return A String containing an error message corresponding to the last error
  * number set by the underlying system.
  *
