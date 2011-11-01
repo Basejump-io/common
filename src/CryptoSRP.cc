@@ -255,6 +255,7 @@ static void Update(Crypto_SHA1& sha1, const BigNum& n)
     uint8_t* buf = new uint8_t[len];
     n.get_bytes(buf, len);
     sha1.Update(buf, len);
+    delete [] buf;
 }
 
 QStatus Crypto_SRP::ClientFinish(const qcc::String& id, const qcc::String& pwd)
