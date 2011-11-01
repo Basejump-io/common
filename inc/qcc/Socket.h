@@ -33,6 +33,36 @@
 
 namespace qcc {
 
+/**
+ * Return the error that was set as a result of the last failing (sysem) operation.
+ *
+ * Many operating systems or system libraries may provide access to a generic
+ * error number via a variable, macro or function.  This function provides
+ * access to the OS-specific errors in a consistent way; but ultimately, the
+ * error number recovered may be system and location specific.
+ *
+ * @return  The last error set by the underlying system..
+ *
+ * @see GetLastErrorString()
+ *
+ * @warning This function returns the last error encountered by the underlying
+ * system, not necessarily the last error encountered by this library.
+ *
+ * @warning This error may valid only after a function known to set the error has
+ * actually encountered an error.
+ */
+uint32_t GetLastError();
+
+/**
+ * Map the error number last set by the underlying system to an OS- and
+ * locale-dependent error message String.
+ * 
+ * @return A String containing an error message corresponding to the last error
+ * number set by the underlying system.
+ *
+ * @see GetLastError()
+ */
+qcc::String GetLastErrorString();
 
 /**
  * The maixmum number of files descriptors that can be sent or received by this implementations.

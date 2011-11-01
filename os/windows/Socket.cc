@@ -150,6 +150,15 @@ static QStatus GetSockAddr(const SOCKADDR_STORAGE* addrBuf, socklen_t addrSize,
     return status;
 }
 
+uint32_t GetLastError()
+{
+    return WSAGetLastError();
+}
+
+qcc::String GetLastErrorString()
+{
+    return StrError();
+}
 
 QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
 {
