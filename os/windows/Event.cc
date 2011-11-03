@@ -247,8 +247,8 @@ Event::Event() : handle(CreateEvent(NULL, TRUE, FALSE, NULL)),
 {
 }
 
-    Event::Event(Event& event, EventType eventType, bool genPurpose)
-: handle(INVALID_HANDLE_VALUE),
+Event::Event(Event& event, EventType eventType, bool genPurpose)
+    : handle(INVALID_HANDLE_VALUE),
     ioHandle(event.ioHandle),
     eventType(eventType),
     timestamp(0),
@@ -262,8 +262,8 @@ Event::Event() : handle(CreateEvent(NULL, TRUE, FALSE, NULL)),
     }
 }
 
-    Event::Event(int ioFd, EventType eventType, bool genPurpose)
-: handle(INVALID_HANDLE_VALUE),
+Event::Event(int ioFd, EventType eventType, bool genPurpose)
+    : handle(INVALID_HANDLE_VALUE),
     ioHandle(INVALID_HANDLE_VALUE),
     eventType(eventType),
     timestamp(0),
