@@ -250,11 +250,6 @@ class Event {
      */
     void DecrementNumThreads() { DecrementAndFetch(&numThreads); }
 
-    /**
-     * Checks if an IO event was expected
-     */
-    bool ExpectedIo();
-
 };
 
 }  /* namespace */
