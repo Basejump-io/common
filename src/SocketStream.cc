@@ -57,7 +57,7 @@ SocketStream::SocketStream(SocketFd sock) :
     isConnected(true),
     sock(sock),
     sourceEvent(new Event(sock, Event::IO_READ, false)),
-    sinkEvent(new Event(sock, Event::IO_WRITE, false)),
+    sinkEvent(new Event(*sourceEvent, Event::IO_WRITE, false)),
     isDetached(false)
 {
 }
