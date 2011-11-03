@@ -282,8 +282,8 @@ Event::Event(int ioFd, EventType eventType, bool genPurpose)
     }
 }
 
-    Event::Event(uint32_t timestamp, uint32_t period)
-: handle(INVALID_HANDLE_VALUE),
+Event::Event(uint32_t timestamp, uint32_t period)
+    : handle(INVALID_HANDLE_VALUE),
     ioHandle(INVALID_HANDLE_VALUE),
     eventType(TIMED),
     timestamp(WAIT_FOREVER == timestamp ? WAIT_FOREVER : GetTimestamp() + timestamp),
