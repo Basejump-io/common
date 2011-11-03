@@ -218,7 +218,7 @@ class Event {
     EventType eventType;    /**< Type of event */
     uint32_t timestamp;     /**< time for next triggering of TIMED Event */
     uint32_t period;        /**< Number of milliseconds between periodic timed events */
-    int ioFd;               /**< Socket descriptor or -1 if not socket based IO */
+    qcc::SocketFd ioFd;     /**< Socket descriptor or -1 if not socket based IO */
     bool ownsIoHandle;      /**< true iff event owns the lifecycle of it's ioHandle member */
     int32_t numThreads;     /**< Number of threads currently waiting on this event */
 
@@ -250,6 +250,10 @@ class Event {
      */
     void DecrementNumThreads() { DecrementAndFetch(&numThreads); }
 
+    /**
+     * Checks if an IO event was expected
+     */
+    bool ExpectedIo();
 
 };
 
