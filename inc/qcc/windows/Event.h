@@ -179,13 +179,6 @@ class Event {
     void ResetTime(uint32_t delay, uint32_t period);
 
     /**
-     * Replace I/O event source with a new one.
-     *
-     * @param event    Dependent event.
-     */
-    void ReplaceIO(Event& event);
-
-    /**
      * Get the underlying file descriptor for I/O backed events.
      * This returns -1 if there is no underlying file descriptor.
      *

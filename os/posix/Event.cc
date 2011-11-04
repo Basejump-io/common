@@ -453,17 +453,3 @@ void Event::ResetTime(uint32_t delay, uint32_t period)
     }
     this->period = period;
 }
-
-void Event::ReplaceIO(Event& event)
-{
-    /* Check event type */
-    if ((IO_READ != eventType) && (IO_WRITE != eventType)) {
-        QCC_LogError(ER_FAIL, ("Attempt to replaceIO on non-io event"));
-        return;
-    }
-
-    /* Replace I/O */
-    ioFd = event.ioFd;
-}
-
-
