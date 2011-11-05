@@ -106,6 +106,9 @@ QStatus Mutex::Lock(const char* file, uint32_t line)
     } else {
         Thread::GetThread()->lockTrace.Waiting(this, file, line);
         status = Lock();
+#define QCC_MODULE "LOCK_TRACE"
+        QCC_DbgPrintf(("Lock Acquired"));
+#undef QCC_MODULE
     }
     Thread::GetThread()->lockTrace.Acquired(this, file, line);
     return status;
