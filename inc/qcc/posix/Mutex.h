@@ -34,6 +34,8 @@
 
 namespace qcc {
 
+#define MUTEX_CONTEXT
+
 /**
  * The Linux implementation of a Mutex abstraction class.
  */

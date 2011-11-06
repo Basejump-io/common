@@ -32,6 +32,7 @@
 
 namespace qcc {
 
+#define MUTEX_CONTEXT
 
 /**
  * The Windows implementation of a Mutex abstraction class.
