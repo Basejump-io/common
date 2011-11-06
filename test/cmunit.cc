@@ -409,6 +409,21 @@ static QStatus testTimer()
     TEST_ASSERT(testNextAlarm(ts + 10001, 0));
     TEST_ASSERT(testNextAlarm(ts + 10001, 0));
 
+    /* Test ReplaceTimer */
+    Timer t3("testTimer");
+    status = t3.Start();
+    TEST_ASSERT(status == ER_OK);
+
+    Alarm ar1(2000, &alarmListener1);
+    Alarm ar2(5000, &alarmListener1);
+    GetTimeNow(&ts);
+    status = t3.AddAlarm(ar1);
+    TEST_ASSERT(status == ER_OK);
+    status = t3.ReplaceAlarm(ar1, ar2);
+    TEST_ASSERT(status == ER_OK);
+
+    TEST_ASSERT(testNextAlarm(ts + 5000, 0));
+
     return status;
 }
 

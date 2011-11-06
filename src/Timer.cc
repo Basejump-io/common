@@ -163,29 +163,65 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     return status;
 }
 
-void Timer::RemoveAlarm(const Alarm& alarm)
+void Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
 {
     lock.Lock();
     if (isRunning) {
-        alarms.erase(alarm);
-        /*
-         * There might be a call in progress to the alarm that is being removed.
-         * RemoveAlarm must not return until this alarm is finished.
-         */
-        for (size_t i = 0; i < concurency; ++i) {
-            if (timerThreads[i] == Thread::GetThread()) {
-                continue;
-            }
-            const Alarm* curAlarm = timerThreads[i]->GetCurrentAlarm();
-            while (isRunning && curAlarm && (*curAlarm == alarm)) {
-                lock.Unlock();
-                qcc::Sleep(2);
-                lock.Lock();
-                curAlarm = timerThreads[i]->GetCurrentAlarm();
+        multiset<Alarm>::iterator it = alarms.find(alarm);
+        if (it != alarms.end()) {
+            alarms.erase(it);
+        } else if (blockIfTriggered) {
+            /*
+             * There might be a call in progress to the alarm that is being removed.
+             * RemoveAlarm must not return until this alarm is finished.
+             */
+            for (size_t i = 0; i < concurency; ++i) {
+                if (timerThreads[i] == Thread::GetThread()) {
+                    continue;
+                }
+                const Alarm* curAlarm = timerThreads[i]->GetCurrentAlarm();
+                while (isRunning && curAlarm && (*curAlarm == alarm)) {
+                    lock.Unlock();
+                    qcc::Sleep(2);
+                    lock.Lock();
+                    curAlarm = timerThreads[i]->GetCurrentAlarm();
+                }
             }
         }
     }
     lock.Unlock();
+}
+
+QStatus Timer::ReplaceAlarm(const Alarm& origAlarm, const Alarm& newAlarm, bool blockIfTriggered)
+{
+    QStatus status = ER_NO_SUCH_ALARM;
+    lock.Lock();
+    if (isRunning) {
+        multiset<Alarm>::iterator it = alarms.find(origAlarm);
+        if (it != alarms.end()) {
+            alarms.erase(it);
+            status = AddAlarm(newAlarm);
+        } else if (blockIfTriggered) {
+            /*
+             * There might be a call in progress to origAlarm.
+             * RemoveAlarm must not return until this alarm is finished.
+             */
+            for (size_t i = 0; i < concurency; ++i) {
+                if (timerThreads[i] == Thread::GetThread()) {
+                    continue;
+                }
+                const Alarm* curAlarm = timerThreads[i]->GetCurrentAlarm();
+                while (isRunning && curAlarm && (*curAlarm == origAlarm)) {
+                    lock.Unlock();
+                    qcc::Sleep(2);
+                    lock.Lock();
+                    curAlarm = timerThreads[i]->GetCurrentAlarm();
+                }
+            }
+        }
+    }
+    lock.Unlock();
+    return status;
 }
 
 bool Timer::RemoveAlarm(const AlarmListener& listener, Alarm& alarm)

@@ -204,9 +204,10 @@ class Timer : public ThreadListener {
     /**
      * Disassociate an alarm from a timer.
      *
-     * @param alarm     Alarm to remove.
+     * @param alarm             Alarm to remove.
+     * @param blockIfTriggered  If alarm has already been triggered, block the caller until AlarmTriggered returns.
      */
-    void RemoveAlarm(const Alarm& alarm);
+    void RemoveAlarm(const Alarm& alarm, bool blockIfTriggered = true);
 
     /**
      * Remove any alarm for a specific listener returning the alarm. Returns a boolean if an alarm
@@ -218,6 +219,22 @@ class Timer : public ThreadListener {
      * @param alarm     Alarm that was removed
      */
     bool RemoveAlarm(const AlarmListener& listener, Alarm& alarm);
+
+    /**
+     * Replace an existing Alarm.
+     * Alarms that are  already "in-progress" (meaning they are scheduled for callback) cannot be replaced.
+     * In this case, RemoveAlarm will return ER_NO_SUCH_ALARM and may optionally block until the triggered
+     * alarm's AlarmTriggered callback has returned.
+     *
+     * @param origAlarm    Existing alarm to be replaced.
+     * @param newAlarm     Alarm that will replace origAlarm if found.
+     * @param blockIfTriggered  If alarm has already been triggered, block the caller until AlarmTriggered returns.
+     *
+     * @return  ER_OK if alarm was replaced
+     *          ER_NO_SUCH_ALARM if origAlarm was already triggered or didn't exist.
+     *          Any other error indicates that adding newAlarm failed (orig alarm will have been removed in this case).
+     */
+    QStatus ReplaceAlarm(const Alarm& origAlarm, const Alarm& newAlarm, bool blockIfTriggered = true);
 
     /**
      * Remove all pending alarms with a given alarm listener.
