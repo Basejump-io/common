@@ -51,6 +51,13 @@ class Source {
     virtual ~Source() { }
 
     /**
+	 * Reset a source.
+	 *
+	 * @param source   Source to be reset.
+	 */
+    virtual void Reset(Source& source) { return; }
+
+    /**
      * Pull bytes from the source.
      * The source is exhausted when ER_NONE is returned.
      *
