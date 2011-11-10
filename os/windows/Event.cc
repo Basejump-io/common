@@ -22,8 +22,8 @@
 #include <qcc/platform.h>
 
 #include <map>
-#include <windows.h>
 #include <winsock2.h>
+#include <windows.h>
 #include <errno.h>
 #include <time.h>
 
