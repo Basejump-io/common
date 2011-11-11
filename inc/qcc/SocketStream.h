@@ -180,7 +180,7 @@ class SocketStream : public Stream {
     /**
      * Set send timeout.
      *
-     * @param sendTimeout    Send timeout in ms.
+     * @param sendTimeout    Send timeout in ms or WAIT_FOREVER for infinite
      */
     void SetSendTimeout(uint32_t sendTimeout) { this->sendTimeout = sendTimeout; }
 
