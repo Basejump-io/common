@@ -484,7 +484,7 @@ QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent, uint32_
                     tv.tv_sec = timeout / 1000;
                     tv.tv_usec = 1000 * (timeout % 1000);
                 }
-                
+
                 ret = select(std::max(sockfd, stopFd) + 1, &rdSet, &wrSet, &exSet, timeout ? &tv : NULL);
                 if (ret == -1) {
                     status = ER_OS_ERROR;
