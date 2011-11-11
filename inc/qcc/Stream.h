@@ -152,6 +152,13 @@ class Sink {
      * @return ER_OK if successful.
      */
     virtual QStatus Flush() { return ER_OK; }
+
+    /**
+     * Set the send timeout for this sink.
+     *
+     * @param sendTimeout   Send timeout in ms.
+     */
+    virtual void SetSendTimeout(uint32_t sendTimeout) { }
 };
 
 /**

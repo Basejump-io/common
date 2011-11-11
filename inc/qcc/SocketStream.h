@@ -177,6 +177,13 @@ class SocketStream : public Stream {
      */
     void DetachSocketFd() { isDetached = true; }
 
+    /**
+     * Set send timeout.
+     *
+     * @param sendTimeout    Send timeout in ms.
+     */
+    void SetSendTimeout(uint32_t sendTimeout) { this->sendTimeout = sendTimeout; }
+
   private:
 
     /** Private default constructor */
@@ -189,6 +196,7 @@ class SocketStream : public Stream {
     Event* sourceEvent;              /**< Event signaled when data is available */
     Event* sinkEvent;                /**< Event signaled when sink can accept data */
     bool isDetached;                 /**< Detached socket streams do not shutdown the underlying socket when closing */
+    uint32_t sendTimeout;            /**< Send timeout */
 };
 
 }

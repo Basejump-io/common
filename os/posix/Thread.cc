@@ -152,7 +152,7 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
     sigaddset(&newmask, SIGUSR1);
 
     assert(thread != NULL);
-    assert(thread->state == STARTED);
+    //assert(thread->state == STARTED);
 
     /* Plug race condition between Start and Run. (pthread_create may not write handle before run is called) */
     thread->handle = pthread_self();

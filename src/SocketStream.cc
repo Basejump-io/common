@@ -213,7 +213,7 @@ QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSen
     }
     QStatus status;
     while (true) {
-        status = qcc::Send(sock, buf, numBytes, numSent);
+        status = qcc::Send(sock, buf, numBytes, numSent, sendTimeout);
         if (ER_WOULDBLOCK == status) {
             status = Event::Wait(*sinkEvent);
             if (ER_OK != status) {

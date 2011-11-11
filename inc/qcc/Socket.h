@@ -209,10 +209,11 @@ QStatus GetLocalAddress(SocketFd sockfd, IPAddress& addr, uint16_t& port);
  * @param buf           Pointer to the buffer containing the data to send.
  * @param len           Number of octets in the buffer to be sent.
  * @param sent          OUT: Number of octets sent.
+ * @param sendTimeout   Max num of milliseconds to wait for send to complete or 0 for infinite.
  *
  * @return  Indication of success of failure.
  */
-QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent);
+QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent, uint32_t sendTimeout = 0);
 
 /**
  * Send a buffer of data to a remote host on a socket.
