@@ -455,7 +455,7 @@ QStatus GetLocalAddress(SocketFd sockfd, IPAddress& addr, uint16_t& port)
 }
 
 
-QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent)
+QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent, uint32_t timeout)
 {
     QStatus status = ER_OK;
     ssize_t ret;
@@ -471,18 +471,30 @@ QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent)
         if (ret == -1) {
             if (errno == EAGAIN) {
                 int stopFd = Thread::GetThread()->GetStopEvent().GetFD();
-                fd_set wrSet, rdSet;
+                fd_set wrSet, rdSet, exSet;
                 FD_ZERO(&wrSet);
                 FD_SET(sockfd, &wrSet);
                 FD_ZERO(&rdSet);
                 FD_SET(stopFd, &rdSet);
-                ret = select(std::max(sockfd, stopFd) + 1, &rdSet, &wrSet, NULL, NULL);
+                FD_ZERO(&exSet);
+                FD_SET(sockfd, &exSet);
+                struct timeval tv;
+
+                if (timeout) {
+                    tv.tv_sec = timeout / 1000;
+                    tv.tv_usec = 1000 * (timeout % 1000);
+                }
+                
+                ret = select(std::max(sockfd, stopFd) + 1, &rdSet, &wrSet, &exSet, timeout ? &tv : NULL);
                 if (ret == -1) {
                     status = ER_OS_ERROR;
                     QCC_DbgHLPrintf(("Send (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
                     break;
-                } else if (FD_ISSET(stopFd, &rdSet)) {
+                } else if (FD_ISSET(stopFd, &rdSet) || FD_ISSET(sockfd, &exSet)) {
                     status = ER_ALERTED_THREAD;
+                    break;
+                } else if (ret == 0) {
+                    status = ER_TIMEOUT;
                     break;
                 }
                 continue;
