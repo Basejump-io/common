@@ -213,9 +213,13 @@ QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSen
     }
     QStatus status;
     while (true) {
-        status = qcc::Send(sock, buf, numBytes, numSent, sendTimeout);
+        status = qcc::Send(sock, buf, numBytes, numSent, (sendTimeout == Event::WAIT_FOREVER) ? 0 : sendTimeout);
         if (ER_WOULDBLOCK == status) {
-            status = Event::Wait(*sinkEvent);
+            if (sendTimeout == Event::WAIT_FOREVER) {
+                status = Event::Wait(*sinkEvent);
+            } else {
+                status = Event::Wait(*sinkEvent, sendTimeout);
+            }
             if (ER_OK != status) {
                 break;
             }
@@ -242,7 +246,11 @@ QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& 
     while (true) {
         status = qcc::SendWithFds(sock, buf, numBytes, numSent, fdList, numFds, pid);
         if (ER_WOULDBLOCK == status) {
-            status = Event::Wait(*sinkEvent);
+            if (sendTimeout == Event::WAIT_FOREVER) {
+                status = Event::Wait(*sinkEvent);
+            } else {
+                status = Event::Wait(*sinkEvent, sendTimeout);
+            }
             if (ER_OK != status) {
                 break;
             }

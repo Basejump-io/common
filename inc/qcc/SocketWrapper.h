@@ -73,7 +73,7 @@ QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock);
  *          #ER_OS_ERROR if the send failed
  *          #Other errors indicating the operation failed.
  */
-QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent, uint32_t timeout);
+QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent, uint32_t timeout = 0);
 
 /**
  * Receive a buffer of data over a socket.
