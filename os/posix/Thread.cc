@@ -118,6 +118,8 @@ Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExterna
     isExternal(isExternal),
     noBlockResource(NULL),
     alertCode(0),
+    auxListeners(),
+    auxListenersLock(),
     joinCtx(NULL)
 {
     /* If this is an external thread, add it to the thread list here since Run will not be called */
@@ -152,7 +154,7 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
     sigaddset(&newmask, SIGUSR1);
 
     assert(thread != NULL);
-    //assert(thread->state == STARTED);
+    assert(thread->state == STARTED);
 
     /* Plug race condition between Start and Run. (pthread_create may not write handle before run is called) */
     thread->handle = pthread_self();
@@ -200,6 +202,13 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
     ThreadHandle handle = thread->handle;
 
 
+    /* Call aux listeners before main listener since main listner may delete the thread */
+    thread->auxListenersLock.Lock();
+    for (size_t i = 0; i < thread->auxListeners.size(); ++i) {
+        thread->auxListeners[i]->ThreadExit(thread);
+    }
+    thread->auxListenersLock.Unlock();
+    
     if (thread->listener) {
         thread->listener->ThreadExit(thread);
     }
@@ -338,6 +347,23 @@ QStatus Thread::Kill(void)
     }
 
     return status;
+}
+
+void Thread::AddAuxListener(ThreadListener* listener)
+{
+    auxListenersLock.Lock();
+    auxListeners.push_back(listener);
+    auxListenersLock.Unlock();
+}
+
+void Thread::RemoveAuxListener(ThreadListener* listener)
+{
+    auxListenersLock.Lock();
+    vector<ThreadListener*>::iterator it = find(auxListeners.begin(), auxListeners.end(), listener);
+    if (it != auxListeners.end()) {
+        auxListeners.erase(it);
+    }
+    auxListenersLock.Unlock();
 }
 
 QStatus Thread::Join(void)

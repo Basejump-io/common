@@ -271,6 +271,24 @@ class Thread {
      */
     uint32_t GetAlertCode() const { return alertCode; }
 
+    /**
+     * Add an aux ThreadListener.
+     * Aux ThreadListeners are called when the thread stops just like the primary ThreadListener
+     * (passed in Start). The difference is that aux ThreadListeners can NOT delete the Thread
+     * object where as the primary ThreadListener can. Also, there can be many aux ThreadListeners
+     * but only one primary ThreadListener.
+     *
+     * @param listener     Aux ThreadListener to add.
+     */
+    void AddAuxListener(ThreadListener* listener);
+
+    /**
+     * Remove an aux ThreadListener.
+     *
+     * @param listener     Aux ThreadListener to add.
+     */
+    void RemoveAuxListener(ThreadListener* listener);
+
   protected:
 
     Event stopEvent;            ///< Event that indicates a stop request when set.
@@ -312,6 +330,8 @@ class Thread {
     bool isExternal;                ///< If true, Thread is external (i.e. lifecycle not managed by Thread obj)
     const void* noBlockResource;    ///< No-block resource for this thread
     uint32_t alertCode;             ///< Context passed from alerter to alertee
+    std::vector<ThreadListener*> auxListeners;
+    Mutex auxListenersLock;
 
 #ifdef QCC_OS_GROUP_POSIX
     struct JoinContext {

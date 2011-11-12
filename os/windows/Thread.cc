@@ -112,7 +112,9 @@ Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExterna
     listener(NULL),
     isExternal(isExternal),
     noBlockResource(NULL),
-    alertCode(0)
+    alertCode(0),
+    auxListeners(),
+    auxListenersLock()
 {
     /*
      * External threads are already running so just add them to the thread list.
@@ -165,16 +167,23 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
         QCC_DbgPrintf(("Thread function exited: %s --> %p", thread->funcName.c_str(), thread->exitValue));
     }
 
-    /*
-     * Call thread exit callback if specified. Note that ThreadExit may dellocate the thread so the
-     * members of thread may not be accessed after this call
-     */
     unsigned retVal = (unsigned)thread->exitValue;
     uint32_t threadId = thread->threadId;
 
     thread->state = STOPPING;
     thread->stopEvent.ResetEvent();
 
+    /* Call aux listeners before main listener since main listner may delete the thread */
+    thread->auxListenersLock.Lock();
+    for (size_t i = 0; i < thread->auxListeners.size(); ++i) {
+        thread->auxListeners[i]->ThreadExit(thread);
+    }
+    thread->auxListenersLock.Unlock();
+
+    /*
+     * Call thread exit callback if specified. Note that ThreadExit may dellocate the thread so the
+     * members of thread may not be accessed after this call
+     */
     if (thread->listener) {
         thread->listener->ThreadExit(thread);
     }
@@ -334,6 +343,23 @@ QStatus Thread::Join(void)
     state = DEAD;
     QCC_DbgPrintf(("%s thread %s", self ? "Closed" : "Joined", funcName.c_str()));
     return status;
+}
+
+void Thread::AddAuxListener(ThreadListener* listener)
+{
+    auxListenersLock.Lock();
+    auxListeners.push_back(listener);
+    auxListenersLock.Unlock();
+}
+
+void Thread::RemoveAuxListener(ThreadListener* listener)
+{
+    auxListenersLock.Lock();
+    vector<ThreadListener*>::iterator it = find(auxListeners.begin(), auxListeners.end(), listener);
+    if (it != auxListeners.end()) {
+        auxListeners.erase(it);
+    }
+    auxListenersLock.Unlock();
 }
 
 ThreadReturn STDCALL Thread::Run(void* arg)
