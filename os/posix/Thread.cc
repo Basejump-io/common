@@ -208,7 +208,7 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
         thread->auxListeners[i]->ThreadExit(thread);
     }
     thread->auxListenersLock.Unlock();
-    
+
     if (thread->listener) {
         thread->listener->ThreadExit(thread);
     }
