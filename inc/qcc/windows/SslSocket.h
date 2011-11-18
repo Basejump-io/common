@@ -1,12 +1,10 @@
 /**
  * @file
  *
- * Define a class that abstract's SSL sockets.
+ * SSL stream-based socket.
  */
 
 /******************************************************************************
- *
- *
  * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,17 +19,83 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
-#ifndef _QCC_SSLSOCKET_H
-#define _QCC_SSLSOCKET_H
+#ifndef _OSERSSLSOCKET_H
+#define _OSERSSLSOCKET_H
 
-#include <qcc/platform.h>
+#include "platform.h"
+#include "Status.h"
+#include "Stream.h"
 
-#if defined(QCC_OS_GROUP_POSIX)
-#include <qcc/posix/SslSocket.h>
-#elif defined(QCC_OS_GROUP_WINDOWS)
-#include <qcc/windows/SslSocket.h>
-#else
-#error No OS GROUP defined.
-#endif
+#include <openssl/bio.h>
+
+/**
+ * SSL Socket
+ */
+class SslSocket : public Stream {
+
+  public:
+
+    /** Construct an SSL socket. */
+    SslSocket();
+
+    /** Destroy SSL socket */
+    ~SslSocket();
+
+    /**
+     * Connect an SSL socket to a remote host on a specified port
+     *
+     * @param hostname     Destination IP address or hostname.
+     * @param port         IP Port on remote host.
+     *
+     * @return  ER_OK if successful.
+     */
+    QStatus Connect(const std::string hostname, uint16_t port);
+
+    /**
+     * Close an SSL socket.
+     */
+    void Close();
+
+    /**
+     * Pull bytes from the source.
+     * The source is exhausted when ER_NONE is returned.
+     *
+     * @param buf          Buffer to store pulled bytes
+     * @param reqBytes     Number of bytes requested to be pulled from source.
+     * @param actualBytes  Actual number of bytes retrieved from source.
+     * @return   OI_OK if successful. ER_NONE if source is exhausted. Otherwise an error.
+     */
+    QStatus PullBytes(void *buf, size_t reqBytes, size_t &actualBytes);
+
+    /**
+     * Push bytes into the sink.
+     *
+     * @param buf          Buffer to store pulled bytes
+     * @param numBytes     Number of bytes from buf to send to sink.
+     * @param numSent      Number of bytes actually consumed by sink.
+     * @return   ER_OK if successful.
+     */
+    QStatus PushBytes(void *buf, size_t numBytes, size_t &numSent);
+
+    /**
+     * Get the Event indicating that data is available.
+     *
+     * @return Event that is set when data is available.
+     */
+    er::Event& GetSourceEvent() { return *sourceEvent; }
+
+    /**
+     * Get the Event indicating that sink can accept data.
+     *
+     * @return Event set when socket can accept more data via PushBytes
+     */
+    er::Event& GetSinkEvent() { return *sinkEvent; }
+
+  private:
+
+    BIO       *bio;          /**< SSL socket descriptor for OpenSSL */
+    er::Event *sourceEvent;  /**< Event signaled when data is available */
+    er::Event *sinkEvent;    /**< Event signaled when sink can accept data */
+};
 
 #endif
