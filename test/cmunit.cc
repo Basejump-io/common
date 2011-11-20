@@ -374,8 +374,8 @@ static QStatus testTimer()
     TEST_ASSERT(status == ER_OK);
     status = t1.Join();
     TEST_ASSERT(status == ER_OK);
-    status = t1.Start();
-    TEST_ASSERT(status == ER_OK);
+    //status = t1.Start();
+    //TEST_ASSERT(status == ER_OK);
 
     /* Test concurrency */
     Timer t2("testTimer", true, 3);
