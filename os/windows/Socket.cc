@@ -442,7 +442,7 @@ QStatus GetLocalAddress(SocketFd sockfd, IPAddress& addr, uint16_t& port)
 }
 
 
-QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent, uint32_t timeout)
+QStatus Send(SocketFd sockfd, const void* buf, size_t len, size_t& sent)
 {
     QStatus status = ER_OK;
     size_t ret;
