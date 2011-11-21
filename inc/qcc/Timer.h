@@ -24,6 +24,7 @@
 
 #include <qcc/platform.h>
 #include <qcc/Debug.h>
+#include <qcc/atomic.h>
 #include <set>
 
 #include <qcc/Mutex.h>
@@ -74,7 +75,7 @@ class Alarm {
     /**
      * Create a default (unusable) alarm.
      */
-    Alarm() : listener(NULL), periodMs(0), context(NULL) { }
+    Alarm() : listener(NULL), periodMs(0), context(NULL), id(IncrementAndFetch(&nextId)) { }
 
     /**
      * Create an alarm that can be added to a Timer.
@@ -85,7 +86,7 @@ class Alarm {
      * @param context         Opaque context passed to listener callback.
      */
     Alarm(Timespec absoluteTime, AlarmListener* listener, uint32_t periodMs = 0, void* context = NULL)
-        : alarmTime(absoluteTime), listener(listener), periodMs(periodMs), context(context) { }
+        : alarmTime(absoluteTime), listener(listener), periodMs(periodMs), context(context), id(IncrementAndFetch(&nextId)) { }
 
     /**
      * Create an alarm that can be added to a Timer.
@@ -96,7 +97,7 @@ class Alarm {
      * @param context         Opaque context passed to listener callback.
      */
     Alarm(uint32_t relativeTime, AlarmListener* listener, uint32_t periodMs = 0, void* context = NULL)
-        : alarmTime(), listener(listener), periodMs(periodMs), context(context)
+        : alarmTime(), listener(listener), periodMs(periodMs), context(context), id(IncrementAndFetch(&nextId))
     {
         if (relativeTime == WAIT_FOREVER) {
             alarmTime = END_OF_TIME;
@@ -123,10 +124,7 @@ class Alarm {
      */
     bool operator<(const Alarm& other) const
     {
-        return ((alarmTime < other.alarmTime) ||
-                ((alarmTime == other.alarmTime) && ((listener < other.listener) ||
-                                                    ((listener == other.listener) && ((context < other.context) ||
-                                                                                      ((context == other.context) && (periodMs < other.periodMs)))))));
+        return (alarmTime < other.alarmTime) || ((alarmTime == other.alarmTime) && (id < other.id));
     }
 
     /**
@@ -134,15 +132,17 @@ class Alarm {
      */
     bool operator==(const Alarm& other) const
     {
-        return (alarmTime == other.alarmTime) && (listener == other.listener) && (context == other.context) && (periodMs == other.periodMs);
+        return (alarmTime == other.alarmTime) && (id == other.id);
     }
 
   private:
 
+    static int32_t nextId;
     Timespec alarmTime;
     AlarmListener* listener;
     uint32_t periodMs;
     mutable void* context;
+    int32_t id;
 };
 
 

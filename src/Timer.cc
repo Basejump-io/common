@@ -34,6 +34,8 @@
 using namespace std;
 using namespace qcc;
 
+int32_t qcc::Alarm::nextId = 0;
+
 namespace qcc {
 
 class TimerThread : public Thread {
@@ -167,10 +169,25 @@ void Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
 {
     lock.Lock();
     if (isRunning) {
-        multiset<Alarm>::iterator it = alarms.find(alarm);
-        if (it != alarms.end()) {
-            alarms.erase(it);
-        } else if (blockIfTriggered) {
+        bool foundAlarm = false;
+        if (alarm.periodMs) {
+            multiset<Alarm>::iterator it = alarms.begin();
+            while (it != alarms.end()) {
+                if (it->id == alarm.id) {
+                    foundAlarm = true;
+                    alarms.erase(it);
+                    break;
+                }
+                ++it;
+            }
+        } else {
+            multiset<Alarm>::iterator it = alarms.find(alarm);
+            if (it != alarms.end()) {
+                foundAlarm = true;
+                alarms.erase(it);
+            }
+        }
+        if (blockIfTriggered && !foundAlarm) {
             /*
              * There might be a call in progress to the alarm that is being removed.
              * RemoveAlarm must not return until this alarm is finished.
