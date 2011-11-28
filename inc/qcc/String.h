@@ -146,7 +146,7 @@ class String {
     /**
      * Clear contents of string.
      *
-     * @param sizeHint   Allocation size hint used if string must be realloced.
+     * @param sizeHint   Allocation size hint used if string must be reallocated.
      */
     void clear(size_t sizeHint = MinCapacity);
 
@@ -198,7 +198,7 @@ class String {
      * Resize string by appending chars or removing them to make string a specified size.
      *
      * @param n     New size for string.
-     * @param c     Charater to append to string if string size increases.
+     * @param c     Character to append to string if string size increases.
      */
     void resize(size_t n, char c = ' ');
 
@@ -324,7 +324,7 @@ class String {
     bool empty() const { return context ? (context->offset == 0) : true; }
 
     /**
-     * Find first occurence of null terminated string within this string.
+     * Find first occurrence of null terminated string within this string.
      *
      * @param str  String to find.
      * @param pos  Optional starting position (in this string) for search.
@@ -333,7 +333,7 @@ class String {
     size_t find(const char* str, size_t pos = 0) const;
 
     /**
-     * Find first occurence of string within this string.
+     * Find first occurrence of string within this string.
      *
      * @param str  String to find within this string instance.
      * @param pos  Optional starting position (in this string) for search.
@@ -342,7 +342,7 @@ class String {
     size_t find(const qcc::String& str, size_t pos = 0) const;
 
     /**
-     * Find first occurence of character within string.
+     * Find first occurrence of character within string.
      *
      * @param c    Charater to find.
      * @param pos  Optional starting position for search.
@@ -351,9 +351,9 @@ class String {
     size_t find_first_of(const char c, size_t pos = 0) const;
 
     /**
-     * Find last occurence of character within string in range [0, pos).
+     * Find last occurrence of character within string in range [0, pos).
      *
-     * @param c    Charater to find.
+     * @param c    Character to find.
      * @param pos  Optional starting position for search (one past end of substring to search).
      * @return     Position of last occurrence of c within string or npos if not found.
      */
@@ -369,7 +369,7 @@ class String {
     size_t find_first_of(const char* inChars, size_t pos = 0) const;
 
     /**
-     * Find first occurence of a character NOT in a set of characters within string.
+     * Find first occurrence of a character NOT in a set of characters within string.
      *
      * @param setChars   Array of characters to (NOT) look for in this string.
      * @param pos        Optional starting position within this string for search.
@@ -378,10 +378,10 @@ class String {
     size_t find_first_not_of(const char* setChars, size_t pos = 0) const;
 
     /**
-     * Find last occurence of a character NOT in a set of characters within string range [0, pos).
+     * Find last occurrence of a character NOT in a set of characters within string range [0, pos).
      *
      * @param setChars   Array of characters to (NOT) look for in this string.
-     * @param pos        Position one past the end of the charactaer of the substring that should be examined or npos for entire string.
+     * @param pos        Position one past the end of the character of the substring that should be examined or npos for entire string.
      * @return           Position of first occurrence a character not in setChars or npos if none exists.
      */
     size_t find_last_not_of(const char* setChars, size_t pos = npos) const;
@@ -438,7 +438,7 @@ class String {
     /**
      * Compare this string with an array of chars.
      *
-     * @param str   Null terminated array of chars to comapare against this string.
+     * @param str   Nul terminated array of chars to compare against this string.
      * @return  &lt;0 if this string is less than str, &gt;0 if this string is greater than str, 0 if equal.
      */
     int compare(const char* str) const { return ::strcmp(context ? context->c_str : emptyString, str); }

@@ -54,7 +54,7 @@ QStatus Shutdown(SocketFd sockfd);
  * @param sockfd   The socket descriptor to duplicate
  * @param dupSock  [OUT] The duplicated socket descriptor.
  *
- * @return  #ER_OK if the socket was succesfully duplicated.
+ * @return  #ER_OK if the socket was successfully duplicated.
  *          #Other errors indicating the operation failed.
  */
 QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock);
