@@ -184,7 +184,7 @@ class Event {
      *
      * @return  The underlying file descriptor or -1.
      */
-    int GetFD() { return ioFd; }
+    int GetFD() const { return ioFd; }
 
     /**
      * Get the underlying Windows' event handle.  Use of this function is not
@@ -192,10 +192,15 @@ class Event {
      *
      * @return  The underlying event handle.
      */
-    HANDLE GetHandle()
+    HANDLE GetHandle() const
     {
         return ((eventType == GEN_PURPOSE) ? handle : (eventType != TIMED) ? ioHandle : INVALID_HANDLE_VALUE);
     }
+
+    /**
+     * Return the type of this event.
+     */
+    EventType GetEventType() const { return eventType; }
 
     /**
      * Get the number of threads that are currently blocked waiting for this event
@@ -207,12 +212,11 @@ class Event {
   private:
 
     HANDLE handle;          /**< General purpose event handle */
-    HANDLE ioHandle;        /**< I/O based event handle */
+    HANDLE ioHandle;        /**< I/O event handle */
     EventType eventType;    /**< Type of event */
     uint32_t timestamp;     /**< time for next triggering of TIMED Event */
     uint32_t period;        /**< Number of milliseconds between periodic timed events */
     qcc::SocketFd ioFd;     /**< Socket descriptor or -1 if not socket based IO */
-    bool ownsIoHandle;      /**< true iff event owns the lifecycle of it's ioHandle member */
     int32_t numThreads;     /**< Number of threads currently waiting on this event */
 
     /**

@@ -1,4 +1,4 @@
-/**
+/*
  * @file
  *
  * Windows implementation of event
@@ -22,6 +22,7 @@
 #include <qcc/platform.h>
 
 #include <map>
+#include <list>
 #include <winsock2.h>
 #include <windows.h>
 #include <errno.h>
@@ -41,18 +42,176 @@ using namespace std;
 
 namespace qcc {
 
+static const long READ_SET = FD_READ | FD_CLOSE | FD_ACCEPT;
+static const long WRITE_SET = FD_WRITE | FD_CLOSE | FD_CONNECT;
+
+VOID CALLBACK IoEventCallback(PVOID arg, BOOLEAN TimerOrWaitFired);
+
+    
+class IoEventMonitor {
+  public:
+
+    struct EventList {
+        std::list<Event*> events;
+        uint32_t fdSet;
+        HANDLE ioEvent;
+        HANDLE waitObject;
+    };
+
+    qcc::Mutex lock;
+
+    /*
+     * Mapping from socket handles to Event registrations
+     */
+    std::map<SOCKET, EventList*> eventMap;
+
+    void RegisterEvent(Event* event) {
+        SOCKET sock = event->GetFD();
+        QCC_DbgHLPrintf(("RegisterEvent %s for fd %d (ioHandle=%d)", event->GetEventType() == Event::IO_READ ? "IO_READ" : "IO_WRITE", sock, event->GetHandle()));
+        assert((event->GetEventType() == Event::IO_READ) || (event->GetEventType() == Event::IO_WRITE));
+
+        lock.Lock();
+        std::map<SOCKET, EventList*>::iterator iter = eventMap.find(sock);
+        EventList *eventList;
+        if (iter == eventMap.end()) {
+            /* new IO */
+            eventList = new EventList();
+            eventList->ioEvent = WSACreateEvent();
+            eventList->fdSet = 0;
+            eventMap[sock] = eventList;
+            if (RegisterWaitForSingleObject(&eventList->waitObject, eventList->ioEvent, IoEventCallback, (void*)sock, INFINITE, WT_EXECUTEINWAITTHREAD)) {
+                QCC_DbgHLPrintf(("RegisterWaitForSingleObject %d", eventList->waitObject));
+            } else {
+                QCC_LogError(ER_OS_ERROR, ("RegisterWaitForSingleObject failed"));
+            }
+        } else {
+            eventList = iter->second;
+        }
+        /* 
+         * Add the event to the list of events for this socket
+         */
+        eventList->events.push_back(event);
+        /*
+         * Check if the set of IO conditions being monitored has changed.
+         */
+        uint32_t fdSet = eventList->fdSet | ((event->GetEventType() == Event::IO_READ) ? READ_SET : WRITE_SET);
+        if (eventList->fdSet != fdSet) {
+            eventList->fdSet = fdSet;
+            QCC_DbgHLPrintf(("WSAEventSelect %x", fdSet));
+            WSAEventSelect(sock, eventList->ioEvent, fdSet);
+        }
+        lock.Unlock();
+    }
+
+    void DeregisterEvent(Event* event) {
+        SOCKET sock = event->GetFD();
+
+        QCC_DbgPrintf(("DeregisterEvent %s for fd %d", event->GetEventType() == Event::IO_READ ? "IO_READ" : "IO_WRITE", sock));
+        assert((event->GetEventType() == Event::IO_READ) || (event->GetEventType() == Event::IO_WRITE));
+
+        lock.Lock();
+        std::map<SOCKET, EventList*>::iterator iter = eventMap.find(sock);
+        if (iter != eventMap.end()) {
+            EventList *eventList = iter->second;
+            /*
+             * Remove this event from the event list
+             */
+            eventList->events.remove(event);
+            /*
+             * Remove the eventList and clean up if all the events are gone.
+             */
+            if (eventList->events.empty()) {
+                eventMap.erase(iter);
+                WSAEventSelect(event->GetFD(), eventList->ioEvent, 0);
+                /*
+                 * Cannot be holding the lock while unregistering the wait because this can cause a
+                 * deadlock if the wait callback is blocked waiting for the lock.
+                 */
+                QCC_DbgHLPrintf(("UnregisterWait %d", eventList->waitObject));
+                lock.Unlock();
+                UnregisterWait(eventList->waitObject);
+                lock.Lock();
+                WSACloseEvent(eventList->ioEvent);
+                delete eventList;
+            } else {
+                /* TODO - reevaluate the IO conditions for all remaining events */
+            }
+        } else {
+            QCC_LogError(ER_OS_ERROR, ("eventList for fd %d missing from event map", event->GetFD()));
+        }
+        lock.Unlock();
+    }
+
+};
+
+static IoEventMonitor IoMonitor;
+
+VOID CALLBACK IoEventCallback(PVOID arg, BOOLEAN TimerOrWaitFired)
+{
+    SOCKET sock = (SOCKET)arg;
+    IoMonitor.lock.Lock();
+    std::map<SOCKET, IoEventMonitor::EventList*>::iterator iter = IoMonitor.eventMap.find(sock);
+    if (iter == IoMonitor.eventMap.end()) {
+        QCC_LogError(ER_OS_ERROR, ("Socket handle %d not found in event map", sock));
+    } else {
+        IoEventMonitor::EventList *eventList = iter->second;
+        WSANETWORKEVENTS ioEvents;
+        int ret = WSAEnumNetworkEvents(sock, eventList->ioEvent, &ioEvents);
+        if (ret != 0) {
+            QCC_LogError(ER_OS_ERROR, ("WSAEnumNetworkEvents returned %d", ret));
+        } else {
+            QCC_DbgHLPrintf(("IoEventCallback %x", ioEvents.lNetworkEvents));
+            if (ioEvents.lNetworkEvents) {
+                std::list<Event*>::iterator evit = eventList->events.begin();
+                if (evit == eventList->events.end()) {
+                    QCC_LogError(ER_OS_ERROR, ("Event list was empty"));
+                }
+                while (evit != eventList->events.end()) {
+                    Event* ev = (*evit);
+                    if ((ioEvents.lNetworkEvents & WRITE_SET) && (ev->GetEventType() == Event::IO_WRITE)) {
+                        QCC_DbgHLPrintf(("Setting write event %d", ev->GetHandle()));
+                        if (!::SetEvent(ev->GetHandle())) {
+                            QCC_LogError(ER_OS_ERROR, ("SetEvent returned %d", ret));
+                        }
+                    }
+                    if ((ioEvents.lNetworkEvents & READ_SET) && (ev->GetEventType() == Event::IO_READ)) {
+                        QCC_DbgHLPrintf(("Setting read event %d", ev->GetHandle()));
+                        if (!::SetEvent(ev->GetHandle())) {
+                            QCC_LogError(ER_OS_ERROR, ("SetEvent returned %d", ret));
+                        }
+                    }
+                    ++evit;
+                }
+            }
+        }
+    }
+    IoMonitor.lock.Unlock();
+}
+
+
 Event Event::alwaysSet(0, 0);
 
 Event Event::neverSet(WAIT_FOREVER, 0);
 
-static const long READ_SET = FD_READ | FD_CLOSE | FD_ACCEPT;
-static const long WRITE_SET = FD_WRITE | FD_CLOSE | FD_CONNECT;
-
-
 QStatus Event::Wait(Event& evt, uint32_t maxWaitMs)
 {
+    static const timeval toZero = { 0, 0 };
     HANDLE handles[3];
     int numHandles = 0;
+
+    /*
+     * The IO event is necessarily an auto-reset event. Calling select with a zero timeout to check
+     * the I/O status before blocking ensures that Event::Wait is idempotent.
+     */
+    if ((evt.eventType == IO_READ) || (evt.eventType == IO_WRITE)) {
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(evt.ioFd, &fds);
+        select(1, evt.eventType == IO_READ ? &fds : NULL, evt.eventType == IO_WRITE ? &fds : NULL, NULL, &toZero);
+        if (FD_ISSET(evt.ioFd, &fds)) {
+            ::SetEvent(evt.ioHandle);
+        }
+    }
 
     Thread* thread = Thread::GetThread();
 
@@ -77,35 +236,16 @@ QStatus Event::Wait(Event& evt, uint32_t maxWaitMs)
         }
     }
 
-    /*
-     * Enable WRITE events if that is what we are waiting for.
-     */
-    if (evt.eventType == IO_WRITE) {
-        assert(evt.ioHandle != INVALID_HANDLE_VALUE);
-        WSAEventSelect(evt.ioFd, evt.ioHandle, READ_SET | WRITE_SET);
-    }
-
-    evt.IncrementNumThreads();
-
-    DWORD ret = WaitForMultipleObjectsEx(numHandles, handles, FALSE, maxWaitMs, FALSE);
-
-    evt.DecrementNumThreads();
-
     QStatus status;
 
-    if ((WAIT_OBJECT_0 <= ret) && ((WAIT_OBJECT_0 + numHandles) > ret)) {
-        if (WAIT_OBJECT_0  == ret) {
-            /* StopEvent fired */
+    evt.IncrementNumThreads();
+    DWORD ret = WaitForMultipleObjectsEx(numHandles, handles, FALSE, maxWaitMs, FALSE);
+    evt.DecrementNumThreads();
+
+    if ((ret >= WAIT_OBJECT_0) && (ret < (WAIT_OBJECT_0 + numHandles))) {
+        if (handles[ret - WAIT_OBJECT_0] == stopEvent->handle) {
             status = (thread && thread->IsStopping()) ? ER_STOPPING_THREAD : ER_ALERTED_THREAD;
         } else {
-            if (handles[ret - WAIT_OBJECT_0] == evt.ioHandle) {
-                if (evt.numThreads == 0) {
-                    WSAResetEvent(evt.ioHandle);
-                } else {
-                    /* Yield the CPU so the other thread can run */
-                    ::Sleep(0);
-                }
-            }
             status = ER_OK;
         }
     } else if (WAIT_TIMEOUT == ret) {
@@ -115,15 +255,15 @@ QStatus Event::Wait(Event& evt, uint32_t maxWaitMs)
                 if (0 < evt.period) {
                     evt.timestamp += (((now - evt.timestamp) / evt.period) + 1) * evt.period;
                 }
-                status = ER_OK;
             } else {
                 status = ER_TIMEOUT;
             }
         } else {
+            QCC_DbgPrintf(("WaitForMultipleObjectsEx timeout %d", maxWaitMs));
             status = ER_TIMEOUT;
         }
     } else {
-        status = ER_FAIL;
+        status = ER_OS_ERROR;
         QCC_LogError(status, ("WaitForMultipleObjectsEx returned 0x%x.", ret));
         if (WAIT_FAILED == ret) {
             QCC_LogError(status, ("GetLastError=%d", GetLastError()));
@@ -132,10 +272,6 @@ QStatus Event::Wait(Event& evt, uint32_t maxWaitMs)
                 QCC_LogError(status, ("  0x%x", handles[i]));
             }
         }
-    }
-
-    if (evt.eventType == IO_WRITE) {
-        WSAEventSelect(evt.ioFd, evt.ioHandle, READ_SET);
     }
     return status;
 }
@@ -172,18 +308,12 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
                 maxWaitMs = evt->timestamp - now;
             }
         }
-        if (evt->eventType == IO_WRITE) {
-            WSAEventSelect(evt->ioFd, evt->ioHandle, READ_SET | WRITE_SET);
-        }
     }
     /* Restore thread counts if we are not going to block */
     if (numHandles >= MAX_HANDLES) {
         while (true) {
             Event* evt = *it;
             evt->DecrementNumThreads();
-            if (evt->eventType == IO_WRITE) {
-                WSAEventSelect(evt->ioFd, evt->ioHandle, READ_SET);
-            }
             if (it == checkEvents.begin()) {
                 break;
             }
@@ -195,7 +325,7 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
 
     DWORD ret = WaitForMultipleObjectsEx(numHandles, handles, FALSE, maxWaitMs, FALSE);
 
-    bool somethingSet = (WAIT_OBJECT_0 <= ret) && ((WAIT_OBJECT_0 + numHandles) > ret);
+    bool somethingSet = (ret >= WAIT_OBJECT_0) && (ret < (WAIT_OBJECT_0 + numHandles));
 
     for (it = checkEvents.begin(); it != checkEvents.end(); ++it) {
         Event* evt = *it;
@@ -212,15 +342,11 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
             if (somethingSet && evt->IsSet()) {
                 signaledEvents.push_back(evt);
             }
-            if (evt->eventType == IO_WRITE) {
-                WSAEventSelect(evt->ioFd, evt->ioHandle, READ_SET);
-            }
         }
     }
 
-
     QStatus status;
-    if (((WAIT_OBJECT_0 <= ret) && ((WAIT_OBJECT_0 + numHandles) > ret)) || (WAIT_TIMEOUT == ret)) {
+    if (somethingSet || (WAIT_TIMEOUT == ret)) {
         status = signaledEvents.empty() ? ER_TIMEOUT : ER_OK;
     } else {
         status = ER_FAIL;
@@ -236,60 +362,64 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
     return status;
 }
 
-Event::Event() : handle(CreateEvent(NULL, TRUE, FALSE, NULL)),
+Event::Event() :
+    handle(CreateEvent(NULL, TRUE, FALSE, NULL)),
     ioHandle(INVALID_HANDLE_VALUE),
     eventType(GEN_PURPOSE),
     timestamp(0),
     period(0),
     ioFd(-1),
-    ownsIoHandle(false),
     numThreads(0)
 {
 }
 
-Event::Event(Event& event, EventType eventType, bool genPurpose)
-    : handle(INVALID_HANDLE_VALUE),
-    ioHandle(event.ioHandle),
+Event::Event(Event& event, EventType eventType, bool genPurpose) :
+    handle(INVALID_HANDLE_VALUE),
+    ioHandle(INVALID_HANDLE_VALUE),
     eventType(eventType),
     timestamp(0),
     period(0),
     ioFd(event.ioFd),
-    ownsIoHandle(false),
     numThreads(0)
 {
+    /* Create an auto reset event for the socket fd */
+    if (ioFd > 0) {
+        assert((eventType == IO_READ) || (eventType == IO_WRITE));
+        ioHandle = CreateEvent(NULL, FALSE, FALSE, NULL);
+        IoMonitor.RegisterEvent(this);
+    }
     if (genPurpose) {
         handle = CreateEvent(NULL, TRUE, FALSE, NULL);
     }
 }
 
-Event::Event(int ioFd, EventType eventType, bool genPurpose)
-    : handle(INVALID_HANDLE_VALUE),
+Event::Event(int ioFd, EventType eventType, bool genPurpose) :
+    handle(INVALID_HANDLE_VALUE),
     ioHandle(INVALID_HANDLE_VALUE),
     eventType(eventType),
     timestamp(0),
     period(0),
     ioFd(ioFd),
-    ownsIoHandle(true),
     numThreads(0)
 {
-    /* Create an event for the socket fd */
-    if (0 <= ioFd) {
-        ioHandle = WSACreateEvent();
-        WSAEventSelect(ioFd, ioHandle, FD_READ | FD_CLOSE | FD_ACCEPT);
+    /* Create an auto reset event for the socket fd */
+    if (ioFd > 0) {
+        assert((eventType == IO_READ) || (eventType == IO_WRITE));
+        ioHandle = CreateEvent(NULL, FALSE, FALSE, NULL);
+        IoMonitor.RegisterEvent(this);
     }
     if (genPurpose) {
         handle = CreateEvent(NULL, TRUE, FALSE, NULL);
     }
 }
 
-Event::Event(uint32_t timestamp, uint32_t period)
-    : handle(INVALID_HANDLE_VALUE),
+Event::Event(uint32_t timestamp, uint32_t period) :
+    handle(INVALID_HANDLE_VALUE),
     ioHandle(INVALID_HANDLE_VALUE),
     eventType(TIMED),
     timestamp(WAIT_FOREVER == timestamp ? WAIT_FOREVER : GetTimestamp() + timestamp),
     period(period),
     ioFd(-1),
-    ownsIoHandle(false),
     numThreads(0)
 {
 }
@@ -297,20 +427,22 @@ Event::Event(uint32_t timestamp, uint32_t period)
 Event::~Event()
 {
     /* Threads should not be waiting on this event */
-    if ((INVALID_HANDLE_VALUE != handle) && !::SetEvent(handle)) {
+    if ((handle != INVALID_HANDLE_VALUE) && !::SetEvent(handle)) {
         QCC_LogError(ER_FAIL, ("SetEvent failed with %d (%s)", GetLastError()));
     }
     if (TIMED == eventType) {
         timestamp = 0;
     }
 
-    /* Close the handles */
-    if (INVALID_HANDLE_VALUE != handle) {
-        CloseHandle(handle);
+    /* No longer monitoring I/O for this event */
+    if (ioHandle != INVALID_HANDLE_VALUE) {
+        IoMonitor.DeregisterEvent(this);
+        CloseHandle(ioHandle);
     }
-    if (ownsIoHandle && (INVALID_HANDLE_VALUE != ioHandle)) {
-        WSAEventSelect(ioFd, ioHandle, 0);
-        WSACloseEvent(ioHandle);
+
+    /* Close the handles */
+    if (handle != INVALID_HANDLE_VALUE) {
+        CloseHandle(handle);
     }
 }
 
