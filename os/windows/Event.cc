@@ -47,7 +47,7 @@ static const long WRITE_SET = FD_WRITE | FD_CLOSE | FD_CONNECT;
 
 VOID CALLBACK IoEventCallback(PVOID arg, BOOLEAN TimerOrWaitFired);
 
-    
+
 class IoEventMonitor {
   public:
 
@@ -72,7 +72,7 @@ class IoEventMonitor {
 
         lock.Lock();
         std::map<SOCKET, EventList*>::iterator iter = eventMap.find(sock);
-        EventList *eventList;
+        EventList*eventList;
         if (iter == eventMap.end()) {
             /* new IO */
             eventList = new EventList();
@@ -87,7 +87,7 @@ class IoEventMonitor {
         } else {
             eventList = iter->second;
         }
-        /* 
+        /*
          * Add the event to the list of events for this socket
          */
         eventList->events.push_back(event);
@@ -112,7 +112,7 @@ class IoEventMonitor {
         lock.Lock();
         std::map<SOCKET, EventList*>::iterator iter = eventMap.find(sock);
         if (iter != eventMap.end()) {
-            EventList *eventList = iter->second;
+            EventList*eventList = iter->second;
             /*
              * Remove this event from the event list
              */
@@ -133,8 +133,6 @@ class IoEventMonitor {
                 lock.Lock();
                 WSACloseEvent(eventList->ioEvent);
                 delete eventList;
-            } else {
-                /* TODO - reevaluate the IO conditions for all remaining events */
             }
         } else {
             QCC_LogError(ER_OS_ERROR, ("eventList for fd %d missing from event map", event->GetFD()));
@@ -151,10 +149,8 @@ VOID CALLBACK IoEventCallback(PVOID arg, BOOLEAN TimerOrWaitFired)
     SOCKET sock = (SOCKET)arg;
     IoMonitor.lock.Lock();
     std::map<SOCKET, IoEventMonitor::EventList*>::iterator iter = IoMonitor.eventMap.find(sock);
-    if (iter == IoMonitor.eventMap.end()) {
-        QCC_LogError(ER_OS_ERROR, ("Socket handle %d not found in event map", sock));
-    } else {
-        IoEventMonitor::EventList *eventList = iter->second;
+    if (iter != IoMonitor.eventMap.end()) {
+        IoEventMonitor::EventList*eventList = iter->second;
         WSANETWORKEVENTS ioEvents;
         int ret = WSAEnumNetworkEvents(sock, eventList->ioEvent, &ioEvents);
         if (ret != 0) {
