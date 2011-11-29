@@ -37,8 +37,8 @@ void LockTrace::Acquired(qcc::Mutex* mutex, qcc::String file, uint32_t line)
 
 void LockTrace::Waiting(qcc::Mutex* mutex, qcc::String file, uint32_t line)
 {
-    QCC_LogError(ER_WARNING, ("Lock %u requested at %s:%u already held by another thread", mutex, file.c_str(), line));
 #ifndef NDEBUG
+    QCC_DbgPrintf(("Lock %u requested at %s:%u may be already held by another thread", mutex, file.c_str(), line));
     Thread::DumpLocks();
 #endif
 }
