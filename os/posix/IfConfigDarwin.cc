@@ -138,7 +138,7 @@ static uint32_t TranslateFlags(uint32_t flags)
     if (flags & IFF_MASTER) ourFlags |= IfConfigEntry::MASTER;
 #endif
 
-#if defined(IFF_SLAVE) 
+#if defined(IFF_SLAVE)
     if (flags & IFF_SLAVE) ourFlags |= IfConfigEntry::SLAVE;
 #endif
 
@@ -146,7 +146,7 @@ static uint32_t TranslateFlags(uint32_t flags)
     if (flags & IFF_PORTSEL) ourFlags |= IfConfigEntry::PORTSEL;
 #endif
 
-#if defined(IFF_AUTOMEDIA) 
+#if defined(IFF_AUTOMEDIA)
     if (flags & IFF_AUTOMEDIA) ourFlags |= IfConfigEntry::AUTOMEDIA;
 #endif
 
@@ -315,7 +315,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
         entry.m_mtu = if_item.ifr_mtu;
 
         //
-        // Add the completed interface entry to the list of entries we're 
+        // Add the completed interface entry to the list of entries we're
         // giving back to the user.
         //
         entries.push_back(entry);

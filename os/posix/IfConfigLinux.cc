@@ -152,7 +152,7 @@ static uint32_t TranslateFlags(uint32_t flags)
 // and is ready for use when this function completes.  Since its use is purely
 // internal, we work with the Unix/Linux sockets idioms and return an integer socket file
 // descriptor on success or a -1 on error.
-// 
+//
 static int NetlinkRouteSocket(uint32_t bufsize)
 {
     int sockFd;
@@ -539,7 +539,7 @@ static std::list<AddrEntry> NetlinkGetAddresses(uint32_t family)
 // information from the network layer.
 //
 // Since our client doesn't care about our issues with having to make multiple
-// OS-specific calls, we combine all of this information into a single 
+// OS-specific calls, we combine all of this information into a single
 // std::vector of objects containing hopefully interesting information about
 // each interface/address combination.  Most of the work done here is involved
 // with doing the "join" of the three different categories into one unified
