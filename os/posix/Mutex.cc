@@ -97,6 +97,9 @@ QStatus Mutex::Lock()
 
 QStatus Mutex::Lock(const char* file, uint32_t line)
 {
+#ifdef NDEBUG
+    return Lock();
+#else
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
@@ -112,6 +115,7 @@ QStatus Mutex::Lock(const char* file, uint32_t line)
     }
     Thread::GetThread()->lockTrace.Acquired(this, file, line);
     return status;
+#endif
 }
 
 QStatus Mutex::Unlock()
@@ -133,11 +137,15 @@ QStatus Mutex::Unlock()
 
 QStatus Mutex::Unlock(const char* file, uint32_t line)
 {
+#ifdef NDEBUG
+    return Unlock();
+#else
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
     Thread::GetThread()->lockTrace.Releasing(this, file, line);
     return Unlock();
+#endif
 }
 
 bool Mutex::TryLock(void)
