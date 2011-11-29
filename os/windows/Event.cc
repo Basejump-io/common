@@ -124,6 +124,10 @@ class IoEventMonitor {
                 eventMap.erase(iter);
                 WSAEventSelect(event->GetFD(), eventList->ioEvent, 0);
                 /*
+                 * Make sure event is not in a set state
+                 */
+                WSAResetEvent(eventList->ioEvent);
+                /*
                  * Cannot be holding the lock while unregistering the wait because this can cause a
                  * deadlock if the wait callback is blocked waiting for the lock.
                  */
