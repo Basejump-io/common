@@ -53,9 +53,10 @@ typedef socklen_t SockAddrSize;  /**< Abstraction of the socket address length t
  * Enumeration of address families.
  */
 typedef enum {
-    QCC_AF_INET  = PF_INET,  /**< IPv4 address family */
-    QCC_AF_INET6 = PF_INET6, /**< IPv6 address family */
-    QCC_AF_UNIX  = PF_UNIX   /**< UNIX file system sockets address family */
+    QCC_AF_UNSPEC = PF_UNSPEC,  /**< unspecified address family */
+    QCC_AF_INET  = PF_INET,     /**< IPv4 address family */
+    QCC_AF_INET6 = PF_INET6,    /**< IPv6 address family */
+    QCC_AF_UNIX  = PF_UNIX      /**< UNIX file system sockets address family */
 } AddressFamily;
 
 /**

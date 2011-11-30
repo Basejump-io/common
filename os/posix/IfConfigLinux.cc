@@ -110,6 +110,12 @@ namespace qcc {
 // the highest level functions in a bottom-up fashion.
 //
 
+static AddressFamily TranslateFamily(uint32_t family)
+{
+    if (family == AF_INET) return QCC_AF_INET;
+    if (family == AF_INET6) return QCC_AF_INET6;
+    return QCC_AF_UNSPEC;
+}
 //
 // Since the whole point of this package is to provide an OS-independent way to
 // describe the underlying resources of the system, we ned to provide a way to
@@ -568,7 +574,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
                 entry.m_index = (*i).m_index;
                 entry.m_addr = (*j).m_addr.c_str();
                 entry.m_prefixlen = (*j).m_prefixlen;
-                entry.m_family = (*j).m_family;
+                entry.m_family = TranslateFamily((*j).m_family);
 
                 entries.push_back(entry);
                 ++nAddresses;
@@ -587,7 +593,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
                 entry.m_index = (*i).m_index;
                 entry.m_addr = (*j).m_addr.c_str();
                 entry.m_prefixlen = (*j).m_prefixlen;
-                entry.m_family = (*j).m_family;
+                entry.m_family = TranslateFamily((*j).m_family);
 
                 entries.push_back(entry);
                 ++nAddresses;
@@ -608,7 +614,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
             entry.m_index = (*i).m_index;
 
             entry.m_addr = qcc::String();
-            entry.m_family = AF_UNSPEC;
+            entry.m_family = QCC_AF_UNSPEC;
 
             entries.push_back(entry);
         }

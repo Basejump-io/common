@@ -61,6 +61,13 @@ namespace qcc {
 // the highest level functions in a bottom-up fashion.
 //
 
+static AddressFamily TranslateFamily(uint32_t family)
+{
+    if (family == AF_INET) return QCC_AF_INET;
+    if (family == AF_INET6) return QCC_AF_INET6;
+    return QCC_AF_UNSPEC;
+}
+
 //
 // There are two fundamental pieces to the puzzle we want to solve.  We need
 // to get a list of interfaces on the system and then we want to get a list
@@ -150,7 +157,7 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
                 entry.m_flags = pinfo->OperStatus == IfOperStatusUp ? IfConfigEntry::UP : 0;
                 entry.m_flags |= pinfo->Flags & IP_ADAPTER_NO_MULTICAST ? 0 : IfConfigEntry::MULTICAST;
                 entry.m_flags |= pinfo->IfType == IF_TYPE_SOFTWARE_LOOPBACK ? IfConfigEntry::LOOPBACK : 0;
-                entry.m_family = family;
+                entry.m_family = TranslateFamily(family);
                 entry.m_mtu = pinfo->Mtu;
 
                 if (family == AF_INET) {

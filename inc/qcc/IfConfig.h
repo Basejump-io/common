@@ -29,6 +29,7 @@
 #include <vector>
 #include <Status.h>
 #include <qcc/String.h>
+#include <qcc/SocketTypes.h>
 
 namespace qcc {
 
@@ -37,7 +38,7 @@ class IfConfigEntry {
     qcc::String m_name;     /**< The operating system-assigned name of this interface (e.g. "eth0" or "wlan0"). */
     qcc::String m_addr;     /**< A string representation of the IP address of this interface. */
     uint32_t m_prefixlen;   /**< The network prefix length, in the sense of CIDR, for the IP address of this interface. */
-    uint32_t m_family;      /**< The address family of the IP address of this interface (AF_UNSPEC, AF_INET or AF_INET6). */
+    AddressFamily m_family; /**< The address family of the IP address of this interface (AF_UNSPEC, AF_INET or AF_INET6). */
 
     static const uint32_t UP = 1;               /**< The interface is running and routes are in place. */
     static const uint32_t BROADCAST = 2;        /**< The interface has a valid broadcast address (can broadcast). */

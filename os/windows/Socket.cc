@@ -30,6 +30,7 @@
 #include <qcc/IPAddress.h>
 #include <qcc/ScatterGatherList.h>
 #include <qcc/Socket.h>
+#include <qcc/IfConfig.h>
 #include <qcc/Util.h>
 #include <qcc/Thread.h>
 #include <qcc/StringUtil.h>
@@ -1093,6 +1094,292 @@ QStatus SetNagle(SocketFd sockfd, bool useNagle)
     if (r != 0) {
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Setting TCP_NODELAY failed: (%d) %s", errno, strerror(errno)));
+    }
+    return status;
+}
+
+QStatus SetReuseAddress(SocketFd sockfd, bool reuse)
+{
+    QStatus status = ER_OK;
+    int arg = reuse ? 1 : -0;
+    int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&arg, sizeof(arg));
+    if (r != 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Setting SO_REUSEADDR failed: (%d) %s", errno, strerror(errno)));
+    }
+    return status;
+}
+
+/*
+ * Some systems do not define SO_REUSEPORT (which is a BSD-ism from the first
+ * days of multicast support).  In this case they special case SO_REUSEADDR in
+ * the presence of multicast addresses to perform the same function, which is to
+ * allow multiple processes to bind to the same multicast address/port.  In this
+ * case, SO_REUSEADDR provides the equivalent functionality of SO_REUSEPORT, so
+ * it is quite safe to substitute them.  Interestingly, Darwin which is actually
+ * BSD-derived does not define SO_REUSEPORT, but Linux which is supposedly not
+ * BSD does.  Go figure.
+ */
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT SO_REUSEADDR
+#endif
+
+QStatus SetReusePort(SocketFd sockfd, bool reuse)
+{
+    QStatus status = ER_OK;
+    int arg = reuse ? 1 : -0;
+    int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&arg, sizeof(arg));
+    if (r != 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Setting SO_REUSEPORT failed: (%d) %s", errno, strerror(errno)));
+    }
+    return status;
+}
+
+void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries);
+
+/*
+ * Getting set to do a multicast join or drop is straightforward but not
+ * completely trivial, and the process is identical for both socket options, so
+ * we only do the work in one place and select one of the followin oeprations.
+ */
+enum GroupOp {JOIN, LEAVE};
+
+QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface, GroupOp op)
+{
+    /*
+     * We assume that No external API will be trying to call here and so asserts
+     * are appropriate when checking for completely bogus parameters.
+     */
+    assert(sockFd);
+    assert(family == AF_INET || family == AF_INET6);
+    assert(multicastGroup.size());
+    assert(interface.size());
+    assert(op == JOIN || op == LEAVE);
+    /*
+     * Joining a multicast group requires a different approach based on the
+     * address family of the socket.  There's no way to get this information
+     * from an unbound socket, and it is not unreasonable to join a multicast
+     * group before binding; so to avoid an inscrutable initialization order
+     * requirement we force the caller to provide this tidbit.
+     */
+    if (family == QCC_AF_INET) {
+        /*
+         * Group memberships are associated with both the multicast group itself
+         * and also an interface.  In the IPv4 version, we need to provide an
+         * interface address.  There is no convenient socket ioctl in Windows to
+         * do what we need (SIOCGIFADDR) so we call into IfConfig since it
+         * already does the surprising amount of dirty work required to get this
+         * done across the various incarnations of Windows.
+         */
+        std::vector<IfConfigEntry> entries;
+        IfConfigByFamily(AF_INET, entries);
+
+        bool found = false;
+        struct ip_mreq mreq;
+
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            if (entries[i].m_name == interface) {
+                IPAddress address(entries[i].m_addr);
+                mreq.imr_interface.s_addr = address.GetIPv4AddressNetOrder();
+                found = true;
+            }
+        }
+
+        if (!found) {
+            QCC_LogError(ER_OS_ERROR, ("can't find address for interface %s", interface.c_str()));
+            return ER_OS_ERROR;
+        }
+
+        int rc = InetPtoN(AF_INET, multicastGroup.c_str(), &mreq.imr_multiaddr);
+        if (rc != 1) {
+            QCC_LogError(ER_OS_ERROR, ("InetPtoN() failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+
+        int opt = op == JOIN ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
+        rc = setsockopt(sockFd, IPPROTO_IP, opt, reinterpret_cast<const char*>(&mreq), sizeof(mreq));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    } else if (family == QCC_AF_INET6) {
+        /*
+         * Group memberships are associated with both the multicast group itself
+         * and also an interface.  In the IPv6 version, we need to provide an
+         * interface index instead of an IP address associated with the
+         * interface.  There is no convenient call in Windows to do what we need
+         * (cf. if_nametoindex) so we call into IfConfig since it already does
+         * the surprising amount of dirty work required to get this done across
+         * the various incarnations of Windows.
+         */
+        std::vector<IfConfigEntry> entries;
+        IfConfigByFamily(AF_INET6, entries);
+
+        bool found = false;
+        struct ipv6_mreq mreq;
+
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            if (entries[i].m_name == interface) {
+                mreq.ipv6mr_interface = entries[i].m_index;
+                found = true;
+            }
+        }
+
+        if (!found) {
+            QCC_LogError(ER_OS_ERROR, ("can't find interface index for interface %s", interface.c_str()));
+            return ER_OS_ERROR;
+        }
+
+        int rc = InetPtoN(AF_INET6, multicastGroup.c_str(), &mreq.ipv6mr_multiaddr);
+        if (rc != 1) {
+            QCC_LogError(ER_OS_ERROR, ("InetPtoN() failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+
+        int opt = op == JOIN ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP;
+        rc = setsockopt(sockFd, IPPROTO_IPV6, opt, reinterpret_cast<const char*>(&mreq), sizeof(mreq));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    }
+    return ER_OK;
+}
+
+QStatus JoinMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface)
+{
+    return MulticastGroupOpInternal(sockFd, family, multicastGroup, interface, JOIN);
+}
+
+QStatus LeaveMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface)
+{
+    return MulticastGroupOpInternal(sockFd, family, multicastGroup, interface, LEAVE);
+}
+
+QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String interface)
+{
+    /*
+     * We assume that No external API will be trying to call here and so asserts
+     * are appropriate when checking for completely bogus parameters.
+     */
+    assert(sockFd);
+    assert(family == AF_INET || family == AF_INET6);
+    assert(interface.size());
+
+    /*
+     * Associating the multicast interface with a socket requires a different
+     * approach based on the address family of the socket.  There's no way to
+     * get this information from an unbound socket, and it is not unreasonable
+     * to set the interface before binding; so to avoid an inscrutable
+     * initialization order requirement we force the caller to provide this
+     * tidbit.
+     */
+    if (family == QCC_AF_INET) {
+        /*
+         * In the IPv4 version, we need to provide an interface address.  We
+         * borrow the socket passed in to do the required call to find the
+         * address from the interface name.  There is no convenient socket ioctl
+         * in Windows to do what we need (SIOCGIFADDR) so we call into IfConfig
+         * since it already does the surprising amount of dirty work required to
+         * get this done across the various incarnations of Windows.
+         */
+        std::vector<IfConfigEntry> entries;
+        IfConfigByFamily(AF_INET, entries);
+
+        bool found = false;
+        struct in_addr addr;
+
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            if (entries[i].m_name == interface) {
+                IPAddress address(entries[i].m_addr);
+                addr.s_addr = address.GetIPv4AddressNetOrder();
+                found = true;
+            }
+        }
+
+        if (!found) {
+            QCC_LogError(ER_OS_ERROR, ("can't find address for interface %s", interface.c_str()));
+            return ER_OS_ERROR;
+        }
+
+        int rc = setsockopt(sockFd, IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast<const char*>(&addr), sizeof(addr));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_IF) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    } else if (family == QCC_AF_INET6) {
+        /*
+         * In the IPv6 version, we need to provide an interface index instead of
+         * an IP address associated with the interface.  There is no convenient
+         * call in Windows to do what we need (cf. if_nametoindex) so we call
+         * into IfConfig since it already does the surprising amount of dirty
+         * work required to get this done across the various incarnations of
+         * Windows.
+         */
+        std::vector<IfConfigEntry> entries;
+        IfConfigByFamily(AF_INET6, entries);
+
+        bool found = false;
+        uint32_t index = 0;
+
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            if (entries[i].m_name == interface) {
+                index = entries[i].m_index;
+                found = true;
+            }
+        }
+
+        if (!found) {
+            QCC_LogError(ER_OS_ERROR, ("can't find interface index for interface %s", interface.c_str()));
+            return ER_OS_ERROR;
+        }
+
+        int rc = setsockopt(sockFd, IPPROTO_IPV6, IP_MULTICAST_IF, reinterpret_cast<const char*>(&index), sizeof(index));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_IF) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    }
+    return ER_OK;
+}
+
+QStatus SetMulticastHops(SocketFd sockFd, AddressFamily family, uint32_t hops)
+{
+    /*
+     * We assume that No external API will be trying to call here and so asserts
+     * are appropriate when checking for completely bogus parameters.
+     */
+    assert(sockFd);
+    assert(family == AF_INET || family == AF_INET6);
+
+    /*
+     * IPv4 and IPv6 are almost the same.  Of course, not quite, though.
+     */
+    if (family == QCC_AF_INET) {
+        int rc = setsockopt(sockFd, IPPROTO_IP, IP_MULTICAST_TTL, reinterpret_cast<const char*>(&hops), sizeof(hops));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_TTL) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    } else if (family == QCC_AF_INET6) {
+        int rc = setsockopt(sockFd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, reinterpret_cast<const char*>(&hops), sizeof(hops));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_HOPS) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    }
+    return ER_OK;
+}
+
+QStatus SetBroadcast(SocketFd sockfd, bool broadcast)
+{
+    QStatus status = ER_OK;
+    int arg = broadcast ? 1 : -0;
+    int r = setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, (const char*)&arg, sizeof(arg));
+    if (r != 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Setting SO_BROADCAST failed: (%d) %s", errno, strerror(errno)));
     }
     return status;
 }

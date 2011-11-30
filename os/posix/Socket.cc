@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
+#include <net/if.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -33,6 +34,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #if defined(QCC_OS_DARWIN)
 #include <sys/ucred.h>
@@ -856,4 +858,248 @@ QStatus SetNagle(SocketFd sockfd, bool useNagle)
     return status;
 }
 
-}  /* namespace */
+QStatus SetReuseAddress(SocketFd sockfd, bool reuse)
+{
+    QStatus status = ER_OK;
+    int arg = reuse ? 1 : -0;
+    int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void*)&arg, sizeof(arg));
+    if (r != 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Setting SO_REUSEADDR failed: (%d) %s", errno, strerror(errno)));
+    }
+    return status;
+}
+
+/*
+ * Some systems do not define SO_REUSEPORT (which is a BSD-ism from the first
+ * days of multicast support).  In this case they special case SO_REUSEADDR in
+ * the presence of multicast addresses to perform the same function, which is to
+ * allow multiple processes to bind to the same multicast address/port.  In this
+ * case, SO_REUSEADDR provides the equivalent functionality of SO_REUSEPORT, so
+ * it is quite safe to substitute them.  Interestingly, Darwin which is actually
+ * BSD-derived does not define SO_REUSEPORT, but Linux which is supposedly not
+ * BSD does.  Go figure.
+ */
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT SO_REUSEADDR
+#endif
+
+QStatus SetReusePort(SocketFd sockfd, bool reuse)
+{
+    QStatus status = ER_OK;
+    int arg = reuse ? 1 : -0;
+    int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (void*)&arg, sizeof(arg));
+    if (r != 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Setting SO_REUSEPORT failed: (%d) %s", errno, strerror(errno)));
+    }
+    return status;
+}
+
+#ifndef IPV6_ADD_MEMBERSHIP
+#define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
+#endif
+
+#ifndef IPV6_DROP_MEMBERSHIP
+#define IPV6_DROP_MEMBERSHIP IPV6_LEAVE_GROUP
+#endif
+
+/*
+ * Getting set to do a multicast join or drop is straightforward but not
+ * completely trivial, and the process is identical for both socket options, so
+ * we only do the work in one place and select one of the followin oeprations.
+ */
+enum GroupOp {JOIN, LEAVE};
+
+QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface, GroupOp op)
+{
+    /*
+     * We assume that No external API will be trying to call here and so asserts
+     * are appropriate when checking for completely bogus parameters.
+     */
+    assert(sockFd);
+    assert(family == AF_INET || family == AF_INET6);
+    assert(multicastGroup.size());
+    assert(interface.size());
+    assert(op == JOIN || op == LEAVE);
+    /*
+     * Joining a multicast group requires a different approach based on the
+     * address family of the socket.  There's no way to get this information
+     * from an unbound socket, and it is not unreasonable to join a multicast
+     * group before binding; so to avoid an inscrutable initialization order
+     * requirement we force the caller to provide this tidbit.
+     */
+    if (family == QCC_AF_INET) {
+        /*
+         * Group memberships are associated with both the multicast group itself
+         * and also an interface.  In the IPv4 version, we need to provide an
+         * interface address.  We borrow the socket passed in to do the required
+         * call to find the address from the interface name.
+         */
+        struct ifreq ifr;
+        ifr.ifr_addr.sa_family = AF_INET;
+        strncpy(ifr.ifr_name, interface.c_str(), IFNAMSIZ);
+        ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+
+        int rc = ioctl(sockFd, SIOCGIFADDR, &ifr);
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("ioctl(SIOCGIFADDR) failed: (%d) %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+
+        struct ip_mreq mreq;
+        mreq.imr_interface.s_addr = ((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
+
+        rc = inet_pton(AF_INET, multicastGroup.c_str(), &mreq.imr_multiaddr);
+        if (rc != 1) {
+            QCC_LogError(ER_OS_ERROR, ("inet_pton() failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+
+        int opt = op == JOIN ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
+        rc = setsockopt(sockFd, IPPROTO_IP, opt, reinterpret_cast<const char*>(&mreq), sizeof(mreq));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    } else if (family == QCC_AF_INET6) {
+        /*
+         * Group memberships are associated with both the multicast group itself
+         * and also an interface.  In the IPv6 version, we need to provide an
+         * interface index instead of an IP address associated with the
+         * interface.
+         */
+        struct ipv6_mreq mreq;
+        mreq.ipv6mr_interface = if_nametoindex(interface.c_str());
+        if (mreq.ipv6mr_interface == 0) {
+            QCC_LogError(ER_OS_ERROR, ("if_nametoindex() failed: unknown interface"));
+            return ER_OS_ERROR;
+        }
+
+        int rc = inet_pton(AF_INET6, multicastGroup.c_str(), &mreq.ipv6mr_multiaddr);
+        if (rc != 1) {
+            QCC_LogError(ER_OS_ERROR, ("inet_pton() failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+
+        int opt = op == JOIN ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP;
+        rc = setsockopt(sockFd, IPPROTO_IPV6, opt, reinterpret_cast<const char*>(&mreq), sizeof(mreq));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    }
+    return ER_OK;
+}
+
+QStatus JoinMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface)
+{
+    return MulticastGroupOpInternal(sockFd, family, multicastGroup, interface, JOIN);
+}
+
+QStatus LeaveMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface)
+{
+    return MulticastGroupOpInternal(sockFd, family, multicastGroup, interface, LEAVE);
+}
+
+QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String interface)
+{
+    /*
+     * We assume that No external API will be trying to call here and so asserts
+     * are appropriate when checking for completely bogus parameters.
+     */
+    assert(sockFd);
+    assert(family == AF_INET || family == AF_INET6);
+    assert(interface.size());
+
+    /*
+     * Associating the multicast interface with a socket requires a different
+     * approach based on the address family of the socket.  There's no way to
+     * get this information from an unbound socket, and it is not unreasonable
+     * to set the interface before binding; so to avoid an inscrutable
+     * initialization order requirement we force the caller to provide this
+     * tidbit.
+     */
+    if (family == QCC_AF_INET) {
+        /*
+         * In the IPv4 version, we need to provide an interface address.  We
+         * borrow the socket passed in to do the required call to find the
+         * address from the interface name.
+         */
+        struct ifreq ifr;
+        ifr.ifr_addr.sa_family = AF_INET;
+        strncpy(ifr.ifr_name, interface.c_str(), IFNAMSIZ);
+        ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+
+        int rc = ioctl(sockFd, SIOCGIFADDR, &ifr);
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("ioctl(SIOCGIFADDR) failed: (%d) %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+
+        struct in_addr addr;
+        addr.s_addr = ((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
+
+        rc = setsockopt(sockFd, IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast<const char*>(&addr), sizeof(addr));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_IF) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    } else if (family == QCC_AF_INET6) {
+        /*
+         * In the IPv6 version, we need to provide an interface index instead of
+         * an IP address associated with the interface.
+         */
+        uint32_t index = if_nametoindex(interface.c_str());
+
+        int rc = setsockopt(sockFd, IPPROTO_IPV6, IPV6_MULTICAST_IF, reinterpret_cast<const char*>(&index), sizeof(index));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_IF) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    }
+    return ER_OK;
+}
+
+QStatus SetMulticastHops(SocketFd sockFd, AddressFamily family, uint32_t hops)
+{
+    /*
+     * We assume that No external API will be trying to call here and so asserts
+     * are appropriate when checking for completely bogus parameters.
+     */
+    assert(sockFd);
+    assert(family == AF_INET || family == AF_INET6);
+
+    /*
+     * IPv4 and IPv6 are almost the same.  Of course, not quite, though.
+     */
+    if (family == QCC_AF_INET) {
+        int rc = setsockopt(sockFd, IPPROTO_IP, IP_MULTICAST_TTL, reinterpret_cast<const char*>(&hops), sizeof(hops));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_TTL) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    } else if (family == QCC_AF_INET6) {
+        int rc = setsockopt(sockFd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, reinterpret_cast<const char*>(&hops), sizeof(hops));
+        if (rc == -1) {
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_HOPS) failed: %d - %s", errno, strerror(errno)));
+            return ER_OS_ERROR;
+        }
+    }
+    return ER_OK;
+}
+
+QStatus SetBroadcast(SocketFd sockfd, bool broadcast)
+{
+    QStatus status = ER_OK;
+    int arg = broadcast ? 1 : -0;
+    int r = setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, (void*)&arg, sizeof(arg));
+    if (r != 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Setting SO_BROADCAST failed: (%d) %s", errno, strerror(errno)));
+    }
+    return status;
+}
+
+} // namespace qcc
+

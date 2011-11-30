@@ -348,6 +348,115 @@ QStatus SetBlocking(SocketFd sockfd, bool blocking);
  */
 QStatus SetNagle(SocketFd sockfd, bool useNagle);
 
-}
+/**
+ * @brief Allow a service to bind to a TCP endpoint which is in the TIME_WAIT
+ * state.
+ *
+ * Setting this option allows a service to be restarted after a crash (or
+ * contrl-C) and then be restarted without having to wait for some possibly
+ * significant (on the order of minutes) time.
+ *
+ * @see SetReusePort()
+ *
+ * @param sockfd The socket descriptor identifying the resource.
+ * @param reuse  Set to true to allow address and/or port reuse.
+ */
+QStatus SetReuseAddress(SocketFd sockfd, bool reuse);
 
-#endif
+/**
+ * @brief Allow multiple services to bind to the same address and port.
+ *
+ * Setting this option allows a multiple services to bind to the same address
+ * and port.  This is typically useful for multicast operations where more than
+ * one process might want to listen on the same muticast address and port.  In
+ * order to use this function successfully, ALL processes that want to listen on
+ * a common port must set this option.
+ *
+ * @warning This function sets the socket option SO_REUSEPORT when it is
+ * available but falls back to SO_REUSEADDR if it is not.  The original socket
+ * option was a BSD-ism that was introduced when multicast was added there.  Not
+ * all stacks support SO_REUSEPORT, but to accomplish the same thing they will
+ * special-case SO_REUSEADDR in the presence of multicast to accomplish the same
+ * functionality.  In this case, there is no functional difference between
+ * SetReusePort() and SetReuseAddress(), but the two functions remain for
+ * clarity of purpose.
+ *
+ * @see SetReuseAddress()
+ *
+ * @param sockfd The socket descriptor identifying the resource.
+ * @param reuse  Set to true to allow address and/or port reuse.
+ */
+QStatus SetReusePort(SocketFd sockfd, bool reuse);
+
+/**
+ * Ask a UDP-based socket to join the specified multicast group.
+ *
+ * Arrange for the system to perform an IGMP join and enable reception of
+ * packets addressed to the provided multicast group.  The details of the
+ * particular process used to drive the join depend on the address family of the
+ * socket.  Since this call may be made on a bound or unbound socket, and there
+ * is no way to discover the address family from an unbound socket, we require
+ * that the address family of the socket be provided in this call.
+ *
+ * @param sockfd The socket file descriptor identifying the resource.
+ * @param family The address family used to create the provided sockfd.
+ * @param multicastGroup A string containing the desired multicast group in
+ *     presentation format.
+ * @param interface A string containing the interface name (e.g., "wlan0") on
+ *     which to join the group.
+ */
+QStatus JoinMulticastGroup(SocketFd sockfd, AddressFamily family, String multicastGroup, String interface);
+
+/**
+ * Ask a UDP-based socket to join the specified multicast group.
+ *
+ * Arrange for the system to perform an IGMP leave and disable reception of
+ * packets addressed to the provided multicast group.  The details of the
+ * particular process used to drive the join depend on the address family of the
+ * socket.  Since this call may be made on a bound or unbound socket, and there
+ * is no way to discover the address family from an unbound socket, we require
+ * that the address family of the socket be provided in this call.
+ *
+ * @param sockFd The socket file descriptor identifying the resource.
+ * @param family The address family used to create the prvided socket.
+ * @param multicastGroup A string containing the desired multicast group in
+ *     presentation format.
+ * @param interface A string containing the interface name (e.g., "wlan0") on
+ *     which to join the group.
+ */
+QStatus LeaveMulticastGroup(SocketFd socketFd, AddressFamily family, String multicastGroup, String interface);
+
+/**
+ * Set the outbound interface over which multicast packets are sent using
+ * the provided socket.
+ *
+ * Override the internal OS routing of multicast packets and specify which
+ * single interface over which multicast packets sent using this socket will be
+ * sent.
+ *
+ * @param sockfd The socket file descriptor identifying the resource.
+ * @param interface A string containing the desired interface (e.g., "wlan0"),
+ */
+QStatus SetMulticastInterface(SocketFd socketFd, AddressFamily family, qcc::String interface);
+
+/**
+ * Set the number of hops over which multicast packets will be routed when
+ * sent using the provided socket.
+ *
+ * @param sockfd The socket file descriptor identifying the resource.
+ * @param hops The desired number of hops.
+ */
+QStatus SetMulticastHops(SocketFd socketFd, AddressFamily family, uint32_t hops);
+
+/**
+ * Set the broadcast option on the provided socket.
+ *
+ * @param sockfd The socket descriptor identifying the resource.
+ * @param broadcast  Set to true to enable broadcast on the socket.
+ */
+QStatus SetBroadcast(SocketFd sockfd, bool broadcast);
+
+
+} // namespace qcc
+
+#endif // _QCC_SOCKET_H

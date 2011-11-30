@@ -48,9 +48,10 @@ typedef int SockAddrSize;  /**< Abstraction of the socket address length type. *
  * Enumeration of address families.
  */
 typedef enum {
-    QCC_AF_INET  = AF_INET,  /**< IPv4 address family */
-    QCC_AF_INET6 = AF_INET6, /**< IPv6 address family */
-    QCC_AF_UNIX  = -1        /**< Not implemented on windows */
+    QCC_AF_UNSPEC = AF_UNSPEC,  /**< unspecified address family */
+    QCC_AF_INET  = AF_INET,     /**< IPv4 address family */
+    QCC_AF_INET6 = AF_INET6,    /**< IPv6 address family */
+    QCC_AF_UNIX  = -1           /**< Not implemented on windows */
 } AddressFamily;
 
 /**
