@@ -285,7 +285,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
                 }
             } else if (if_addr->ifa_netmask->sa_family == AF_INET6) {
                 for (uint32_t i = 0; i < 16; ++i) {
-		  uint8_t mask = ((struct sockaddr_in6*)(if_addr->ifa_netmask))->sin6_addr.s6_addr[i];
+                    uint8_t mask = ((struct sockaddr_in6*)(if_addr->ifa_netmask))->sin6_addr.s6_addr[i];
                     while (mask & 0x80) {
                         ++prefixlen;
                         mask <<= 1;
