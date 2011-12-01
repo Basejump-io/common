@@ -40,14 +40,14 @@
 #if defined(QCC_OS_DARWIN)
 
 #include <list>
+#include <ifaddrs.h>
 
 #include <errno.h>
+#include <netinet/in.h>
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
+#include <sys/ioctl.h>
 
 #include <qcc/Debug.h>
 #include <qcc/String.h>
@@ -109,6 +109,13 @@ namespace qcc {
 // with the lowest level functions appearing first in the file, leading toward
 // the highest level functions in a bottom-up fashion.
 //
+
+static AddressFamily TranslateFamily(uint32_t family)
+{
+    if (family == AF_INET) return QCC_AF_INET;
+    if (family == AF_INET6) return QCC_AF_INET6;
+    return QCC_AF_UNSPEC;
+}
 
 //
 // Since the whole point of this package is to provide an OS-independent way to
@@ -211,7 +218,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
         // Pick out the address family (AF_INET, AF_INET6).  We assume that if
         // no IP address is actually assigned the family will be AF_UNSPEC.
         //
-        entry.m_family = if_addr->ifa_addr->sa_family;
+        entry.m_family = TranslateFamily(if_addr->ifa_addr->sa_family);
 
         //
         // Translate the interface flags (e.g., IFF_UP, IFF_MULTICAST) into an
@@ -238,7 +245,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
         if (if_addr->ifa_addr) {
             char buf[INET6_ADDRSTRLEN];
             buf[0] = '\0';
-            char* pBuf = NULL;
+            char const* pBuf = NULL;
             if (if_addr->ifa_addr->sa_family == AF_INET) {
                 struct in_addr* p =  &((struct sockaddr_in*)if_addr->ifa_addr)->sin_addr;
                 pBuf = inet_ntop(AF_INET, p, buf, sizeof(buf));
@@ -271,14 +278,14 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
             uint32_t prefixlen = 0;
             if (if_addr->ifa_netmask->sa_family == AF_INET) {
                 uint32_t prefixlen = 0;
-                uint32_t mask = ntohl(if_addr->ifa_netmask->sin_addr.s_addr);
+                uint32_t mask = ntohl(((struct sockaddr_in*)(if_addr->ifa_netmask))->sin_addr.s_addr);
                 while (mask & 0x80000000) {
                     ++prefixlen;
                     mask <<= 1;
                 }
             } else if (if_addr->ifa_netmask->sa_family == AF_INET6) {
                 for (uint32_t i = 0; i < 16; ++i) {
-                    uint8_t mask = if_addr->ifa_netmask->sin6_addr.s6_addr[i];
+		  uint8_t mask = ((struct sockaddr_in6*)(if_addr->ifa_netmask))->sin6_addr.s6_addr[i];
                     while (mask & 0x80) {
                         ++prefixlen;
                         mask <<= 1;
