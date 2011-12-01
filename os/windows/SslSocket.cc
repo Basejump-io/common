@@ -42,11 +42,11 @@ using namespace std;
 
 namespace qcc {
 
-static SSL_CTX *sslCtx = NULL;
+static SSL_CTX*sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
 SslSocket::SslSocket()
-  : bio(NULL),
+    : bio(NULL),
     sourceEvent(&qcc::Event::neverSet),
     sinkEvent(&qcc::Event::neverSet)
 {
@@ -61,7 +61,7 @@ SslSocket::SslSocket()
             OpenSSL_add_all_algorithms();
             sslCtx = SSL_CTX_new(SSLv23_client_method());
             if (sslCtx) {
-                qcc::Config *cfg = qcc::Config::GetConfig();
+                qcc::Config*cfg = qcc::Config::GetConfig();
                 string trustStore = cfg->GetValue("SSL_TRUST_STORE");
                 if (!SSL_CTX_load_verify_locations(sslCtx, trustStore.c_str(), NULL)) {
                     QCC_LogError(ER_SSL_INIT, ("Cannot initialize SSL trust store \"%s\"", trustStore.c_str()));
@@ -70,7 +70,7 @@ SslSocket::SslSocket()
                 }
             }
             if (!sslCtx) {
-            	QCC_LogError(ER_SSL_INIT, ("OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
+                QCC_LogError(ER_SSL_INIT, ("OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
             }
 
             /* SSL generates SIGPIPE which we don't want */
@@ -84,7 +84,7 @@ SslSocket::~SslSocket() {
     Close();
 }
 
-QStatus SslSocket::Connect(const qcc:String hostName, uint16_t port)
+QStatus SslSocket::Connect(const qcc : String hostName, uint16_t port)
 {
     QStatus status = ER_OK;
 
@@ -95,7 +95,7 @@ QStatus SslSocket::Connect(const qcc:String hostName, uint16_t port)
     }
 
     /* Create the descriptor for this SSL socket */
-    SSL *ssl;
+    SSL*ssl;
     bio = BIO_new_ssl_connect(sslCtx);
 
     if (bio) {
@@ -159,7 +159,7 @@ void SslSocket::Close()
     }
 }
 
-QStatus SslSocket::PullBytes(void *buf, size_t reqBytes, size_t &actualBytes)
+QStatus SslSocket::PullBytes(void*buf, size_t reqBytes, size_t& actualBytes)
 {
     QStatus status = ER_OK;
     int r;
@@ -184,10 +184,10 @@ QStatus SslSocket::PullBytes(void *buf, size_t reqBytes, size_t &actualBytes)
     }
 
     actualBytes = r;
-    return status; 
+    return status;
 }
 
-QStatus SslSocket::PushBytes(void *buf, size_t numBytes, size_t &numSent)
+QStatus SslSocket::PushBytes(void*buf, size_t numBytes, size_t& numSent)
 {
     QStatus status = ER_OK;
 

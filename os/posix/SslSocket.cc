@@ -42,11 +42,11 @@ using namespace std;
 
 namespace qcc {
 
-static SSL_CTX *sslCtx = NULL;
+static SSL_CTX*sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
 SslSocket::SslSocket()
-  : bio(NULL),
+    : bio(NULL),
     sourceEvent(&qcc::Event::neverSet),
     sinkEvent(&qcc::Event::neverSet)
 {
@@ -61,7 +61,7 @@ SslSocket::SslSocket()
             OpenSSL_add_all_algorithms();
             sslCtx = SSL_CTX_new(SSLv23_client_method());
             if (sslCtx) {
-                qcc::Config *cfg = qcc::Config::GetConfig();
+                qcc::Config*cfg = qcc::Config::GetConfig();
                 qcc::String trustStore = cfg->GetValue("SSL_TRUST_STORE");
                 if (!SSL_CTX_load_verify_locations(sslCtx, trustStore.c_str(), NULL)) {
                     QCC_LogError(ER_SSL_INIT, ("Cannot initialize SSL trust store \"%s\"", trustStore.c_str()));
@@ -95,7 +95,7 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
     }
 
     /* Create the descriptor for this SSL socket */
-    SSL *ssl;
+    SSL*ssl;
     bio = BIO_new_ssl_connect(sslCtx);
 
     if (bio) {
@@ -159,7 +159,7 @@ void SslSocket::Close()
     }
 }
 
-QStatus SslSocket::PullBytes(void *buf, size_t reqBytes, size_t &actualBytes)
+QStatus SslSocket::PullBytes(void*buf, size_t reqBytes, size_t& actualBytes)
 {
     QStatus status;
     int r;
@@ -176,15 +176,14 @@ QStatus SslSocket::PullBytes(void *buf, size_t reqBytes, size_t &actualBytes)
     } else if (0 > r) {
         status = ER_FAIL;
         QCC_LogError(status, ("BIO_read failed with error=%d", ERR_get_error()));
-    }
-    else {
+    } else {
         actualBytes = r;
         status = ER_OK;
     }
-    return status;    
+    return status;
 }
 
-QStatus SslSocket::PushBytes(void *buf, size_t numBytes, size_t &numSent)
+QStatus SslSocket::PushBytes(void*buf, size_t numBytes, size_t& numSent)
 {
     QStatus status;
     int s;

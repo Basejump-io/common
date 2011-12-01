@@ -1041,14 +1041,14 @@ QStatus Crypto_GetRandomBytes(uint8_t* data, size_t len);
 
 /*PPN*/
 class Crypto_BigNum {
-private:
+  private:
     BIGNUM* num;    ///< Storage for the big number.
 
-public:
+  public:
     /**
      * Default constuctor allocates space and initializes the big number storage.
      */
-    Crypto_BigNum(void): num(BN_new()) {}
+    Crypto_BigNum(void) : num(BN_new()) { }
 
     /**
      * The copy constructor initializes the big number storage to reference a
@@ -1056,7 +1056,7 @@ public:
      *
      * @param other The other big number used for initialization.
      */
-    Crypto_BigNum(const Crypto_BigNum &other): num(BN_dup(other.num)) {}
+    Crypto_BigNum(const Crypto_BigNum& other) : num(BN_dup(other.num)) { }
 
     /**
      * The destructor releases the memor used for the big number storage.
@@ -1101,7 +1101,7 @@ public:
      *
      * @return  "true" if the values are the same.
      */
-    bool operator==(const Crypto_BigNum &other) const { return Compare(other) == 0; }
+    bool operator==(const Crypto_BigNum& other) const { return Compare(other) == 0; }
 
     /**
      * Determine if another big number has a different value than we do.
@@ -1110,7 +1110,7 @@ public:
      *
      * @return  "true" if the values are different.
      */
-    bool operator!=(const Crypto_BigNum &other) const { return Compare(other) != 0; }
+    bool operator!=(const Crypto_BigNum& other) const { return Compare(other) != 0; }
 
     /**
      * Determine if *this > other.
@@ -1119,7 +1119,7 @@ public:
      *
      * @return  "true" if *this > other.
      */
-    bool operator>(const Crypto_BigNum &other) const { return Compare(other) > 0; }
+    bool operator>(const Crypto_BigNum& other) const { return Compare(other) > 0; }
 
     /**
      * Determine if *this >= other.
@@ -1128,7 +1128,7 @@ public:
      *
      * @return  "true" if *this >= other.
      */
-    bool operator>=(const Crypto_BigNum &other) const { return Compare(other) >= 0; }
+    bool operator>=(const Crypto_BigNum& other) const { return Compare(other) >= 0; }
 
     /**
      * Determine if *this < other.
@@ -1137,7 +1137,7 @@ public:
      *
      * @return  "true" if *this < other.
      */
-    bool operator<(const Crypto_BigNum &other) const { return Compare(other) < 0; }
+    bool operator<(const Crypto_BigNum& other) const { return Compare(other) < 0; }
 
     /**
      * Determine if *this <= other.
@@ -1146,7 +1146,7 @@ public:
      *
      * @return  "true" if *this <= other.
      */
-    bool operator<=(const Crypto_BigNum &other) const { return Compare(other) <= 0; }
+    bool operator<=(const Crypto_BigNum& other) const { return Compare(other) <= 0; }
 
     /**
      * Set the big number to a cryptographically random number of a specified

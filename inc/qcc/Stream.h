@@ -51,10 +51,10 @@ class Source {
     virtual ~Source() { }
 
     /**
-	 * Reset a source.
-	 *
-	 * @param source   Source to be reset.
-	 */
+     * Reset a source.
+     *
+     * @param source   Source to be reset.
+     */
     virtual void Reset(Source& source) { return; }
 
     /**

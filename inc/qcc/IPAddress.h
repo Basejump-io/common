@@ -271,10 +271,10 @@ class IPAddress {
 class IPEndpoint {
   public:
 
-	/**
-	 * Empty Constructor
-	 */
-	IPEndpoint(){}
+    /**
+     * Empty Constructor
+     */
+    IPEndpoint() { }
 
     /**
      * Construct and IPEndpoint from a string and port
