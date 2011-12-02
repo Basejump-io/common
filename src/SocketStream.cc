@@ -83,12 +83,13 @@ SocketStream::SocketStream(const SocketStream& other) :
 
 SocketStream SocketStream::operator=(const SocketStream& other)
 {
+    delete sourceEvent;
+    delete sinkEvent;
     Close();
+
     isConnected = other.isConnected;
     sock = CopySock(other.sock);
-    delete sourceEvent;
     sourceEvent = new Event(sock, Event::IO_READ, false);
-    delete sinkEvent;
     sinkEvent = new Event(*sourceEvent, Event::IO_WRITE, false);
     isDetached = other.isDetached;
     return *this;
@@ -96,9 +97,9 @@ SocketStream SocketStream::operator=(const SocketStream& other)
 
 SocketStream::~SocketStream()
 {
-    Close();
     delete sourceEvent;
     delete sinkEvent;
+    Close();
 }
 
 QStatus SocketStream::Connect(qcc::String& host, uint16_t port)
