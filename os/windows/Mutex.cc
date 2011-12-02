@@ -23,6 +23,7 @@
 #include <qcc/platform.h>
 
 #include <windows.h>
+#include <assert.h>
 #include <stdio.h>
 
 #include <qcc/Thread.h>
@@ -76,7 +77,11 @@ QStatus Mutex::Lock(const char* file, uint32_t line)
         Thread::GetThread()->lockTrace.Waiting(this, file, line);
         status = Lock();
     }
-    Thread::GetThread()->lockTrace.Acquired(this, file, line);
+    if (status == ER_OK) {
+        Thread::GetThread()->lockTrace.Acquired(this, file, line);
+    } else {
+        QCC_LogError(status, ("Mutex::Lock %s:%d failed", file, line));
+    }
     return status;
 #endif
 }
