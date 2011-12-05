@@ -729,6 +729,7 @@ BigNum BigNum::div(const BigNum& divisor, BigNum& rem) const
     x.digits += d;
     x.length -= d;
     while (x >= y) {
+        q.length = d + 1;
         ++q.digits[d];
         x.sub(y);
     }
