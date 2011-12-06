@@ -26,7 +26,7 @@
 
 #include <qcc/platform.h>
 
-#ifdef ANDROID
+#ifdef QCC_OS_ANDROID
 #include <sys/atomics.h>
 #endif
 
@@ -36,9 +36,7 @@
 
 namespace qcc {
 
-#ifdef QCC_CPU_ARM
-
-#ifdef ANDROID
+#if defined(QCC_OS_ANDROID)
 
 /**
  * Increment an int32_t and return it's new value atomically.
@@ -74,56 +72,6 @@ inline int32_t DecrementAndFetch(volatile int32_t* mem)
     return __atomic_dec(mem) - 1;
 }
 
-#else /* TARGET_ANDROID */
-
-/**
- * Increment an int32_t and return it's new value atomically.
- *
- * @param mem   Pointer to int32_t to be incremented.
- * @return  New value (after increment) of *mem
- */
-inline int32_t IncrementAndFetch(volatile int32_t* mem)
-{
-    int ret;
-    unsigned long exclusive;
-
-    __asm__ __volatile__ (
-        "1:	ldrex	%0, [%2]\n"
-        "	add	%0, %0, #1\n"
-        "	strex	%1, %0, [%2]\n"
-        "	teq	%1, #0\n"
-        "	bne	1b"
-        : "=&r" (ret), "=&r" (exclusive)
-        : "r" (mem)
-        : "cc");
-
-    return ret;
-}
-
-/**
- * Decrement an int32_t and return it's new value atomically.
- *
- * @param mem   Pointer to int32_t to be decremented.
- * @return  New value (after decrement) of *mem
- */
-inline int32_t DecrementAndFetch(volatile int32_t* mem)
-{
-    int ret;
-    unsigned long exclusive;
-
-    __asm__ __volatile__ (
-        "1:	ldrex	%0, [%2]\n"
-        "	sub	%0, %0, #1\n"
-        "	strex	%1, %0, [%2]\n"
-        "	teq	%1, #0\n"
-        "	bne	1b"
-        : "=&r" (ret), "=&r" (exclusive)
-        : "r" (mem)
-        : "cc");
-
-    return ret;
-}
-#endif /* ANDROID */
 #elif defined(QCC_OS_LINUX)
 
 /**
@@ -132,7 +80,7 @@ inline int32_t DecrementAndFetch(volatile int32_t* mem)
  * @param mem   Pointer to int32_t to be incremented.
  * @return  New value (after increment) of *mem
  */
-inline int32_t IncrementAndFetch(int32_t* mem) {
+inline int32_t IncrementAndFetch(volatile int32_t* mem) {
     return __sync_add_and_fetch(mem, 1);
 }
 
@@ -142,8 +90,30 @@ inline int32_t IncrementAndFetch(int32_t* mem) {
  * @param mem   Pointer to int32_t to be decremented.
  * @return  New value (afer decrement) of *mem
  */
-inline int32_t DecrementAndFetch(int32_t* mem) {
+inline int32_t DecrementAndFetch(volatile int32_t* mem) {
     return __sync_sub_and_fetch(mem, 1);
+}
+
+#elif defined(QCC_OS_DARWIN)
+
+/**
+ * Increment an int32_t and return it's new value atomically.
+ *
+ * @param mem   Pointer to int32_t to be incremented.
+ * @return  New value (after increment) of *mem
+ */
+inline int32_t IncrementAndFetch(volatile int32_t* mem) {
+    return OSAtomicIncrement32(mem);
+}
+
+/**
+ * Decrement an int32_t and return it's new value atomically.
+ *
+ * @param mem   Pointer to int32_t to be decremented.
+ * @return  New value (afer decrement) of *mem
+ */
+inline int32_t DecrementAndFetch(volatile int32_t* mem) {
+    return OSAtomicDecrement32(mem);
 }
 
 #else
@@ -163,30 +133,6 @@ int32_t IncrementAndFetch(volatile int32_t* mem);
  * @return  New value (afer decrement) of *mem
  */
 int32_t DecrementAndFetch(volatile int32_t* mem);
-
-#endif /* QCC_CPU_ARM */
-
-#if defined(QCC_OS_DARWIN)
-
-/**
- * Increment an int32_t and return it's new value atomically.
- *
- * @param mem   Pointer to int32_t to be incremented.
- * @return  New value (after increment) of *mem
- */
-inline int32_t IncrementAndFetch(int32_t* mem) {
-    return OSAtomicIncrement32(mem);
-}
-
-/**
- * Decrement an int32_t and return it's new value atomically.
- *
- * @param mem   Pointer to int32_t to be decremented.
- * @return  New value (afer decrement) of *mem
- */
-inline int32_t DecrementAndFetch(int32_t* mem) {
-    return OSAtomicDecrement32(mem);
-}
 
 #endif
 
