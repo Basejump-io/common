@@ -89,6 +89,9 @@ objs = env.Object(srcs)
 progs = env.SConscript('$OBJDIR/test/SConscript')
 env.Install('$DISTDIR/bin', progs)
 
+# Build unit Tests
+env.SConscript('unit_test/SConscript', variant_dir='$OBJDIR/unittest', duplicate=0)
+
 ret = (hdrs, objs)
 
 Return('ret')
