@@ -59,7 +59,7 @@ QStatus SDPRecord::Parse(Source& source)
 
         if (ER_OK != status) {
             break;
-        } else if ((str.size() < 2) || ('=' != str[1])) {
+        } else if (str.size() < 2) {
             continue;
         }
 
@@ -103,6 +103,7 @@ QStatus SDPRecord::Generate(Sink& sink) const
     // Write session attributes
     const SessionAttribute* sessionStart = &sessionAttsOrder[0];
     const SessionAttribute* sessionEnd = sessionAttsOrder + sizeof(sessionAttsOrder) / sizeof(SessionAttribute);
+
     while (sessionStart != sessionEnd) {
         QStatus status;
         pair<SessionAttribute, qcc::String> vals[MAX_VALUES_PER_ATTRIBUTE];
@@ -177,8 +178,6 @@ QStatus SDPRecord::AddSessionAttribute(SessionAttribute att, qcc::String value)
 
 QStatus SDPRecord::AddStreamAttribute(int streamNum, StreamAttribute att, qcc::String value)
 {
-    QCC_DbgTrace(("SDPRecord::AddStreamAttribute(streamNum = %d, att = %s, value = %s)",
-                  streamNum, att.c_str(), value.c_str()));
     if (streamNum < (int) streamList.size()) {
         streamList[streamNum].insert(pair<StreamAttribute, qcc::String>(att, value));
         return ER_OK;
