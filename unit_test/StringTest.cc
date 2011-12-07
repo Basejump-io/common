@@ -17,9 +17,6 @@
 #include <gtest/gtest.h>
 #include <qcc/String.h>
 
-using namespace qcc;
-
-
 TEST(StringTest, constructor) {
     const char* testStr = "abcdefgdijk";
 
@@ -79,16 +76,16 @@ TEST(StringTest, operator_equals) {
 
 TEST(StringTest, copyConstructor) {
     /* test copy constructor */
-    String s2 = "abcdefg";
-    String t2 = s2;
+    qcc::String s2 = "abcdefg";
+    qcc::String t2 = s2;
     ASSERT_EQ(s2.c_str(), t2.c_str());
     ASSERT_TRUE(t2 == "abcdefg");
 }
 
 TEST(StringTest, append) {
     /* Test append */
-    String pre = "abcd";
-    String post = "efgh";
+    qcc::String pre = "abcd";
+    qcc::String post = "efgh";
     pre.append(post);
     ASSERT_STREQ("abcdefgh", pre.c_str());
     ASSERT_EQ(::strlen("abcdefgh"), pre.size());
@@ -101,7 +98,7 @@ TEST(StringTest, append) {
 }
 
 TEST(StringTest, erase) {
-    String pre("abcdefghijkl");
+    qcc::String pre("abcdefghijkl");
     /* Test erase */
     pre.erase(4, 2);
     ASSERT_STREQ("abcdghijkl", pre.c_str());
@@ -125,7 +122,7 @@ TEST(StringTest, erase) {
 }
 
 TEST(StringTest, resize) {
-    String pre("abcdefghijk");
+    qcc::String pre("abcdefghijk");
     ASSERT_EQ(11, pre.size());
     /* Test resize */
     pre.resize(4, 'x');
@@ -138,7 +135,7 @@ TEST(StringTest, resize) {
 }
 
 TEST(StringTest, reserve) {
-    String pre("abcdxxxx");
+    qcc::String pre("abcdxxxx");
 
     /* Test reserve */
     pre.reserve(100);
@@ -149,15 +146,15 @@ TEST(StringTest, reserve) {
 
 TEST(StringTest, insert) {
     /* Test insert */
-    String s5 = "abcdijkl";
+    qcc::String s5 = "abcdijkl";
     s5.insert(4, "efgh");
     ASSERT_STREQ("abcdefghijkl", s5.c_str());
 }
 
 TEST(StringTest, logicOperators) {
     /* Test operator== and operator!= */
-    String s5 = "abcdefghijkl";
-    String s6 = "abcdefghijkl";
+    qcc::String s5 = "abcdefghijkl";
+    qcc::String s6 = "abcdefghijkl";
     ASSERT_TRUE(s5 == s6);
     ASSERT_FALSE(s5 != s6);
 
@@ -171,15 +168,15 @@ TEST(StringTest, logicOperators) {
 
 TEST(StringTest, threeParamConstructor) {
     /* Test String(size_t, char, size_t) */
-    String s3(8, 's', 8);
+    qcc::String s3(8, 's', 8);
     ASSERT_STREQ("ssssssss", s3.c_str());
     ASSERT_EQ(::strlen("ssssssss"), s3.size());
 }
 
 TEST(StringTest, arrayOperator1) {
     /* test copy constructor and char& operator[] */
-    String s2 = "abcdefg";
-    String t2 = s2;
+    qcc::String s2 = "abcdefg";
+    qcc::String t2 = s2;
     t2[1] = 'B';
     ASSERT_STREQ("abcdefg", s2.c_str());
     ASSERT_STREQ("aBcdefg", t2.c_str());
@@ -200,7 +197,7 @@ TEST(StringTest, arrayOperator2) {
 
 TEST(StringTest, arrayOperator3) {
     const char* testStr = "abcdefgdijk";
-    String s = testStr;
+    qcc::String s = testStr;
     ASSERT_EQ('a', s[0]);
     ASSERT_EQ('\0', s[11]);
 }
@@ -208,12 +205,12 @@ TEST(StringTest, iterators) {
     const char* testChars = "abcdefgh";
 
     /* Test iterators */
-    String s4(strlen(testChars), 'x');
-    String::iterator it = s4.begin();
+    qcc::String s4(strlen(testChars), 'x');
+    qcc::String::iterator it = s4.begin();
     for (size_t i = 0; i < s4.size(); ++i) {
         *it++ = testChars[i];
     }
-    String::const_iterator cit = s4.begin();
+    qcc::String::const_iterator cit = s4.begin();
     ASSERT_EQ(strlen(testChars), s4.size());
     size_t i = 0;
     while (cit != s4.end()) {
@@ -227,7 +224,7 @@ TEST(StringTest, substr) {
     qcc::String s(testStr);
 
     /* Test substr */
-    String s2 = s.substr(0, 4) + "1234";
+    qcc::String s2 = s.substr(0, 4) + "1234";
     ASSERT_TRUE(s2 == "abcd1234");
     ASSERT_TRUE(s2.substr(4, 1) == "1");
     ASSERT_TRUE(s2.substr(1000, 1) == "");
@@ -236,7 +233,7 @@ TEST(StringTest, substr) {
 
 TEST(StringTest, plusEqualsOperator) {
     /* Test += */
-    String s = "";
+    qcc::String s = "";
     for (size_t i = 0; i < 1000; ++i) {
         s += "foo";
         ASSERT_EQ(3 * (i + 1), s.size());
