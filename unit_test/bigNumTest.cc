@@ -1,6 +1,5 @@
 /******************************************************************************
  *
- *
  * Copyright 2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -461,28 +460,28 @@ TEST(BigNumTest, DivisionAndMultiplicationStress) {
     // division and multiplication stress
     for (int i = 1; i < 200; ++i) {
         //for (int n = 0; n < 1000; ++n) {
-            for (int j = 0; j < 50; ++j) {
-                //bn1.gen_rand(i + 1 + j / 10);
-                bn1.gen_rand(i + 1);
-                if ((i % 8) == 1) {
-                    bn1 = -bn1;
-                }
-                do {
-                    bn2.gen_rand(i);
-                } while (bn2 == 0);
-                if ((i % 16) == 1) {
-                    bn2 = -bn2;
-                }
-                bn3 = bn1 / bn2;
-                bn4 = bn1 % bn2;
-                EXPECT_TRUE(((bn2 * bn3) + bn4) == bn1);
-                if (((bn2 * bn3) + bn4) != bn1) {
-                    printf("bn1: %s\n", bn1.get_hex().c_str());
-                    printf("bn2: %s\n", bn2.get_hex().c_str());
-                    printf("bn3: %s\n", bn3.get_hex().c_str());
-                    printf("bn4: %s\n", bn4.get_hex().c_str());
-                    //abort stress test after printing values that produced error
-                    ASSERT_TRUE(((bn2 * bn3) + bn4) == bn1);
+        for (int j = 0; j < 50; ++j) {
+            //bn1.gen_rand(i + 1 + j / 10);
+            bn1.gen_rand(i + 1);
+            if ((i % 8) == 1) {
+                bn1 = -bn1;
+            }
+            do {
+                bn2.gen_rand(i);
+            } while (bn2 == 0);
+            if ((i % 16) == 1) {
+                bn2 = -bn2;
+            }
+            bn3 = bn1 / bn2;
+            bn4 = bn1 % bn2;
+            EXPECT_TRUE(((bn2 * bn3) + bn4) == bn1);
+            if (((bn2 * bn3) + bn4) != bn1) {
+                printf("bn1: %s\n", bn1.get_hex().c_str());
+                printf("bn2: %s\n", bn2.get_hex().c_str());
+                printf("bn3: %s\n", bn3.get_hex().c_str());
+                printf("bn4: %s\n", bn4.get_hex().c_str());
+                //abort stress test after printing values that produced error
+                ASSERT_TRUE(((bn2 * bn3) + bn4) == bn1);
                 //}
             }
         }
