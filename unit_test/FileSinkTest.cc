@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 #include <qcc/FileStream.h>
 #include <qcc/String.h>
+#include <Status.h>
 
 using namespace qcc;
 

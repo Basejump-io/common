@@ -474,16 +474,12 @@ TEST(BigNumTest, DivisionAndMultiplicationStress) {
             }
             bn3 = bn1 / bn2;
             bn4 = bn1 % bn2;
-            EXPECT_TRUE(((bn2 * bn3) + bn4) == bn1);
-            if (((bn2 * bn3) + bn4) != bn1) {
-                printf("bn1: %s\n", bn1.get_hex().c_str());
-                printf("bn2: %s\n", bn2.get_hex().c_str());
-                printf("bn3: %s\n", bn3.get_hex().c_str());
-                printf("bn4: %s\n", bn4.get_hex().c_str());
-                //abort stress test after printing values that produced error
-                ASSERT_TRUE(((bn2 * bn3) + bn4) == bn1);
-                //}
-            }
+            EXPECT_TRUE(((bn2 * bn3) + bn4) == bn1) <<
+            "bn1: " << bn1.get_hex().c_str() << "\n" <<
+            "bn2: " << bn2.get_hex().c_str() << "\n" <<
+            "bn3: " << bn3.get_hex().c_str() << "\n" <<
+            "bn4: " << bn4.get_hex().c_str();
+            //}
         }
     }
 }
@@ -510,13 +506,11 @@ TEST(BigNumTest, ModularExponentiationStress) {
                 }
             }
             BigNum exp = a.mod_exp(e, m);
-            EXPECT_FALSE(exp != check);
-            if (exp != check) {
-                printf("val: %s\n", a.get_hex().c_str());
-                printf("exp: %s\n", e.get_hex().c_str());
-                printf("mod: %s\n", m.get_hex().c_str());
-                ASSERT_FALSE(exp != check);
-            }
+            EXPECT_FALSE(exp != check) <<
+            "val exp: " << exp.get_hex().c_str() << "\n" <<
+            "val a: " << a.get_hex().c_str() << "\n" <<
+            "val e: " << e.get_hex().c_str() << "\n" <<
+            "val m: " << m.get_hex().c_str();
         }
     }
 }
