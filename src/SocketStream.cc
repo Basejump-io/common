@@ -83,8 +83,6 @@ SocketStream::SocketStream(const SocketStream& other) :
 
 SocketStream SocketStream::operator=(const SocketStream& other)
 {
-    delete sourceEvent;
-    delete sinkEvent;
     Close();
 
     isConnected = other.isConnected;
@@ -97,8 +95,6 @@ SocketStream SocketStream::operator=(const SocketStream& other)
 
 SocketStream::~SocketStream()
 {
-    delete sourceEvent;
-    delete sinkEvent;
     Close();
 }
 
@@ -134,6 +130,12 @@ QStatus SocketStream::Connect(qcc::String& path)
 
 void SocketStream::Close()
 {
+    delete sourceEvent;
+    sourceEvent = NULL;
+
+    delete sinkEvent;
+    sinkEvent = NULL;
+
     if (isConnected) {
         if (!isDetached) {
             Shutdown(sock);
@@ -178,6 +180,9 @@ QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes,
 
 QStatus SocketStream::PullBytesAndFds(void* buf, size_t reqBytes, size_t& actualBytes, SocketFd* fdList, size_t& numFds, uint32_t timeout)
 {
+    if (!isConnected) {
+        return ER_FAIL;
+    }
     QStatus status;
     size_t recvdFds = 0;
     while (true) {
