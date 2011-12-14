@@ -1093,7 +1093,7 @@ QStatus SetNagle(SocketFd sockfd, bool useNagle)
     int r = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&arg, sizeof(int));
     if (r != 0) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Setting TCP_NODELAY failed: (%d) %s", errno, strerror(errno)));
+        QCC_LogError(status, ("Setting TCP_NODELAY failed: (%d) %s", GetLastError(), GetLastErrorString().c_str()));
     }
     return status;
 }
@@ -1105,7 +1105,7 @@ QStatus SetReuseAddress(SocketFd sockfd, bool reuse)
     int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&arg, sizeof(arg));
     if (r != 0) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Setting SO_REUSEADDR failed: (%d) %s", errno, strerror(errno)));
+        QCC_LogError(status, ("Setting SO_REUSEADDR failed: (%d) %s", GetLastError(), GetLastErrorString().c_str()));
     }
     return status;
 }
@@ -1131,7 +1131,7 @@ QStatus SetReusePort(SocketFd sockfd, bool reuse)
     int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&arg, sizeof(arg));
     if (r != 0) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Setting SO_REUSEPORT failed: (%d) %s", errno, strerror(errno)));
+        QCC_LogError(status, ("Setting SO_REUSEPORT failed: (%d) %s", GetLastError(), GetLastErrorString().c_str()));
     }
     return status;
 }
@@ -1193,14 +1193,14 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
 
         int rc = InetPtoN(AF_INET, multicastGroup.c_str(), &mreq.imr_multiaddr);
         if (rc != 1) {
-            QCC_LogError(ER_OS_ERROR, ("InetPtoN() failed: %d - %s", errno, strerror(errno)));
+            QCC_LogError(ER_OS_ERROR, ("InetPtoN() failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
 
         int opt = op == JOIN ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
         rc = setsockopt(sockFd, IPPROTO_IP, opt, reinterpret_cast<const char*>(&mreq), sizeof(mreq));
         if (rc == -1) {
-            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", errno, strerror(errno)));
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
     } else if (family == QCC_AF_INET6) {
@@ -1233,14 +1233,14 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
 
         int rc = InetPtoN(AF_INET6, multicastGroup.c_str(), &mreq.ipv6mr_multiaddr);
         if (rc != 1) {
-            QCC_LogError(ER_OS_ERROR, ("InetPtoN() failed: %d - %s", errno, strerror(errno)));
+            QCC_LogError(ER_OS_ERROR, ("InetPtoN() failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
 
         int opt = op == JOIN ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP;
         rc = setsockopt(sockFd, IPPROTO_IPV6, opt, reinterpret_cast<const char*>(&mreq), sizeof(mreq));
         if (rc == -1) {
-            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", errno, strerror(errno)));
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
     }
@@ -1305,7 +1305,7 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
 
         int rc = setsockopt(sockFd, IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast<const char*>(&addr), sizeof(addr));
         if (rc == -1) {
-            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_IF) failed: %d - %s", errno, strerror(errno)));
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_IF) failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
     } else if (family == QCC_AF_INET6) {
@@ -1337,7 +1337,7 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
 
         int rc = setsockopt(sockFd, IPPROTO_IPV6, IP_MULTICAST_IF, reinterpret_cast<const char*>(&index), sizeof(index));
         if (rc == -1) {
-            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_IF) failed: %d - %s", errno, strerror(errno)));
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_IF) failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
     }
@@ -1359,13 +1359,13 @@ QStatus SetMulticastHops(SocketFd sockFd, AddressFamily family, uint32_t hops)
     if (family == QCC_AF_INET) {
         int rc = setsockopt(sockFd, IPPROTO_IP, IP_MULTICAST_TTL, reinterpret_cast<const char*>(&hops), sizeof(hops));
         if (rc == -1) {
-            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_TTL) failed: %d - %s", errno, strerror(errno)));
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_TTL) failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
     } else if (family == QCC_AF_INET6) {
         int rc = setsockopt(sockFd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, reinterpret_cast<const char*>(&hops), sizeof(hops));
         if (rc == -1) {
-            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_HOPS) failed: %d - %s", errno, strerror(errno)));
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_MULTICAST_HOPS) failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
     }
@@ -1379,7 +1379,7 @@ QStatus SetBroadcast(SocketFd sockfd, bool broadcast)
     int r = setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, (const char*)&arg, sizeof(arg));
     if (r != 0) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Setting SO_BROADCAST failed: (%d) %s", errno, strerror(errno)));
+        QCC_LogError(status, ("Setting SO_BROADCAST failed: (%d) %s", GetLastError(), GetLastErrorString().c_str()));
     }
     return status;
 }
