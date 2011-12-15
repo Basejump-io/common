@@ -31,8 +31,35 @@ uint32_t BigNum::zero_digit = 0;
 
 const BigNum BigNum::zero;
 
-static uint32_t log2(uint32_t n)
+#define USE_DEBRUIJN_POS
+
+static inline uint32_t log2(uint32_t n)
 {
+#ifdef USE_DEBRUIJN_POS
+    /*
+     * Combined with the "magic" number below this converts a single set bit into a bit position.
+     */
+    static const uint32_t DeBruijnPos[] = {
+        0,  9,  1, 10, 13, 21,  2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
+        8, 12, 20, 28, 15, 17, 24,  7, 19, 27, 23,  6, 26,  5, 4, 31
+    };
+    static const uint32_t DeBruijnMagic = 0x07C4ACDD;
+    /*
+     * This process rounds down to one less than a power of 2. This is a variation on
+     * the classic bit twiddle for rounding up to an exact power of 2 but eliminates
+     * the increment and decrement.
+     */
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    /*
+     * n is now 1 one of exactly 32 values. The computation below maps the values into an
+     * index into the DeBruijnPos value that returns the position of the most significant bit.
+     */
+    return DeBruijnPos[(n * DeBruijnMagic) >> 27];
+#else
     uint32_t l = 0;
     if (n & 0xFFFF0000) {
         n >>= 16; l += 16;
@@ -50,6 +77,7 @@ static uint32_t log2(uint32_t n)
         n >>= 1;  l += 1;
     }
     return l;
+#endif
 }
 
 // Type for storage
@@ -760,7 +788,7 @@ BigNum BigNum::div(const BigNum& divisor, BigNum& rem) const
             qdigit = 0xFFFFFFFF;
         } else {
             uint64_t z = ((uint64_t)x.digits[i] << 32) + x.digits[i - 1];
-            qdigit = z / ymsd;
+            qdigit = (uint32_t)(z / ymsd);
         }
         // Adjust estimate
         xm3.digits = &x.digits[i - 2];
