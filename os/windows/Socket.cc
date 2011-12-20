@@ -91,39 +91,21 @@ static void MakeSockAddr(const IPAddress& addr,
     }
 }
 
-static QStatus WSAIncRefCount()
+/*
+ * Called before any operation that might be called before winsock has been started.
+ */ 
+static void WinsockCheck()
 {
-    QStatus status = ER_OK;
-    /*
-     * each time Socket is called add that to a counter.
-     * if this is the first time Socket has been called call WSAStartup to
-     * initiate use of the Winsock DLL by this process
-     */
-    if (IncrementAndFetch(&socketCount) == 1) {
+    static bool initialized = false;
+    if (!initialized) {
         WSADATA wsaData;
         WORD version = MAKEWORD(2, 0);
         int error = WSAStartup(version, &wsaData);
-        if (error != 0) {
-            status = ER_OS_ERROR;
-            QCC_LogError(status, ("WSAStartup failed with error: %d", error));
-            DecrementAndFetch(&socketCount);
+        if (error) {
+            QCC_LogError(ER_OS_ERROR, ("WSAStartup failed with error: %d", error));
+        } else {
+            initialized = true;
         }
-    }
-    return status;
-}
-
-static void WSADecRefCount()
-{
-    /*
-     * If the socketCallCount is zero no more sockets should be using the
-     * Winsock 2 DLL.  Call WSACleanup to terminate use of the Winsock 2 DLL.
-     */
-    if (DecrementAndFetch(&socketCount) == 0) {
-        WSACleanup();
-    } else if (socketCount < 0) {
-        /* socketCallCount should never go bellow zero */
-        QCC_LogError(ER_OS_ERROR, ("Calling WSACleanup more times than WSAStartup"));
-        IncrementAndFetch(&socketCount);
     }
 }
 
@@ -153,6 +135,7 @@ static QStatus GetSockAddr(const SOCKADDR_STORAGE* addrBuf, socklen_t addrSize,
 
 uint32_t GetLastError()
 {
+    WinsockCheck();
     return WSAGetLastError();
 }
 
@@ -163,13 +146,10 @@ qcc::String GetLastErrorString()
 
 QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
 {
+    WinsockCheck();
     QStatus status = ER_OK;
     uint32_t ret;
 
-    status = WSAIncRefCount();
-    if (status != ER_OK) {
-        return status;
-    }
 
     QCC_DbgTrace(("Socket(addrFamily = %d, type = %d, sockfd = <>)", addrFamily, type));
 
@@ -180,7 +160,6 @@ QStatus Socket(AddressFamily addrFamily, SocketType type, SocketFd& sockfd)
     if (ret == SOCKET_ERROR) {
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Opening socket: %s", StrError().c_str()));
-        WSADecRefCount();
     } else {
         sockfd = static_cast<SocketFd>(ret);
     }
@@ -290,14 +269,9 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
 
     QCC_DbgTrace(("Accept(sockfd = %d, remoteAddr = <>, remotePort = <>)", sockfd));
 
-    WSAIncRefCount();
-    if (status != ER_OK) {
-        return status;
-    }
 
     ret = accept(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), &addrLen);
     if (ret == SOCKET_ERROR) {
-        WSADecRefCount();
         if (WSAGetLastError() == WSAEWOULDBLOCK) {
             status = ER_WOULDBLOCK;
         } else {
@@ -325,7 +299,6 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
         u_long mode = 1; // Non-blocking
         ret = ioctlsocket(newSockfd, FIONBIO, &mode);
         if (ret == SOCKET_ERROR) {
-            WSADecRefCount();
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Failed to set socket non-blocking %s", StrError().c_str()));
             closesocket(newSockfd);
@@ -369,8 +342,6 @@ void Close(SocketFd sockfd)
     ret = closesocket(static_cast<SOCKET>(sockfd));
     if (ret == SOCKET_ERROR) {
         QCC_LogError(ER_OS_ERROR, ("Close: (sockfd = %d) %s", sockfd, StrError().c_str()));
-    } else {
-        WSADecRefCount();
     }
 }
 
@@ -379,10 +350,6 @@ QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
     QStatus status;
     WSAPROTOCOL_INFO protocolInfo;
 
-    status = WSAIncRefCount();
-    if (status != ER_OK) {
-        return status;
-    }
     int ret = WSADuplicateSocket(sockfd, qcc::GetPid(), &protocolInfo);
     if (ret == SOCKET_ERROR) {
         QCC_LogError(ER_OS_ERROR, ("SocketDup: %s", StrError().c_str()));
@@ -398,9 +365,6 @@ QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
             status = ER_OS_ERROR;
             QCC_LogError(status, ("SocketDup WSASocket: %s", StrError().c_str()));
         }
-    }
-    if (status != ER_OK) {
-        WSADecRefCount();
     }
     return status;
 }
@@ -796,8 +760,8 @@ QStatus RecvFromSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
 
 int InetPtoN(int af, const char* src, void* dst)
 {
+    WinsockCheck();
     int err = -1;
-    WSAIncRefCount();
     if (af == AF_INET6) {
         struct sockaddr_in6 sin6;
         int sin6Len = sizeof(sin6);
@@ -817,14 +781,13 @@ int InetPtoN(int af, const char* src, void* dst)
             memcpy(dst, &sin.sin_addr, sizeof(sin.sin_addr));
         }
     }
-    WSADecRefCount();
     return err ? -1 : 1;
 }
 
 const char* InetNtoP(int af, const void* src, char* dst, socklen_t size)
 {
+    WinsockCheck();
     int err = -1;
-    WSAIncRefCount();
     DWORD sz = (DWORD)size;
     if (af == AF_INET6) {
         struct sockaddr_in6 sin6;
@@ -840,7 +803,6 @@ const char* InetNtoP(int af, const void* src, char* dst, socklen_t size)
         memcpy(&sin.sin_addr, src, sizeof(sin.sin_addr));
         err = WSAAddressToStringA((struct sockaddr*)&sin, sizeof(sin), NULL, dst, &sz);
     }
-    WSADecRefCount();
     return err ? NULL : dst;
 }
 
@@ -924,7 +886,6 @@ QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, So
                 } else {
                     QCC_DbgHLPrintf(("RecvWithFds got handle %u", fd));
                     *fdList++ = fd;
-                    WSAIncRefCount();
                 }
             }
         }
@@ -1145,7 +1106,7 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries);
  */
 enum GroupOp {JOIN, LEAVE};
 
-QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface, GroupOp op)
+QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String multicastGroup, String iface, GroupOp op)
 {
     /*
      * We assume that No external API will be trying to call here and so asserts
@@ -1154,7 +1115,7 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
     assert(sockFd);
     assert(family == AF_INET || family == AF_INET6);
     assert(multicastGroup.size());
-    assert(interface.size());
+    assert(iface.size());
     assert(op == JOIN || op == LEAVE);
     /*
      * Joining a multicast group requires a different approach based on the
@@ -1179,7 +1140,7 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
         struct ip_mreq mreq;
 
         for (uint32_t i = 0; i < entries.size(); ++i) {
-            if (entries[i].m_name == interface) {
+            if (entries[i].m_name == iface) {
                 IPAddress address(entries[i].m_addr);
                 mreq.imr_interface.s_addr = address.GetIPv4AddressNetOrder();
                 found = true;
@@ -1187,7 +1148,7 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
         }
 
         if (!found) {
-            QCC_LogError(ER_OS_ERROR, ("can't find address for interface %s", interface.c_str()));
+            QCC_LogError(ER_OS_ERROR, ("can't find address for interface %s", iface.c_str()));
             return ER_OS_ERROR;
         }
 
@@ -1220,14 +1181,14 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
         struct ipv6_mreq mreq;
 
         for (uint32_t i = 0; i < entries.size(); ++i) {
-            if (entries[i].m_name == interface) {
+            if (entries[i].m_name == iface) {
                 mreq.ipv6mr_interface = entries[i].m_index;
                 found = true;
             }
         }
 
         if (!found) {
-            QCC_LogError(ER_OS_ERROR, ("can't find interface index for interface %s", interface.c_str()));
+            QCC_LogError(ER_OS_ERROR, ("can't find interface index for interface %s", iface.c_str()));
             return ER_OS_ERROR;
         }
 
@@ -1247,17 +1208,17 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
     return ER_OK;
 }
 
-QStatus JoinMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface)
+QStatus JoinMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String iface)
 {
-    return MulticastGroupOpInternal(sockFd, family, multicastGroup, interface, JOIN);
+    return MulticastGroupOpInternal(sockFd, family, multicastGroup, iface, JOIN);
 }
 
-QStatus LeaveMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface)
+QStatus LeaveMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String iface)
 {
-    return MulticastGroupOpInternal(sockFd, family, multicastGroup, interface, LEAVE);
+    return MulticastGroupOpInternal(sockFd, family, multicastGroup, iface, LEAVE);
 }
 
-QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String interface)
+QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String iface)
 {
     /*
      * We assume that No external API will be trying to call here and so asserts
@@ -1265,7 +1226,7 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
      */
     assert(sockFd);
     assert(family == AF_INET || family == AF_INET6);
-    assert(interface.size());
+    assert(iface.size());
 
     /*
      * Associating the multicast interface with a socket requires a different
@@ -1291,7 +1252,7 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
         struct in_addr addr;
 
         for (uint32_t i = 0; i < entries.size(); ++i) {
-            if (entries[i].m_name == interface) {
+            if (entries[i].m_name == iface) {
                 IPAddress address(entries[i].m_addr);
                 addr.s_addr = address.GetIPv4AddressNetOrder();
                 found = true;
@@ -1299,7 +1260,7 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
         }
 
         if (!found) {
-            QCC_LogError(ER_OS_ERROR, ("can't find address for interface %s", interface.c_str()));
+            QCC_LogError(ER_OS_ERROR, ("can't find address for interface %s", iface.c_str()));
             return ER_OS_ERROR;
         }
 
@@ -1324,14 +1285,14 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
         uint32_t index = 0;
 
         for (uint32_t i = 0; i < entries.size(); ++i) {
-            if (entries[i].m_name == interface) {
+            if (entries[i].m_name == iface) {
                 index = entries[i].m_index;
                 found = true;
             }
         }
 
         if (!found) {
-            QCC_LogError(ER_OS_ERROR, ("can't find interface index for interface %s", interface.c_str()));
+            QCC_LogError(ER_OS_ERROR, ("can't find interface index for interface %s", iface.c_str()));
             return ER_OS_ERROR;
         }
 

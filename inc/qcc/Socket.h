@@ -424,7 +424,7 @@ QStatus JoinMulticastGroup(SocketFd sockfd, AddressFamily family, String multica
  * @param interface A string containing the interface name (e.g., "wlan0") on
  *     which to join the group.
  */
-QStatus LeaveMulticastGroup(SocketFd socketFd, AddressFamily family, String multicastGroup, String interface);
+QStatus LeaveMulticastGroup(SocketFd socketFd, AddressFamily family, String multicastGroup, String iface);
 
 /**
  * Set the outbound interface over which multicast packets are sent using
@@ -437,7 +437,7 @@ QStatus LeaveMulticastGroup(SocketFd socketFd, AddressFamily family, String mult
  * @param sockfd The socket file descriptor identifying the resource.
  * @param interface A string containing the desired interface (e.g., "wlan0"),
  */
-QStatus SetMulticastInterface(SocketFd socketFd, AddressFamily family, qcc::String interface);
+QStatus SetMulticastInterface(SocketFd socketFd, AddressFamily family, qcc::String iface);
 
 /**
  * Set the number of hops over which multicast packets will be routed when

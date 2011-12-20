@@ -911,7 +911,7 @@ QStatus SetReusePort(SocketFd sockfd, bool reuse)
  */
 enum GroupOp {JOIN, LEAVE};
 
-QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface, GroupOp op)
+QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String multicastGroup, String iface, GroupOp op)
 {
     /*
      * We assume that No external API will be trying to call here and so asserts
@@ -920,7 +920,7 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
     assert(sockFd);
     assert(family == AF_INET || family == AF_INET6);
     assert(multicastGroup.size());
-    assert(interface.size());
+    assert(iface.size());
     assert(op == JOIN || op == LEAVE);
     /*
      * Joining a multicast group requires a different approach based on the
@@ -938,7 +938,7 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
          */
         struct ifreq ifr;
         ifr.ifr_addr.sa_family = AF_INET;
-        strncpy(ifr.ifr_name, interface.c_str(), IFNAMSIZ);
+        strncpy(ifr.ifr_name, iface.c_str(), IFNAMSIZ);
         ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 
         int rc = ioctl(sockFd, SIOCGIFADDR, &ifr);
@@ -970,7 +970,7 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
          * interface.
          */
         struct ipv6_mreq mreq;
-        mreq.ipv6mr_interface = if_nametoindex(interface.c_str());
+        mreq.ipv6mr_interface = if_nametoindex(iface.c_str());
         if (mreq.ipv6mr_interface == 0) {
             QCC_LogError(ER_OS_ERROR, ("if_nametoindex() failed: unknown interface"));
             return ER_OS_ERROR;
@@ -992,17 +992,17 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
     return ER_OK;
 }
 
-QStatus JoinMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface)
+QStatus JoinMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String iface)
 {
-    return MulticastGroupOpInternal(sockFd, family, multicastGroup, interface, JOIN);
+    return MulticastGroupOpInternal(sockFd, family, multicastGroup, iface, JOIN);
 }
 
-QStatus LeaveMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String interface)
+QStatus LeaveMulticastGroup(SocketFd sockFd, AddressFamily family, String multicastGroup, String iface)
 {
-    return MulticastGroupOpInternal(sockFd, family, multicastGroup, interface, LEAVE);
+    return MulticastGroupOpInternal(sockFd, family, multicastGroup, iface, LEAVE);
 }
 
-QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String interface)
+QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String iface)
 {
     /*
      * We assume that No external API will be trying to call here and so asserts
@@ -1010,7 +1010,7 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
      */
     assert(sockFd);
     assert(family == AF_INET || family == AF_INET6);
-    assert(interface.size());
+    assert(iface.size());
 
     /*
      * Associating the multicast interface with a socket requires a different
@@ -1028,7 +1028,7 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
          */
         struct ifreq ifr;
         ifr.ifr_addr.sa_family = AF_INET;
-        strncpy(ifr.ifr_name, interface.c_str(), IFNAMSIZ);
+        strncpy(ifr.ifr_name, iface.c_str(), IFNAMSIZ);
         ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 
         int rc = ioctl(sockFd, SIOCGIFADDR, &ifr);
@@ -1050,7 +1050,7 @@ QStatus SetMulticastInterface(SocketFd sockFd, AddressFamily family, qcc::String
          * In the IPv6 version, we need to provide an interface index instead of
          * an IP address associated with the interface.
          */
-        uint32_t index = if_nametoindex(interface.c_str());
+        uint32_t index = if_nametoindex(iface.c_str());
 
         int rc = setsockopt(sockFd, IPPROTO_IPV6, IPV6_MULTICAST_IF, reinterpret_cast<const char*>(&index), sizeof(index));
         if (rc == -1) {
