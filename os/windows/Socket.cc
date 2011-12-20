@@ -1161,7 +1161,7 @@ QStatus MulticastGroupOpInternal(SocketFd sockFd, AddressFamily family, String m
         int opt = op == JOIN ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
         rc = setsockopt(sockFd, IPPROTO_IP, opt, reinterpret_cast<const char*>(&mreq), sizeof(mreq));
         if (rc == -1) {
-            QCC_LogError(ER_OS_ERROR, ("setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s", GetLastError(), GetLastErrorString().c_str()));
+            QCC_LogError(ER_OS_ERROR, ("setsockopt(%s) failed: %d - %s", op == JOIN ? "IP_ADD_MEMBERSHIP" : "IP_DROP_MEMBERSHIP", GetLastError(), GetLastErrorString().c_str()));
             return ER_OS_ERROR;
         }
     } else if (family == QCC_AF_INET6) {
