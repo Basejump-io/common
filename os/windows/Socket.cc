@@ -93,7 +93,7 @@ static void MakeSockAddr(const IPAddress& addr,
 
 /*
  * Called before any operation that might be called before winsock has been started.
- */ 
+ */
 static void WinsockCheck()
 {
     static bool initialized = false;
