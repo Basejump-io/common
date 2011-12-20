@@ -510,16 +510,16 @@ QStatus Crypto_SRP::TestVector()
         goto TestFail;
     }
 
+    test = false;
     delete client;
     delete server;
-    test = false;
     return ER_OK;
 
 TestFail:
 
-    test = false;
     delete client;
     delete server;
+    test = false;
     return ER_FAIL;
 }
 
