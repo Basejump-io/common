@@ -52,10 +52,28 @@ namespace qcc {
 
 const SocketFd INVALID_SOCKET_FD = INVALID_SOCKET;
 
-static int32_t socketCount = 0;
+/*
+ * Called before any operation that might be called before winsock has been started.
+ */
+static void WinsockCheck()
+{
+    static bool initialized = false;
+    if (!initialized) {
+        printf("Initialized winsock\n");
+        WSADATA wsaData;
+        WORD version = MAKEWORD(2, 0);
+        int error = WSAStartup(version, &wsaData);
+        if (error) {
+            QCC_LogError(ER_OS_ERROR, ("WSAStartup failed with error: %d", error));
+        } else {
+            initialized = true;
+        }
+    }
+}
 
 static qcc::String StrError()
 {
+    WinsockCheck();
     int errnum = WSAGetLastError();
     char msgbuf[256];
 
@@ -88,24 +106,6 @@ static void MakeSockAddr(const IPAddress& addr,
         sa->sin6_port = htons(port);
         addr.RenderIPv6Binary(sa->sin6_addr.s6_addr, sizeof(sa->sin6_addr.s6_addr));
         addrSize = sizeof(*sa);
-    }
-}
-
-/*
- * Called before any operation that might be called before winsock has been started.
- */
-static void WinsockCheck()
-{
-    static bool initialized = false;
-    if (!initialized) {
-        WSADATA wsaData;
-        WORD version = MAKEWORD(2, 0);
-        int error = WSAStartup(version, &wsaData);
-        if (error) {
-            QCC_LogError(ER_OS_ERROR, ("WSAStartup failed with error: %d", error));
-        } else {
-            initialized = true;
-        }
     }
 }
 
@@ -347,7 +347,7 @@ void Close(SocketFd sockfd)
 
 QStatus SocketDup(SocketFd sockfd, SocketFd& dupSock)
 {
-    QStatus status;
+    QStatus status = ER_OK;
     WSAPROTOCOL_INFO protocolInfo;
 
     int ret = WSADuplicateSocket(sockfd, qcc::GetPid(), &protocolInfo);
