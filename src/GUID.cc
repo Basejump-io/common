@@ -109,6 +109,8 @@ GUID128& GUID128::operator =(const GUID128& other)
 {
     if (this != &other) {
         memcpy(guid, other.guid, sizeof(guid));
+        value.clear();
+        shortValue.clear();
     }
     return *this;
 }
