@@ -152,7 +152,9 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
 
                 //
                 // Fill in the rest of the entry, translating the Windows constants into our
-                // more platform-independent constants.
+                // more platform-independent constants.  Note that we just assume that a
+                // Windows interface supports broadcast.  We should really 
+                //
                 //
                 entry.m_flags = pinfo->OperStatus == IfOperStatusUp ? IfConfigEntry::UP : 0;
                 entry.m_flags |= pinfo->Flags & IP_ADAPTER_NO_MULTICAST ? 0 : IfConfigEntry::MULTICAST;
@@ -191,22 +193,25 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
 
                 entry.m_addr = buffer;
 
-#if !defined (NTDDI_VERSION) || !defined (NTDDI_WIN7) || (NTDDI_VERSION < NTDDI_WIN7)
                 //
-                // WINDOWS XP doesn't provide the OnLInkPrefixLength we need to
-                // construct a subnet directed broadcast in the
-                // IP_ADAPTER_UNICAST_ADDRESS structure.  This information is,
-                // however, available in the INTERFACE_INFO structure.  The
-                // problem is that some of the information that is actually
-                // avialable in the IP_ADAPTER_UNICAST_ADDRESS structure is not
-                // available in the INTERFACE_INFO structure.  We don't
-                // absolutely need the mtu, but we do need the interface index.
+                // There are a couple of really annoying things we have to deal
+                // with here.  First, Windows provides its equivalent of
+                // IFF_MULTICAST in the IP_ADAPTER_ADDRESSES structure, but it
+                // provides its version of IFF_BROADCAST in the INTERFACE_INFO
+                // structure.  It also turns out that Windows XP doesn't provide
+                // the OnLinkPrefixLength information we need to construct a
+                // subnet directed broadcast in the IP_ADAPTER_UNICAST_ADDRESS
+                // structure, but later versions of Windows do.  For another
+                // treat, in XP the network prefix is stored as a network mask
+                // in the INTERFACE_INFO, but in later versions it is also
+                // stored as a prefix in the IP_ADAPTER_UNICAST_ADDRESS
+                // structure.  You get INTERFACE_INFO from an ioctl applied to a
+                // socket, not a simple library call.
                 //
-                // So, to get the same amount of information about interfaces, we
-                // have to make an extra call and wander through a different data
-                // structure on XP.  This is only required for AF_INET since
-                // there is no such thing as a subnet directed broadcast in IPv6
-                // (and IPv6 multicast works fine).
+                // So, like we have to do complicated things using netlink to
+                // get everything we need in Linux and Android, we have to do
+                // complicated things in Windows in different ways to get what
+                // we want.
                 //
                 if (family == AF_INET) {
                     //
@@ -237,7 +242,9 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
 
                         //
                         // Make the WinSock call to get the address information about
-                        // the various interfaces in the system.
+                        // the various interfaces in the system.  If the ioctl fails
+                        // then we set the prefix length to some absurd value and
+                        // don't enable broadcast.
                         //
                         if (WSAIoctl(socketFd, SIO_GET_INTERFACE_LIST, 0, 0, &interfaces,
                                      sizeof(interfaces), (LPDWORD)&nBytes, 0, 0) == SOCKET_ERROR) {
@@ -290,6 +297,7 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
                                         mask <<= 1;
                                     }
                                     entry.m_prefixlen = prefixlen;
+                                    entry.m_flags |= interfaces[i].iiFlags & IFF_BROADCAST ? IfConfigEntry::BROADCAST : 0;
                                     break;
                                 }
                             }
@@ -300,16 +308,14 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
                     }
                 } else {
                     //
-                    // Don't even attempt to find the prefix length for AF_INET6
-                    // since it will never be used.  Set it to some insane value
-                    // so if someone does try to use it, it will be obviously
-                    // bogus.
+                    // Don't attempt to find the prefix length and broadcast
+                    // flag for AF_INET6 since it will never be used.  We have
+                    // to st it to something, so set it to an illegal value so
+                    // if someone does try to use it mistakenly, it will be
+                    // obviously bogus.
                     //
                     entry.m_prefixlen = static_cast<uint32_t>(-1);
                 }
-#else // Windows 7 or greater
-                entry.m_prefixlen = paddr->OnLinkPrefixLength;
-#endif // Windows 7 or greater
                 entries.push_back(entry);
             }
         }
