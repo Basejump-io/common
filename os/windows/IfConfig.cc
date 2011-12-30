@@ -153,7 +153,7 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
                 //
                 // Fill in the rest of the entry, translating the Windows constants into our
                 // more platform-independent constants.  Note that we just assume that a
-                // Windows interface supports broadcast.  We should really 
+                // Windows interface supports broadcast.  We should really
                 //
                 //
                 entry.m_flags = pinfo->OperStatus == IfOperStatusUp ? IfConfigEntry::UP : 0;
