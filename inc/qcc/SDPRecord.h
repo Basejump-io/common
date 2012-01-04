@@ -117,11 +117,23 @@ struct SDPRecord {
      * @return  ICE_OK if successful.
      */
     template <typename _OutputIterator>
-    QStatus GetSessionAttribute(SessionAttribute att,
-                                _OutputIterator begin,
-                                _OutputIterator end,
-                                size_t* numVals) const;
-
+    QStatus GetSessionAttribute(SessionAttribute att, _OutputIterator begin, _OutputIterator end, size_t* count) const
+    {
+        QStatus status = ER_OK;
+        std::multimap<SessionAttribute, qcc::String>::const_iterator it = sessionAtts.lower_bound(att);
+        std::multimap<SessionAttribute, qcc::String>::const_iterator itEnd = sessionAtts.end();
+        *count = 0;
+        while ((it != itEnd) && (0 == (*it).first.compare(0, att.size(), att))) {
+            (*count)++;
+            if (begin != end) {
+                *begin++ = *it;
+            } else {
+                status = ER_FAIL;
+            }
+            it++;
+        }
+        return status;
+    }
 
     /**
      * Get a (possibly) multi-valued media stream level attribute.
@@ -134,11 +146,26 @@ struct SDPRecord {
      * @return  ICE_OK if successful.
      */
     template <typename _OutputIterator>
-    QStatus GetStreamAttribute(unsigned int streamNumber,
-                               StreamAttribute att,
-                               _OutputIterator begin,
-                               _OutputIterator end,
-                               size_t* numVals) const;
+    QStatus GetStreamAttribute(unsigned int streamNumber, StreamAttribute att, _OutputIterator begin, _OutputIterator end, size_t* count) const
+    {
+        QStatus status = ER_FAIL;
+        if (streamNumber < streamList.size()) {
+            status = ER_OK;
+            std::multimap<StreamAttribute, qcc::String>::const_iterator it = streamList[streamNumber].lower_bound(att);
+            std::multimap<StreamAttribute, qcc::String>::const_iterator itEnd = streamList[streamNumber].end();
+            *count = 0;
+            while ((it != itEnd) && (0 == (*it).first.compare(0, att.size(), att))) {
+                (*count)++;
+                if (begin != end) {
+                    *begin++ = *it;
+                } else {
+                    status = ER_FAIL;
+                }
+                it++;
+            }
+        }
+        return status;
+    }
 
     /**
      * Get the number of media streams.

@@ -200,45 +200,5 @@ QStatus SDPRecord::ReplaceStreamAttribute(int streamNum, StreamAttribute att, qc
     return status;
 }
 
-template <typename _OutputIterator>
-QStatus SDPRecord::GetSessionAttribute(SessionAttribute att, _OutputIterator begin, _OutputIterator end, size_t* count) const
-{
-    QStatus status = ER_OK;
-    multimap<SessionAttribute, qcc::String>::const_iterator it = sessionAtts.lower_bound(att);
-    multimap<SessionAttribute, qcc::String>::const_iterator itEnd = sessionAtts.end();
-    *count = 0;
-    while ((it != itEnd) && (0 == (*it).first.compare(0, att.size(), att))) {
-        (*count)++;
-        if (begin != end) {
-            *begin++ = *it;
-        } else {
-            status = ER_FAIL;
-        }
-        it++;
-    }
-    return status;
-}
-
-template <typename _OutputIterator>
-QStatus SDPRecord::GetStreamAttribute(unsigned int streamNumber, StreamAttribute att, _OutputIterator begin, _OutputIterator end, size_t* count) const
-{
-    QStatus status = ER_FAIL;
-    if (streamNumber < streamList.size()) {
-        status = ER_OK;
-        multimap<StreamAttribute, qcc::String>::const_iterator it = streamList[streamNumber].lower_bound(att);
-        multimap<StreamAttribute, qcc::String>::const_iterator itEnd = streamList[streamNumber].end();
-        *count = 0;
-        while ((it != itEnd) && (0 == (*it).first.compare(0, att.size(), att))) {
-            (*count)++;
-            if (begin != end) {
-                *begin++ = *it;
-            } else {
-                status = ER_FAIL;
-            }
-            it++;
-        }
-    }
-    return status;
-}
 
 
