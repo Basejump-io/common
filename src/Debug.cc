@@ -104,8 +104,8 @@ int QCC_SyncPrintf(const char* fmt, ...)
     va_start(ap, fmt);
     if (stdoutLock.Lock()) {
         ret = vprintf(fmt, ap);
+        stdoutLock.Unlock();
     }
-    stdoutLock.Unlock();
     va_end(ap);
 
     return ret;
@@ -122,9 +122,8 @@ static void WriteMsg(DbgMsgType type, const char* module, const char* msg, void*
 
     if (ret) {
         fputs(msg, file);
+        stdoutLock.Unlock();
     }
-
-    stdoutLock.Unlock();
 }
 
 
@@ -394,10 +393,13 @@ void DebugContext::Vprintf(const char* fmt, va_list ap)
 {
     int mlen;
 
-    mlen = vsnprintf(msg + msgLen, sizeof(msg) - msgLen, fmt, ap);
+    if (stdoutLock.Lock()) {
+        mlen = vsnprintf(msg + msgLen, sizeof(msg) - msgLen, fmt, ap);
+        stdoutLock.Unlock();
 
-    if ((mlen > 0) && ((mlen + msgLen) <= sizeof(msg))) {
-        msgLen += mlen;
+        if ((mlen > 0) && ((mlen + msgLen) <= sizeof(msg))) {
+            msgLen += mlen;
+        }
     }
 }
 
