@@ -32,11 +32,17 @@
 /** @internal */
 #define QCC_MODULE "MUTEX"
 
+#ifdef NDEBUG
+#define NO_LOCK_TRACE 1
+#else
+#define NO_LOCK_TRACE 1 // disabled
+#endif
+
 using namespace qcc;
 
 void Mutex::Init()
 {
-    if (InitializeCriticalSectionAndSpinCount(&mutex, 100)) {
+    if (!initialized && InitializeCriticalSectionAndSpinCount(&mutex, 100)) {
         initialized = true;
     } else {
         char buf[80];
@@ -67,7 +73,7 @@ QStatus Mutex::Lock(void)
 
 QStatus Mutex::Lock(const char* file, uint32_t line)
 {
-#ifdef NDEBUG
+#if NO_LOCK_TRACE
     return Lock();
 #else
     QStatus status;
@@ -97,7 +103,7 @@ QStatus Mutex::Unlock(void)
 
 QStatus Mutex::Unlock(const char* file, uint32_t line)
 {
-#ifdef NDEBUG
+#if NO_LOCK_TRACE
     return Unlock();
 #else
     if (!initialized) {
