@@ -4,7 +4,7 @@
  */
 
 /******************************************************************************
- * Copyright 2010-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2010-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -294,6 +294,7 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
                                 }
                             }
                         }
+                        Close(socketFd);
                     } else {
                         QCC_LogError(status, ("IfConfigByFamily: Socket(QCC_AF_INET) failed: affects %s", entry.m_name.c_str()));
                         entry.m_prefixlen = static_cast<uint32_t>(-1);
@@ -332,14 +333,8 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
     // Rather than trying to undo all of that reference counting, we
     // just make sure to hold onto a socket while we are in this call.
     //
-    qcc::SocketFd socketFd;
-    qcc::Socket(qcc::QCC_AF_INET, qcc::QCC_SOCK_DGRAM, socketFd);
-
     IfConfigByFamily(AF_INET, entries);
     IfConfigByFamily(AF_INET6, entries);
-
-    qcc::Close(socketFd);
-
     return ER_OK;
 }
 
