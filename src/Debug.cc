@@ -414,7 +414,7 @@ void* _QCC_DbgPrintContext(const char* fmt, ...)
 {
     DebugContext* context = new DebugContext();
     va_list ap;
-    
+
     va_start(ap, fmt);
     context->Vprintf(fmt, ap);
     va_end(ap);
@@ -426,7 +426,7 @@ void _QCC_DbgPrintAppend(void* ctx, const char* fmt, ...)
 {
     DebugContext* context = reinterpret_cast<DebugContext*>(ctx);
     va_list ap;
-    
+
     va_start(ap, fmt);
     context->Vprintf(fmt, ap);
     va_end(ap);
@@ -479,19 +479,19 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
             static const size_t LINE_LEN = 16;
             size_t i;
             qcc::String oss;
-            
+
             oss.reserve(strlen(dataStr) + 8 + dataLen * 4 + (((dataLen + 15) / 16) * (40 + strlen(module))));
-            
+
             GenPrefix(oss, type, module, filename, lineno, control->PrintThread());
-            
+
             oss.append(dataStr);
             oss.push_back('[');
             oss.append(U32ToString(dataLen, 16, 4, '0'));
             oss.append("]:\n");
-            
+
             while (dataLen > 0) {
                 size_t dumpLen = (std::min)(dataLen, LINE_LEN);
-                
+
                 oss.append("         ");
                 oss.append(Type2Str(type));
                 oss.push_back(' ');
@@ -499,7 +499,7 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
                 oss.append("    ");
                 oss.append(U32ToString(pos - reinterpret_cast<const uint8_t*>(data), 16, 4, '0'));
                 oss.append(" | ");
-                
+
                 for (i = 0; i < LINE_LEN; ++i) {
                     if (i == (LINE_LEN / 2)) {
                         oss.append("- ");
@@ -511,9 +511,9 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
                         oss.append("   ");
                     }
                 }
-                
+
                 oss.append(" |  ");
-                
+
                 for (i = 0; i < LINE_LEN; ++i) {
                     if (i == (LINE_LEN / 2)) {
                         oss.append(" - ");
@@ -526,7 +526,7 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
                 }
 
                 oss.push_back('\n');
-                
+
                 pos += dumpLen;
                 dataLen -= dumpLen;
             }
