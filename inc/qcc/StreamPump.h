@@ -61,6 +61,10 @@ class StreamPump : public qcc::Thread {
     ThreadReturn STDCALL Run(void* arg);
 
   private:
+
+    StreamPump(const StreamPump& other) : chunkSize(0), isManaged(false) { }
+    StreamPump& operator=(const StreamPump& other) { return *this; }
+
     Stream* streamA;
     Stream* streamB;
     const size_t chunkSize;
