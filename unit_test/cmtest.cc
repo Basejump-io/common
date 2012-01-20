@@ -21,7 +21,7 @@ int main(int argc, char**argv, char**envArg)
 {
     int status = 0;
 
-    printf("\n Running AllJoyn test harness for public API \n");
+    printf("\n Running common unit test \n");
     testing::InitGoogleTest(&argc, argv);
     status = RUN_ALL_TESTS();
 

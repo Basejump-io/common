@@ -42,7 +42,7 @@ TEST(FileSinkTest, validFileSink) {
     };
     for (const char** pathname = pass; *pathname; ++pathname) {
         FileSink f = FileSink(*pathname, FileSink::PRIVATE);
-        EXPECT_TRUE(f.IsValid());
+        EXPECT_TRUE(f.IsValid()) << *pathname;
     }
 
     const char* cleanup[] = {

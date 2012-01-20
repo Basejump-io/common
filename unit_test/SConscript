@@ -1,4 +1,4 @@
-# Copyright 2011, Qualcomm Innovation Center, Inc.
+# Copyright 2011-2012, Qualcomm Innovation Center, Inc.
 # 
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -12,19 +12,22 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 #
+import os
 
 Import('env')
 
 vars = Variables();
 
-vars.Add(PathVariable('GTEST_DIR', 'The path to Google Test (gTest) source code', './', PathVariable.PathIsDir))
+vars.Add(PathVariable('GTEST_DIR', 'The path to Google Test (gTest) source code',  os.environ.get('GTEST_DIR'), PathVariable.PathIsDir))
 
 vars.Update(env)
 
 Help(vars.GenerateHelpText(env))
 
-if(env['GTEST_DIR'] == './'):
-    print('GTEST_DIR not specified skipping unit test build')
+if(env['GTEST_DIR'] == ''):
+    print('GTEST_DIR not specified skipping common unit test build')
+elif(env['OS_CONF'] == 'android'):
+    print('common unit test build is not yet supported for Android')
 else:
     gtest_env = env.Clone();
     gtest_dir = gtest_env['GTEST_DIR']
