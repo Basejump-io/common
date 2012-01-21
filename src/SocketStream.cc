@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include <qcc/SocketStream.h>
 #include <qcc/Stream.h>
 #include <qcc/String.h>
+#include <qcc/Thread.h>
 
 #include <Status.h>
 
@@ -58,7 +59,8 @@ SocketStream::SocketStream(SocketFd sock) :
     sock(sock),
     sourceEvent(new Event(sock, Event::IO_READ, false)),
     sinkEvent(new Event(*sourceEvent, Event::IO_WRITE, false)),
-    isDetached(false)
+    isDetached(false),
+    refCount(0)
 {
 }
 
@@ -68,7 +70,8 @@ SocketStream::SocketStream(AddressFamily family, SocketType type) :
     sock(MakeSock(family, type)),
     sourceEvent(new Event(sock, Event::IO_READ, false)),
     sinkEvent(new Event(*sourceEvent, Event::IO_WRITE, false)),
-    isDetached(false)
+    isDetached(false),
+    refCount(0)
 {
 }
 
@@ -77,7 +80,8 @@ SocketStream::SocketStream(const SocketStream& other) :
     sock(CopySock(other.sock)),
     sourceEvent(new Event(sock, Event::IO_READ, false)),
     sinkEvent(new Event(*sourceEvent, Event::IO_WRITE, false)),
-    isDetached(other.isDetached)
+    isDetached(other.isDetached),
+    refCount(0)
 {
 }
 
@@ -90,6 +94,7 @@ SocketStream SocketStream::operator=(const SocketStream& other)
     sourceEvent = new Event(sock, Event::IO_READ, false);
     sinkEvent = new Event(*sourceEvent, Event::IO_WRITE, false);
     isDetached = other.isDetached;
+    refCount = 0;
     return *this;
 }
 
@@ -130,35 +135,51 @@ QStatus SocketStream::Connect(qcc::String& path)
 
 void SocketStream::Close()
 {
-    delete sourceEvent;
-    sourceEvent = NULL;
-
-    delete sinkEvent;
-    sinkEvent = NULL;
-
     if (isConnected) {
+        isConnected = false;
         if (!isDetached) {
             Shutdown(sock);
         }
-        isConnected = false;
     }
-    if (SOCKET_ERROR != sock) {
+    /*
+     * Make sure we are not currently pushing or pulling data
+     */
+    while (refCount) {
+        if (sourceEvent) {
+            sourceEvent->SetEvent();
+        }
+        if (sinkEvent) {
+            sinkEvent->SetEvent();
+        }
+        qcc::Sleep(1);
+    }
+    /*
+     * Now it is safe to delete the events
+     */
+    delete sourceEvent;
+    sourceEvent = NULL;
+    delete sinkEvent;
+    sinkEvent = NULL;
+
+    if (INVALID_SOCKET_FD != sock) {
         qcc::Close(sock);
-        sock = SOCKET_ERROR;
+        sock = INVALID_SOCKET_FD;
     }
 }
 
 QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout)
 {
-    if (!isConnected) {
-        return ER_FAIL;
-    }
     if (reqBytes == 0) {
         actualBytes = 0;
-        return ER_OK;
+        return isConnected ? ER_OK : ER_READ_ERROR;
     }
     QStatus status;
+    IncrementAndFetch(&refCount);
     while (true) {
+        if (!isConnected) {
+            DecrementAndFetch(&refCount);
+            return ER_READ_ERROR;
+        }
         status = Recv(sock, buf, reqBytes, actualBytes);
         if (ER_WOULDBLOCK == status) {
             status = Event::Wait(*sourceEvent, timeout);
@@ -169,7 +190,7 @@ QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes,
             break;
         }
     }
-
+    DecrementAndFetch(&refCount);
     if ((ER_OK == status) && (0 == actualBytes)) {
         /* Other end has closed */
         Close();
@@ -180,12 +201,14 @@ QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes,
 
 QStatus SocketStream::PullBytesAndFds(void* buf, size_t reqBytes, size_t& actualBytes, SocketFd* fdList, size_t& numFds, uint32_t timeout)
 {
-    if (!isConnected) {
-        return ER_FAIL;
-    }
     QStatus status;
     size_t recvdFds = 0;
+    IncrementAndFetch(&refCount);
     while (true) {
+        if (!isConnected) {
+            DecrementAndFetch(&refCount);
+            return ER_READ_ERROR;
+        }
         /*
          * There will only be one set of file descriptors read in each call to this function
          * so once we have received file descriptors we revert to the standard Recv call.
@@ -204,21 +227,29 @@ QStatus SocketStream::PullBytesAndFds(void* buf, size_t reqBytes, size_t& actual
             break;
         }
     }
+    DecrementAndFetch(&refCount);
+    if ((ER_OK == status) && (0 == actualBytes)) {
+        /* Other end has closed */
+        Close();
+        status = ER_SOCK_OTHER_END_CLOSED;
+    }
     numFds = recvdFds;
     return status;
 }
 
 QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
 {
-    if (!isConnected) {
-        return ER_FAIL;
-    }
     if (numBytes == 0) {
         numSent = 0;
         return ER_OK;
     }
     QStatus status;
+    IncrementAndFetch(&refCount);
     while (true) {
+        if (!isConnected) {
+            DecrementAndFetch(&refCount);
+            return ER_WRITE_ERROR;
+        }
         status = qcc::Send(sock, buf, numBytes, numSent);
         if (ER_WOULDBLOCK == status) {
             if (sendTimeout == Event::WAIT_FOREVER) {
@@ -233,15 +264,12 @@ QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSen
             break;
         }
     }
-
+    DecrementAndFetch(&refCount);
     return status;
 }
 
 QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& numSent, SocketFd* fdList, size_t numFds, uint32_t pid)
 {
-    if (!isConnected) {
-        return ER_FAIL;
-    }
     if (numBytes == 0) {
         return ER_BAD_ARG_2;
     }
@@ -249,7 +277,12 @@ QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& 
         return ER_BAD_ARG_5;
     }
     QStatus status;
+    IncrementAndFetch(&refCount);
     while (true) {
+        if (!isConnected) {
+            DecrementAndFetch(&refCount);
+            return ER_WRITE_ERROR;
+        }
         status = qcc::SendWithFds(sock, buf, numBytes, numSent, fdList, numFds, pid);
         if (ER_WOULDBLOCK == status) {
             if (sendTimeout == Event::WAIT_FOREVER) {
@@ -264,6 +297,7 @@ QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& 
             break;
         }
     }
+    DecrementAndFetch(&refCount);
     return status;
 }
 

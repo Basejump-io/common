@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -197,6 +197,7 @@ class SocketStream : public Stream {
     Event* sinkEvent;                /**< Event signaled when sink can accept data */
     bool isDetached;                 /**< Detached socket streams do not shutdown the underlying socket when closing */
     uint32_t sendTimeout;            /**< Send timeout */
+    volatile int32_t refCount;       /**< Tracks if data is being pushed or pulled */
 };
 
 }
