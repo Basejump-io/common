@@ -12,25 +12,17 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 #
-import os
-
 Import('env')
 
-vars = Variables();
-
-vars.Add(PathVariable('GTEST_DIR', 'The path to Google Test (gTest) source code',  os.environ.get('GTEST_DIR'), PathVariable.PathIsDir))
-
-vars.Update(env)
-
-Help(vars.GenerateHelpText(env))
-
-if(env['GTEST_DIR'] == ''):
+if(not(env.has_key('GTEST_DIR'))):
     print('GTEST_DIR not specified skipping common unit test build')
 elif(env['OS_CONF'] == 'android'):
     print('common unit test build is not yet supported for Android')
 else:
+    
     gtest_env = env.Clone();
     gtest_dir = gtest_env['GTEST_DIR']
+    vars = Variables();
     vars.AddVariables(('GTEST_HOME', '', gtest_dir))
     vars.Update(gtest_env)
     if( env['OS_GROUP'] == 'windows'):
