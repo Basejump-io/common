@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -83,8 +83,10 @@ SocketStream::SocketStream(const SocketStream& other) :
 
 SocketStream SocketStream::operator=(const SocketStream& other)
 {
-    Close();
-
+    if (isConnected) {
+        QCC_LogError(ER_FAIL, ("Cannot assign to a connected SocketStream"));
+        return *this;
+    }
     isConnected = other.isConnected;
     sock = CopySock(other.sock);
     sourceEvent = new Event(sock, Event::IO_READ, false);
@@ -95,7 +97,17 @@ SocketStream SocketStream::operator=(const SocketStream& other)
 
 SocketStream::~SocketStream()
 {
-    Close();
+    /*
+     * Must delete the events before closing the socket they monitor
+     */
+    delete sourceEvent;
+    sourceEvent = NULL;
+    delete sinkEvent;
+    sinkEvent = NULL;
+    /*
+     * OK to close the socket now.
+     */
+    qcc::Close(sock);
 }
 
 QStatus SocketStream::Connect(qcc::String& host, uint16_t port)
@@ -127,38 +139,25 @@ QStatus SocketStream::Connect(qcc::String& path)
     return status;
 }
 
-
 void SocketStream::Close()
 {
-    delete sourceEvent;
-    sourceEvent = NULL;
-
-    delete sinkEvent;
-    sinkEvent = NULL;
-
-    if (isConnected) {
-        if (!isDetached) {
-            Shutdown(sock);
-        }
-        isConnected = false;
-    }
-    if (SOCKET_ERROR != sock) {
-        qcc::Close(sock);
-        sock = SOCKET_ERROR;
+    isConnected = false;
+    if (!isDetached) {
+        Shutdown(sock);
     }
 }
 
 QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout)
 {
-    if (!isConnected) {
-        return ER_FAIL;
-    }
     if (reqBytes == 0) {
         actualBytes = 0;
-        return ER_OK;
+        return isConnected ? ER_OK : ER_READ_ERROR;
     }
     QStatus status;
     while (true) {
+        if (!isConnected) {
+            return ER_READ_ERROR;
+        }
         status = Recv(sock, buf, reqBytes, actualBytes);
         if (ER_WOULDBLOCK == status) {
             status = Event::Wait(*sourceEvent, timeout);
@@ -169,10 +168,9 @@ QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes,
             break;
         }
     }
-
     if ((ER_OK == status) && (0 == actualBytes)) {
         /* Other end has closed */
-        Close();
+        isConnected = false;
         status = ER_SOCK_OTHER_END_CLOSED;
     }
     return status;
@@ -180,12 +178,12 @@ QStatus SocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes,
 
 QStatus SocketStream::PullBytesAndFds(void* buf, size_t reqBytes, size_t& actualBytes, SocketFd* fdList, size_t& numFds, uint32_t timeout)
 {
-    if (!isConnected) {
-        return ER_FAIL;
-    }
     QStatus status;
     size_t recvdFds = 0;
     while (true) {
+        if (!isConnected) {
+            return ER_READ_ERROR;
+        }
         /*
          * There will only be one set of file descriptors read in each call to this function
          * so once we have received file descriptors we revert to the standard Recv call.
@@ -204,21 +202,26 @@ QStatus SocketStream::PullBytesAndFds(void* buf, size_t reqBytes, size_t& actual
             break;
         }
     }
+    if ((ER_OK == status) && (0 == actualBytes)) {
+        /* Other end has closed */
+        isConnected = false;
+        status = ER_SOCK_OTHER_END_CLOSED;
+    }
     numFds = recvdFds;
     return status;
 }
 
 QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
 {
-    if (!isConnected) {
-        return ER_FAIL;
-    }
     if (numBytes == 0) {
         numSent = 0;
         return ER_OK;
     }
     QStatus status;
     while (true) {
+        if (!isConnected) {
+            return ER_WRITE_ERROR;
+        }
         status = qcc::Send(sock, buf, numBytes, numSent);
         if (ER_WOULDBLOCK == status) {
             if (sendTimeout == Event::WAIT_FOREVER) {
@@ -233,15 +236,11 @@ QStatus SocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSen
             break;
         }
     }
-
     return status;
 }
 
 QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& numSent, SocketFd* fdList, size_t numFds, uint32_t pid)
 {
-    if (!isConnected) {
-        return ER_FAIL;
-    }
     if (numBytes == 0) {
         return ER_BAD_ARG_2;
     }
@@ -250,6 +249,9 @@ QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& 
     }
     QStatus status;
     while (true) {
+        if (!isConnected) {
+            return ER_WRITE_ERROR;
+        }
         status = qcc::SendWithFds(sock, buf, numBytes, numSent, fdList, numFds, pid);
         if (ER_WOULDBLOCK == status) {
             if (sendTimeout == Event::WAIT_FOREVER) {
@@ -266,4 +268,3 @@ QStatus SocketStream::PushBytesAndFds(const void* buf, size_t numBytes, size_t& 
     }
     return status;
 }
-
