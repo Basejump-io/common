@@ -138,7 +138,7 @@ class DebugControl {
     map<const qcc::String, uint32_t> modLevels;
     bool printThread;
 
-    DebugControl(void) : cb(WriteMsg), context(stderr), allLevel(0), printThread(false)
+    DebugControl(void) : cb(WriteMsg), context(stderr), allLevel(0), printThread(true)
     {
         Init();
     }
