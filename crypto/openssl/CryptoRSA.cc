@@ -234,8 +234,6 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, PassphraseListener* li
         QCC_LogError(status, ("PEM_read_bio_RSAPrivateKey() failed %s", ERR_error_string(ERR_get_error(), NULL)));
     }
     BIO_free(bio);
-    /* Cleanup loaded ciphers and digests */
-    EVP_cleanup();
     return status;
 }
 
@@ -303,9 +301,8 @@ QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, PassphraseListener* 
     } else {
         QCC_LogError(status, ("PEM_write_bio_PKCS8PrivateKey() failed %s", ERR_error_string(0, NULL)));
     }
-    /* Cleanup loaded ciphers and digests */
+    /* Cleanup */
     EVP_PKEY_free(evpk);
-    EVP_cleanup();
     BIO_free(bio);
     return status;
 }
@@ -492,9 +489,6 @@ Crypto_RSA::Crypto_RSA() : size(0), cert(NULL), key(NULL)
 
 Crypto_RSA::~Crypto_RSA()
 {
-#ifndef NDEBUG
-    ERR_free_strings();
-#endif
     if (key) {
         RSA_free((RSA*)key);
     }
