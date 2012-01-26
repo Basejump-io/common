@@ -51,7 +51,9 @@ static uint32_t running = 0;
 static uint32_t joined = 0;
 
 /** Mutex that protects global thread list */
-Mutex Thread::threadListLock;
+Thread::ThreadListLock Thread::threadListLock;
+Mutex* Thread::ThreadListLock::m_mutex = NULL;
+bool Thread::ThreadListLock::m_destructed = false;
 
 /** Global thread list */
 map<ThreadHandle, Thread*> Thread::threadList;

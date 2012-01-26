@@ -51,7 +51,9 @@ static uint32_t stopped = 0;
 static const uint32_t MAX_SELECT_WAIT_MS = 10000;
 
 /** Lock that protects global list of Threads and their handles */
-Mutex Thread::threadListLock;
+Thread::ThreadListLock Thread::threadListLock;
+Mutex* Thread::ThreadListLock::m_mutex = NULL;
+bool Thread::ThreadListLock::m_destructed = false;
 
 /** Thread list */
 map<ThreadHandle, Thread*> Thread::threadList;
