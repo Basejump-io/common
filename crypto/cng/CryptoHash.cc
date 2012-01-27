@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2011,2012 Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -137,43 +137,6 @@ Crypto_Hash::~Crypto_Hash(void)
     }
 }
 
-Crypto_Hash& Crypto_Hash::operator=(const Crypto_Hash& other)
-{
-    QStatus status;
-
-    if (ctx) {
-        delete ctx;
-    }
-    if (!other.initialized) {
-        ctx = NULL;
-        initialized = false;
-        return *this;
-    }
-
-    ctx = new Context(other.ctx->digestSize);
-
-    ctx->hashObjLen = other.ctx->hashObjLen;
-    ctx->hashObj = new uint8_t[ctx->hashObjLen];
-
-    MAC = other.MAC;
-    initialized = other.initialized;
-
-    if (BCryptDuplicateHash(other.ctx->handle, &ctx->handle, ctx->hashObj, ctx->hashObjLen, 0) < 0) {
-        status = ER_CRYPTO_ERROR;
-        QCC_LogError(status, ("Failed to create hash"));
-        delete ctx;
-        ctx = NULL;
-        initialized = false;
-    }
-    return *this;
-}
-
-Crypto_Hash::Crypto_Hash(const Crypto_Hash& other)
-{
-    ctx = NULL;
-    *this = other;
-}
-
 QStatus Crypto_Hash::Update(const uint8_t* buf, size_t bufSize)
 {
     QStatus status = ER_OK;
@@ -198,7 +161,7 @@ QStatus Crypto_Hash::Update(const qcc::String& str)
     return Update((const uint8_t*)str.data(), str.size());
 }
 
-QStatus Crypto_Hash::GetDigest(uint8_t* digest)
+QStatus Crypto_Hash::GetDigest(uint8_t* digest, bool keepAlive)
 {
     QStatus status = ER_OK;
 
@@ -206,11 +169,35 @@ QStatus Crypto_Hash::GetDigest(uint8_t* digest)
         return ER_BAD_ARG_1;
     }
     if (initialized) {
+        /* keep alive is not allowed for HMAC */
+        if (MAC && keepAlive) {
+            status = ER_CRYPTO_ERROR;
+            QCC_LogError(status, ("Keep alive is not allowed for HMAC"));
+            keepAlive = false;
+        }
+        Context* keep = NULL;
+        /* To keep the hash alive we need to copy the context before calling BCryptFinishHash */
+        if (keepAlive) {
+            keep = new Context(ctx->digestSize);
+            keep->hashObjLen = ctx->hashObjLen;
+            keep->hashObj = new uint8_t[ctx->hashObjLen];
+            if (BCryptDuplicateHash(ctx->handle, &keep->handle, keep->hashObj, keep->hashObjLen, 0) < 0) {
+                status = ER_CRYPTO_ERROR;
+                QCC_LogError(status, ("Failed to create hash"));
+                delete keep;
+                keep = NULL;
+            }
+        }
         if (BCryptFinishHash(ctx->handle, digest, ctx->digestSize, 0) < 0) {
             status = ER_CRYPTO_ERROR;
             QCC_LogError(status, ("Finalizing hash digest"));
         }
-        initialized = false;
+        if (keep) {
+            delete ctx;
+            ctx = keep;
+        } else {
+            initialized = false;
+        }
     } else {
         status = ER_CRYPTO_HASH_UNINITIALIZED;
         QCC_LogError(status, ("Hash function not initialized"));

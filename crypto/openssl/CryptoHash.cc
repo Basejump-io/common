@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -124,29 +124,6 @@ Crypto_Hash::~Crypto_Hash(void)
     }
 }
 
-Crypto_Hash& Crypto_Hash::operator=(const Crypto_Hash& other)
-{
-    if (ctx) {
-        delete ctx;
-        ctx = NULL;
-    }
-    if (other.MAC) {
-        QCC_LogError(ER_CRYPTO_ERROR, ("Cannot copy an HMAC"));
-    } else {
-        ctx = new Context(false);
-        EVP_MD_CTX_copy(&ctx->md, &other.ctx->md);
-        MAC = false;
-        initialized = other.initialized;
-    }
-    return *this;
-}
-
-Crypto_Hash::Crypto_Hash(const Crypto_Hash& other)
-{
-    ctx = NULL;
-    *this = other;
-}
-
 QStatus Crypto_Hash::Update(const uint8_t* buf, size_t bufSize)
 {
     QStatus status = ER_OK;
@@ -173,7 +150,7 @@ QStatus Crypto_Hash::Update(const qcc::String& str)
     return Update((const uint8_t*)str.data(), str.size());
 }
 
-QStatus Crypto_Hash::GetDigest(uint8_t* digest)
+QStatus Crypto_Hash::GetDigest(uint8_t* digest, bool keepAlive)
 {
     QStatus status = ER_OK;
 
@@ -182,16 +159,34 @@ QStatus Crypto_Hash::GetDigest(uint8_t* digest)
     }
     if (initialized) {
         if (MAC) {
+            /* keep alive is not allowed for HMAC */
+            if (keepAlive) {
+                status = ER_CRYPTO_ERROR;
+                QCC_LogError(status, ("Keep alive is not allowed for HMAC"));
+                keepAlive = false;
+            }
             HMAC_Final(&ctx->hmac, digest, NULL);
             HMAC_CTX_cleanup(&ctx->hmac);
+            initialized = false;
         } else {
+            Context* keep = NULL;
+            /* To keep the hash alive we need to copy the context before calling EVP_DigestFinal */
+            if (keepAlive) {
+                keep = new Context(false);
+                EVP_MD_CTX_copy(&keep->md, &ctx->md);
+            }
             if (EVP_DigestFinal(&ctx->md, digest, NULL) == 0) {
                 status = ER_CRYPTO_ERROR;
                 QCC_LogError(status, ("Finalizing hash digest"));
             }
             EVP_MD_CTX_cleanup(&ctx->md);
+            if (keep) {
+                delete ctx;
+                ctx = keep;
+            } else {
+                initialized = false;
+            }
         }
-        initialized = false;
     } else {
         status = ER_CRYPTO_HASH_UNINITIALIZED;
         QCC_LogError(status, ("Hash function not initialized"));

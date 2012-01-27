@@ -7,7 +7,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -586,24 +586,16 @@ class Crypto_Hash {
 
     /**
      * Retrieve the digest into the supplied buffer.  It is assumed that buffer is large enough to
-     * store the digest. After the digest has been computed the hash instance is not longer usable
-     * until re-initialized.
+     * store the digest. Unless keepAlive is true, after the digest has been computed the hash
+     * instance is not longer usable until re-initialized. Keep alive is not allowed for HMAC.
      *
-     * @param digest    Buffer for storing the digest.
+     * @param digest     Buffer for storing the digest.
+     * @param keepAlive  If true, keep the hash computation alive so additional data can be added
+     *                   and the updated digest can be computed.
      *
      * @return  Indication of success or failure.
      */
-    QStatus GetDigest(uint8_t* digest);
-
-    /**
-     * Assigns a hash. The state of the hash is duplicated in the destination.
-     */
-    Crypto_Hash& operator =(const Crypto_Hash& other);
-
-    /**
-     * Copy constructor. The state of the hash is duplicated in the destination.
-     */
-    Crypto_Hash(const Crypto_Hash& other);
+    QStatus GetDigest(uint8_t* digest, bool keepAlive = false);
 
   protected:
 
@@ -631,6 +623,17 @@ class Crypto_Hash {
     QStatus Init(Algorithm alg, const uint8_t* hmacKey = NULL, size_t keyLen = 0);
 
   private:
+
+    /**
+     * No copy constructor
+     */
+    Crypto_Hash(const Crypto_Hash& other);
+
+    /**
+     * No assigment operator
+     */
+    Crypto_Hash& operator=(const Crypto_Hash& other);
+
     bool MAC;          ///< Flag indicating if computing a MAC
     bool initialized;  ///< Flag indicating hash has been initialized
 
