@@ -194,8 +194,9 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
         thread->listener->ThreadExit(thread);
     }
 
+    /* This also means no QCC_DbgPrintf as they try to get context on the current thread */
+
     /* Remove this Thread from list of running threads */
-    QCC_DbgPrintf(("Removing %x", threadId));
     threadListLock.Lock();
     threadList.erase((ThreadHandle)threadId);
     threadListLock.Unlock();

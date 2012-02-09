@@ -218,9 +218,10 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
         thread->listener->ThreadExit(thread);
     }
 
+    /* This also means no QCC_DbgPrintf as they try to get context on the current thread */
+
     if (ret == 0) {
         /* Remove this Thread from list of running threads */
-        QCC_DbgPrintf(("Removing %x", handle));
         threadListLock.Lock();
         threadList.erase(handle);
         threadListLock.Unlock();
