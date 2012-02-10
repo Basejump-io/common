@@ -164,11 +164,11 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     return status;
 }
 
-void Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
+bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
 {
+    bool foundAlarm = false;
     lock.Lock();
     if (isRunning) {
-        bool foundAlarm = false;
         if (alarm.periodMs) {
             multiset<Alarm>::iterator it = alarms.begin();
             while (it != alarms.end()) {
@@ -206,6 +206,7 @@ void Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
         }
     }
     lock.Unlock();
+    return foundAlarm;
 }
 
 QStatus Timer::ReplaceAlarm(const Alarm& origAlarm, const Alarm& newAlarm, bool blockIfTriggered)

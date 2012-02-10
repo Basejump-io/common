@@ -38,7 +38,6 @@ class Timer;
 class Alarm;
 class TimerThread;
 
-
 /**
  * An alarm listener is capable of receiving alarm callbacks
  */
@@ -206,8 +205,9 @@ class Timer : public ThreadListener {
      *
      * @param alarm             Alarm to remove.
      * @param blockIfTriggered  If alarm has already been triggered, block the caller until AlarmTriggered returns.
+     * @return  true iff the given alarm was found and removed.
      */
-    void RemoveAlarm(const Alarm& alarm, bool blockIfTriggered = true);
+    bool RemoveAlarm(const Alarm& alarm, bool blockIfTriggered = true);
 
     /**
      * Remove any alarm for a specific listener returning the alarm. Returns a boolean if an alarm
