@@ -106,3 +106,15 @@ qcc::String qcc::UTCTime()
 
     return buf;
 }
+
+qcc::String qcc::GetCurrentTimeString() {
+    char buf[32];
+    SYSTEMTIME systime;
+    GetSystemTime(&systime);
+    snprintf(buf, 32, "%02d:%02d:%02d",
+            systime.wHour,
+            systime.wMinute,
+            systime.wSecond);
+
+    return buf;
+}

@@ -145,5 +145,13 @@ inline int64_t operator-(const Timespec& ts1, const Timespec& ts2)
  */
 qcc::String UTCTime();
 
+/**
+ * Return a formatted string for current UTC time. Format conforms to RFC 1123
+ * e.g. "17:01:45"
+ *
+ * @return  The formatted time string.
+ */
+qcc::String GetCurrentTimeString();
+
 }
 #endif

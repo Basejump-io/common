@@ -111,3 +111,16 @@ qcc::String qcc::UTCTime()
 
     return buf;
 }
+
+qcc::String qcc::GetCurrentTimeString() {
+    char buf[32];
+    time_t t;
+    time(&t);
+    struct tm* utc = gmtime(&t);
+    snprintf(buf, 32, "%02d:%02d:%02d",
+             utc->tm_hour,
+             utc->tm_min,
+             utc->tm_sec);
+
+    return buf;
+}
