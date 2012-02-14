@@ -108,37 +108,6 @@ static NCRYPT_KEY_HANDLE Bkey2Nkey(BCRYPT_KEY_HANDLE bkey)
     return nkey;
 }
 
-static inline bool UnpackLen(uint8_t*& p, uint8_t* end, size_t& l)
-{
-    l = *p++;
-    if (l & 0x80) {
-        size_t n = l & 0x7F;
-        l = 0;
-        while (n--) {
-            l = (l << 8) + *p++;
-        }
-    }
-    return (p + l) <= end;
-}
-
-static qcc::String UnpackOID(uint8_t* p, size_t len)
-{
-    qcc::String oid;
-
-    oid += U32ToString(*p / 40) + '.';
-    oid += U32ToString(*p % 40);
-
-    uint32_t v = 0;
-    while (--len) {
-        v = (v << 7) + (*(++p) % 128);
-        if (!(*p & 0x80)) {
-            oid += '.' + U32ToString(v);
-            v = 0;
-        }
-    }
-    return oid;
-}
-
 QStatus Crypto_RSA::MakeSelfCertificate(const qcc::String& commonName, const qcc::String& app)
 {
     QStatus status = ER_OK;
