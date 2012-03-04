@@ -106,4 +106,4 @@ else:
         obj.append('$ANDROID_NDK/sources/cxx-stl/stlport/libs/armeabi/libstlport_static.a')
 
     unittest_prog = unittest_env.Program('cmtest', obj)
-    unittest_env.Install('$DISTDIR/../test', unittest_prog)
+    unittest_env.Install('$TESTDIR/bin', unittest_prog)
