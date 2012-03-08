@@ -59,7 +59,7 @@ elif env['OS_GROUP'] == 'winrt':
     print 'Using WINRT crypto libraries'
     env.AppendUnique(CFLAGS=['/D_WINRT_DLL'])
     env.AppendUnique(CXXFLAGS=['/D_WINRT_DLL'])	
-elif env['OS'] == 'linux':
+elif env['OS'] == 'linux' or env['OS'] == 'openwrt':
     env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto', 'ssl'])
 elif env['OS'] == 'darwin':
     env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto', 'ssl'])
