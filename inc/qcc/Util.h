@@ -207,7 +207,7 @@ QStatus ExecAs(const char* user, const char* exec, const ExecArgs& args, const q
  * @param bufLen      Number of bytes in buffer.
  * @param runningCrc  [IN/OUT] Initial CRC16 value on input, final CRC16 value on output.
  */
-void CRC16_Compute(const uint8_t* buffer, size_t  bufLen, uint16_t *runningCrc);
+void CRC16_Compute(const uint8_t* buffer, size_t bufLen, uint16_t*runningCrc);
 
 };
 #endif

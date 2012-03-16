@@ -123,7 +123,7 @@ static const uint16_t crcTable[256] = {
     0x7BC7, 0x6A4E, 0x58D5, 0x495C, 0x3DE3, 0x2C6A, 0x1EF1, 0x0F78
 };
 
-void qcc::CRC16_Compute(const uint8_t* buffer, size_t  bufLen, uint16_t *runningCrc)
+void qcc::CRC16_Compute(const uint8_t* buffer, size_t bufLen, uint16_t*runningCrc)
 {
     uint16_t crc = *runningCrc;
 
