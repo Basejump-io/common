@@ -127,14 +127,14 @@ Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExterna
     auxListenersLock(),
     joinCtx(NULL)
 {
-    /* If this is an external thread, add it to the thread list here since Run will not be called */
-    QCC_DbgHLPrintf(("Thread::Thread() created %s - %x -- started:%d running:%d joined:%d", funcName.c_str(), handle, started, running, joined));
     if (isExternal) {
         assert(func == NULL);
         threadListLock.Lock();
         threadList[handle] = this;
         threadListLock.Unlock();
     }
+    /* If this is an external thread, add it to the thread list here since Run will not be called */
+    QCC_DbgHLPrintf(("Thread::Thread() created %s - %x -- started:%d running:%d joined:%d", funcName.c_str(), handle, started, running, joined));
 }
 
 
@@ -387,6 +387,11 @@ QStatus Thread::Join(void)
      */
     if (state == DEAD) {
         QCC_DbgPrintf(("Thread::Join() thread is dead [%s]", funcName.c_str()));
+        if (joinCtx) {
+            delete joinCtx;
+        }
+        joinCtx = NULL;
+
         return ER_OK;
     }
     /*
