@@ -15,7 +15,7 @@
 
 TARGET=src
 
-all:commonsrc
+.PHONY: commonsrc
 
 commonsrc: ASN1.o \
            BigNum.o \
