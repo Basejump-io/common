@@ -13,7 +13,7 @@
 #    limitations under the License.
 # 
 
-all : crypto
+.PHONY: crypto
 
 crypto : CryptoAES.o \
          CryptoHash.o \

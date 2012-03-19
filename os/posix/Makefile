@@ -14,7 +14,7 @@
 # 
 
 
-all:oslib
+.PHONY: oslib
 
 ifeq "$(OS)" "linux"
   IFCONFIG=IfConfigLinux
