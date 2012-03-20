@@ -13,6 +13,8 @@
 #    limitations under the License.
 # 
 
+.PHONY: all clean
+
 all : common
 
 common:
@@ -37,4 +39,4 @@ clean:
 	cd src; make clean;
 	cd os/$(OS_GROUP); make clean;
 	cd crypto/$(CRYPTO); make clean;
-	-rm *.o
+	@rm -f *.o
