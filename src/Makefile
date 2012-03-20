@@ -15,7 +15,9 @@
 
 TARGET=src
 
-.PHONY: commonsrc
+.PHONY: all clean
+
+all: commonsrc
 
 commonsrc: ASN1.o \
            BigNum.o \
@@ -48,4 +50,4 @@ commonsrc: ASN1.o \
 	$(CC) $(CXXFLAGS) $(CPPDEFINES) $(INCLUDE) -c -o $@ $<
 
 clean:
-	-rm *.o *~
+	@rm -f *.o *~

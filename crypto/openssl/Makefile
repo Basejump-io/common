@@ -13,7 +13,9 @@
 #    limitations under the License.
 # 
 
-.PHONY: crypto
+.PHONY: all clean
+
+all: crypto
 
 crypto : CryptoAES.o \
          CryptoHash.o \
@@ -24,4 +26,4 @@ crypto : CryptoAES.o \
 	$(CC) $(CXXFLAGS) $(CPPDEFINES) $(INCLUDE) -c -o $@ $<
 
 clean:
-	-rm -rf *.o *~
+	@rm -f *.o *~
