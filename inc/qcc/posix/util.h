@@ -7,7 +7,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@
 
 #endif
 
-// Undefine GlibC's versions the macros to help prevent writting non-portable code.
+// Undefine GlibC's versions the macros to help prevent writing non-portable code.
 #undef le16toh
 #undef le32toh
 #undef le64toh
@@ -95,36 +95,36 @@
 #if defined(QCC_OS_DARWIN)
 
 /**
- * Swap bytes in place to convert endianness of a 16 bit integer
+ * Swap bytes to convert endianness of a 16 bit integer
  */
-#define EndianSwap16(_val) (_val) = OSSwapConstInt16(_val)
+#define EndianSwap16(_val) (OSSwapConstInt16(_val))
 
 /**
- * Swap bytes in place to convert endianness of a 32 bit integer
+ * Swap bytes to convert endianness of a 32 bit integer
  */
-#define EndianSwap32(_val) (_val) = OSSwapConstInt32(_val)
+#define EndianSwap32(_val) (OSSwapConstInt32(_val))
 
 /**
- * Swap bytes in place to convert endianness of a 64 bit integer
+ * Swap bytes to convert endianness of a 64 bit integer
  */
-#define EndianSwap64(_val) (_val) = OSSwapConstInt64(_val)
+#define EndianSwap64(_val) (OSSwapConstInt64(_val))
 
 
 #else
 /**
- * Swap bytes in place to convert endianness of a 16 bit integer
+ * Swap bytes to convert endianness of a 16 bit integer
  */
-#define EndianSwap16(_val) (_val) = __swap16(_val)
+#define EndianSwap16(_val) (__swap16(_val))
 
 /**
- * Swap bytes in place to convert endianness of a 32 bit integer
+ * Swap bytes to convert endianness of a 32 bit integer
  */
-#define EndianSwap32(_val) (_val) = __swap32(_val)
+#define EndianSwap32(_val) (__swap32(_val))
 
 /**
- * Swap bytes in place to convert endianness of a 64 bit integer
+ * Swap bytes to convert endianness of a 64 bit integer
  */
-#define EndianSwap64(_val) (_val) = __swap64(_val)
+#define EndianSwap64(_val) (__swap64(_val))
 
 #endif
 

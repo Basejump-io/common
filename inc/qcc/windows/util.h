@@ -7,7 +7,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -58,19 +58,19 @@
 
 
 /**
- * Swap bytes in place to convert endianness of a 16 bit integer
+ * Swap bytes to convert endianness of a 16 bit integer
  */
-#define EndianSwap16(_val) (_val) = _byteswap_ushort(_val)
+#define EndianSwap16(_val) (_byteswap_ushort(_val))
 
 /**
- * Swap bytes in place to convert endianness of a 32 bit integer
+ * Swap bytes to convert endianness of a 32 bit integer
  */
-#define EndianSwap32(_val) (_val) = _byteswap_ulong(_val)
+#define EndianSwap32(_val) (_byteswap_ulong(_val))
 
 /**
- * Swap bytes in place to convert endianness of a 64 bit integer
+ * Swap bytes to convert endianness of a 64 bit integer
  */
-#define EndianSwap64(_val) (_val) = _byteswap_uint64(_val)
+#define EndianSwap64(_val) (_byteswap_uint64(_val))
 
 
 #define ER_DIR_SEPARATOR  "\\"
