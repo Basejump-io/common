@@ -93,6 +93,12 @@ class IfConfigEntry {
  */
 QStatus IfConfig(std::vector<IfConfigEntry>& entries);
 
+/**
+ * @brief Get information regarding the live network interfaces on the
+ * host based on the type of interface.
+ */
+QStatus GetLiveInterfacesByType(bool enableIPv6, std::vector<IfConfigEntry>& ethEntries, std::vector<IfConfigEntry>& wifiEntries, std::vector<IfConfigEntry>& mobileNwEntries);
+
 } // namespace ajn
 
 #endif // _IFCONFIG_H
