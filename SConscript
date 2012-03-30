@@ -1,4 +1,4 @@
-# Copyright 2010 - 2012, Qualcomm Innovation Center, Inc.
+# Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
 # 
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ if env['OS_GROUP'] == 'windows':
         env.AppendUnique(LIBS = ['libeay32', 'ssleay32'])
         print 'Using OPENSSL crypto libraries'
 elif env['OS'] == 'linux':
-    env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto', 'ssl'])
+    env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto'])
 elif env['OS'] == 'darwin':
     env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto'])
 elif env['OS'] == 'android':
