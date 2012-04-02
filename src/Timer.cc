@@ -315,16 +315,27 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
         Timespec now;
         GetTimeNow(&now);
         bool isController = (timer->controllerIdx == index);
+        bool allWereDispatched = timer->controllerIdx == -1;
+
+        /*
+         * If the controller has relinquished its role and is off executing a
+         * handler, the first thread back assumes the role of controller.
+         */
         if (!isController && (timer->controllerIdx == -1)) {
-            if (timer->yieldControllerTime.GetAbsoluteMillis() && ((now - timer->yieldControllerTime) > FALLBEHIND_WARNING_MS)) {
-                QCC_LogError(ER_TIMER_FALLBEHIND, ("Timer has fallen behind by %ld ms", now - timer->yieldControllerTime));
-            }
             timer->controllerIdx = index;
             isController = true;
         }
+
         if (!timer->alarms.empty()) {
             const Alarm& topAlarm = *(timer->alarms.begin());
             int64_t delay = topAlarm.alarmTime - now;
+
+            /*
+             * There is an alarm waiting to go off.  There is some delay until
+             * the next alarm is scheduled to pop, so we might want to sleep.
+             * We wait for some time here if we are the controller or if the
+             * event is imminent.
+             */
             if ((delay > 0) && (isController || (delay < WORKER_IDLE_TIMEOUT_MS))) {
                 state = IDLE;
                 timer->lock.Unlock();
@@ -332,6 +343,28 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                 Event::Wait(evt);
                 stopEvent.ResetEvent();
             } else if (isController || (delay <= 0)) {
+                /*
+                 * There is an alarm waiting to go off.  We are either the
+                 * controller or the alarm is past due.  If the alarm is past
+                 * due, we want to print an error message if we are getting too
+                 * far behind.  We assume that "behind" means that all N threads
+                 * have been busy and there is an alarm that is ready and
+                 * waiting to be executed.  The qualifier "too far" is defined
+                 * by the constant value FALLBEHIND_WARNING_MS.
+                 *
+                 * If allWereDispatched is true, it means that the previous time
+                 * through the loop, all N of the possible concurrent dispatcher
+                 * threads were busy.  The condition we are concerned about is
+                 * when all N of the threads were busy for some length of time.
+                 * We don't want to start logging piles of error messages
+                 * instead of catching up, so we only log an error when the first
+                 * thread comes back, assumes the role of controller and notices
+                 * that there is work backed up.
+                 */
+                if (allWereDispatched && timer->yieldControllerTime.GetAbsoluteMillis() && ((now - timer->yieldControllerTime) > FALLBEHIND_WARNING_MS)) {
+                    QCC_LogError(ER_TIMER_FALLBEHIND, ("Timer has fallen behind by %ld ms", now - timer->yieldControllerTime));
+                }
+
                 TimerThread* tt = NULL;
                 if (isController) {
                     /* Look for an idle or stopped worker to execute alarm callback for us */
