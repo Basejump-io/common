@@ -19,6 +19,7 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
+
 #ifndef _QCC_THREADPOOL_H
 #define _QCC_THREADPOOL_H
 
@@ -26,33 +27,105 @@
 
 namespace qcc {
 
+/**
+ * A class in the spirit of the Java Runnable object that is used to define
+ * an object which is executable by a ThreadPool.
+ *
+ * In order to ask the ThreadPool to execute a task, inherit from the
+ * Runnable class and provide a Run() method.  Then call ThreadPool::Execute()
+ * providing a reference to the Runnable object.
+ */
 class Runnable : private qcc::AlarmListener {
 public:
+    /**
+     * This method is called by the ThreadPool when the Runnable object is
+     * dispatched to a thread.  A client of the thread pool is expected to
+     * define a method in a derived class that does useful work when Run()
+     * is called.
+     */
     virtual void Run(void) = 0;
 
 private:
+    /**
+     * ThreadPool must be a friend in order to make AlarmTriggered an
+     * accessible base class method of a user's Runnable.
+     */
     friend class ThreadPool;
+
+    /**
+     * AlarmTriggered is the method that is called to dispatch an alarm.
+     * Our Run() methods are driven by alarm expirations that happen to
+     * always occur immediately.
+     */
     virtual void AlarmTriggered(const Alarm& alarm, QStatus reason)
     {
         Run();
     }
 };
 
+/**
+ * A class in the spirit of the Java ThreadPoolExecutor object that is used
+ * to provide a simple way to execute tasks in the context of a separate
+ * thread.
+ *
+ * In order to ask a ThreadPool to execute a task, one must inherit from the
+ * Runnable class and provide a Run() method.
+ */
 class ThreadPool {
 public:
+    /**
+     * Construct a thread pool with a given name and pool size.
+     *
+     * @param name     The name of the thread pool (used in logging).
+     * @param poolSize The number of threads available in the pool.
+     */
     ThreadPool(const char* name, uint32_t poolSize) : dispatcher(name, false, poolSize)
     {
+        /*
+         * Start the dispatcher timer.  This timer will have a concurrency
+         * corresponding to the poolSize provided.  This means that there will
+         * be <poolSize> theads waiting to dispatch expired alarms.  The
+         * concurrent threads in the Timer provide us with our thread pool.
+         */
         dispatcher.Start();
     }
 
+    /**
+     * Destroy a thread pool.
+     */
     virtual ~ThreadPool()
     {
+        /*
+         * Send a message to the timer requesting that it stop all of its
+         * theads.
+         */
         dispatcher.Stop();
+
+        /*
+         * Wait for all of the threads in our associated timer to exit.  Once
+         * this happens, it is safe for us to finish tearing down our object.
+         * Note that this call can block or a time limited only by the execution
+         * time of the threads dispatched.
+         */
         dispatcher.Join();
     }
 
+    /**
+     * Execute a Runnable task one one of the threads of the therad pool.
+     *
+     * @param runnable The Runnable object providing the Run() method which
+     *                  one of the threads in this thread pool will execute.
+     */
     void Execute(Runnable& runnable) 
     {
+        /*
+         * The trick here is to add an alarm that expires immediately and
+         * executes the AlarmTriggered method of the provided Runnable
+         * object.  This will call the Run() method of the Runnable.  So
+         * although we use Timers and Alarms, we schedule everthing to
+         * happen immediately, and the result looks like a thread pool
+         * that we all know and love.
+         */
         qcc::Alarm alarm = qcc::Alarm(0, &runnable, 0, NULL);
         dispatcher.AddAlarm(alarm);
     }
