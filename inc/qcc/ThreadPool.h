@@ -32,8 +32,12 @@ namespace qcc {
  * an object which is executable by a ThreadPool.
  *
  * In order to ask the ThreadPool to execute a task, inherit from the
- * Runnable class and provide a Run() method.  Then call ThreadPool::Execute()
- * providing a reference to the Runnable object.
+ * Runnable class and provide a Run() method.  You must allocate a Runnable
+ * object on the heap and then call ThreadPool::Execute() providing a pointer
+ * to the Runnable object.
+ *
+ * Once the Run() method has executed, the runnable will be automatically
+ * deleted.
  */
 class Runnable : private qcc::AlarmListener {
 public:
@@ -56,10 +60,14 @@ private:
      * AlarmTriggered is the method that is called to dispatch an alarm.
      * Our Run() methods are driven by alarm expirations that happen to
      * always occur immediately.
+     *
+     * Note that the enclosing runnable object is automatically deleted
+     * afte the Run method is executed.
      */
     virtual void AlarmTriggered(const Alarm& alarm, QStatus reason)
     {
         Run();
+        delete this;
     }
 };
 
@@ -111,12 +119,23 @@ public:
     }
 
     /**
-     * Execute a Runnable task one one of the threads of the therad pool.
+     * Execute a Runnable task one one of the threads of the thread pool.
      *
-     * @param runnable The Runnable object providing the Run() method which
-     *                  one of the threads in this thread pool will execute.
+     * The execute method takes a pointer to a Runnable object.  This object
+     * acts as a closure which essentialy is a pre-packaged function call.  The
+     * function is called Run() in this case.  Since we need to keep the package
+     * around until Run() actually executes, and the thread that calls Execute()
+     * may be long gone by the time this happens, the Runnable must be allocated
+     * on the heap.  Only the thread pool knows when the Runnable is no longer
+     * needed, so it takes responsibility for managing the memory of the runnable
+     * when Execute is called.
+     *
+     * Each call to Execute must provide a pointer to a unique Runnable 
+     *
+     * @param runnable A pointer to a Runnable object providing the Run() method
+     *                 which one of the threads in this thread pool will execute.
      */
-    void Execute(Runnable& runnable) 
+    void Execute(Runnable* runnable) 
     {
         /*
          * The trick here is to add an alarm that expires immediately and
@@ -126,11 +145,21 @@ public:
          * happen immediately, and the result looks like a thread pool
          * that we all know and love.
          */
-        qcc::Alarm alarm = qcc::Alarm(0, &runnable, 0, NULL);
+        qcc::Alarm alarm = qcc::Alarm(0, runnable, 0, NULL);
         dispatcher.AddAlarm(alarm);
     }
 
 private:
+    /**
+     * Assignment operator is private - ThreadPools cannot be assigned.
+     */
+    ThreadPool& operator=(const ThreadPool& other);
+
+    /**
+     * Copy constructor is private - ThreadPools cannot be copied.
+     */
+    ThreadPool(const ThreadPool& other);
+
     qcc::Timer dispatcher;
 };
 
