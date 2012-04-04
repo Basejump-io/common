@@ -40,7 +40,7 @@ namespace qcc {
  * deleted.
  */
 class Runnable : private qcc::AlarmListener {
-public:
+  public:
     /**
      * This method is called by the ThreadPool when the Runnable object is
      * dispatched to a thread.  A client of the thread pool is expected to
@@ -49,7 +49,7 @@ public:
      */
     virtual void Run(void) = 0;
 
-private:
+  private:
     /**
      * ThreadPool must be a friend in order to make AlarmTriggered an
      * accessible base class method of a user's Runnable.
@@ -80,7 +80,7 @@ private:
  * Runnable class and provide a Run() method.
  */
 class ThreadPool {
-public:
+  public:
     /**
      * Construct a thread pool with a given name and pool size.
      *
@@ -130,12 +130,12 @@ public:
      * needed, so it takes responsibility for managing the memory of the runnable
      * when Execute is called.
      *
-     * Each call to Execute must provide a pointer to a unique Runnable 
+     * Each call to Execute must provide a pointer to a unique Runnable
      *
      * @param runnable A pointer to a Runnable object providing the Run() method
      *                 which one of the threads in this thread pool will execute.
      */
-    void Execute(Runnable* runnable) 
+    void Execute(Runnable* runnable)
     {
         /*
          * The trick here is to add an alarm that expires immediately and
@@ -149,7 +149,7 @@ public:
         dispatcher.AddAlarm(alarm);
     }
 
-private:
+  private:
     /**
      * Assignment operator is private - ThreadPools cannot be assigned.
      */
