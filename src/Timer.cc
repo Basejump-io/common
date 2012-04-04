@@ -151,7 +151,6 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
         bool alertThread = alarms.empty() || (alarm < *alarms.begin());
         alarms.insert(alarm);
 
-        QStatus status = ER_OK;
         if (alertThread && (controllerIdx >= 0)) {
             TimerThread* tt = timerThreads[controllerIdx];
             if (tt->state == TimerThread::IDLE) {
@@ -355,14 +354,16 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                  * If allWereDispatched is true, it means that the previous time
                  * through the loop, all N of the possible concurrent dispatcher
                  * threads were busy.  The condition we are concerned about is
-                 * when all N of the threads were busy for some length of time.
+                 * when all N of the threads were busy for some length of time
+                 * and delay is less than zero, meaning we're behind.
+                 *
                  * We don't want to start logging piles of error messages
                  * instead of catching up, so we only log an error when the first
                  * thread comes back, assumes the role of controller and notices
                  * that there is work backed up.
                  */
-                if (allWereDispatched && timer->yieldControllerTime.GetAbsoluteMillis() && ((now - timer->yieldControllerTime) > FALLBEHIND_WARNING_MS)) {
-                    QCC_LogError(ER_TIMER_FALLBEHIND, ("Timer has fallen behind by %ld ms", now - timer->yieldControllerTime));
+                if (allWereDispatched && delay < 0 && timer->yieldControllerTime.GetAbsoluteMillis() && ((now - timer->yieldControllerTime) > FALLBEHIND_WARNING_MS)) {
+                    QCC_LogError(ER_TIMER_FALLBEHIND, ("Timer \"%s\" has fallen behind by %ld ms", Thread::GetThreadName(), now - timer->yieldControllerTime));
                 }
 
                 TimerThread* tt = NULL;
