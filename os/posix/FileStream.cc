@@ -214,10 +214,12 @@ FileSink FileSink::operator=(const FileSink& other)
     return *this;
 }
 
-FileSink::~FileSink() {
+FileSink::~FileSink()
+{
     if (ownsFd && (0 <= fd)) {
         close(fd);
     }
+    delete event;
 }
 
 QStatus FileSink::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
