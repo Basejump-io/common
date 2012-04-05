@@ -174,9 +174,10 @@ QStatus KeyBlob::Load(qcc::Source& source)
             }
         }
         if (status == ER_OK) {
-            char tagBytes[MAx_TAG_LEN];
+            char tagBytes[MAx_TAG_LEN + 1];
             status = source.PullBytes(tagBytes, flags & 0x3F, pulled);
             if (status == ER_OK) {
+                tagBytes[pulled] = 0;
                 tag.insert(0, tagBytes, pulled);
             }
         }
