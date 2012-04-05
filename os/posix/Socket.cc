@@ -793,6 +793,7 @@ QStatus SendWithFds(SocketFd sockfd, const void* buf, size_t len, size_t& sent, 
     struct iovec iov[] = { { const_cast<void*>(buf), len } };
     size_t sz = numFds * sizeof(SocketFd);
     char* cbuf = new char[CMSG_SPACE(sz)];
+    memset(cbuf, 0, CMSG_SPACE(sz));
 
     struct msghdr msg;
     memset(&msg, 0, sizeof(msg));
