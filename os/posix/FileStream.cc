@@ -132,7 +132,7 @@ void FileSource::Unlock()
 }
 
 FileSink::FileSink(qcc::String fileName, Mode mode)
-    : fd(-1), event(new Event(fd, Event::IO_WRITE, false)), ownsFd(true)
+    : fd(-1), event(new Event(fd, Event::IO_WRITE, false)), ownsFd(true), locked(false)
 {
 #ifdef QCC_OS_ANDROID
     /* Android uses per-user groups so user and group permissions are the same */
