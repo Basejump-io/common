@@ -103,20 +103,22 @@ class ThreadPool {
      */
     virtual ~ThreadPool()
     {
-        /*
-         * Send a message to the timer requesting that it stop all of its
-         * theads.
-         */
-        dispatcher.Stop();
-
-        /*
-         * Wait for all of the threads in our associated timer to exit.  Once
-         * this happens, it is safe for us to finish tearing down our object.
-         * Note that this call can block or a time limited only by the execution
-         * time of the threads dispatched.
-         */
-        dispatcher.Join();
+        Stop();
+        Join();
     }
+
+    /**
+     * Requesting the we cancel all of our dispatched threads.
+     */
+    QStatus Stop() { return dispatcher.Stop(); }
+
+    /**
+     * Wait for all of the threads in our associated timer to exit.  Once
+     * this happens, it is safe for us to finish tearing down our object.
+     * Note that this call can block or a time limited only by the execution
+     * time of the threads dispatched.
+     */
+    QStatus Join() { return dispatcher.Join(); }
 
     /**
      * Execute a Runnable task one one of the threads of the thread pool.
