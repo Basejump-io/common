@@ -326,7 +326,6 @@ static void destroyPipe(int rdFd, int wrFd)
         pipeLock->Unlock();
     } else {
         pipeLock->Unlock();
-        QCC_LogError(ER_FAIL, ("Attempt to destroy non-existent pipe"));
     }
 #endif
 }
@@ -369,10 +368,7 @@ Event::~Event()
 
     /* Threads should not be waiting */
     if ((GEN_PURPOSE == eventType) || (TIMED == eventType)) {
-        status = SetEvent();
-        if (ER_OK != status) {
-            QCC_LogError(status, ("SetEvent failed"));
-        }
+        SetEvent();
     }
 
     /* Destroy eventfd if one was created */
