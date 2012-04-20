@@ -1,6 +1,6 @@
 /**
  * @file
- * Data structure and delcaration of function for getting network interface configurations
+ * Data structure and declaration of function for getting network interface configurations
  */
 
 /******************************************************************************

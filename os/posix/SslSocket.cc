@@ -42,7 +42,7 @@ using namespace std;
 
 namespace qcc {
 
-static SSL_CTX*sslCtx = NULL;
+static SSL_CTX* sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
 SslSocket::SslSocket()
