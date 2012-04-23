@@ -33,7 +33,7 @@ namespace qcc {
 /**
  * SSL Socket
  */
-class SslSocket : public qcc::Stream {
+class SslSocket : public Stream {
 
   public:
 
@@ -67,7 +67,7 @@ class SslSocket : public qcc::Stream {
      * @param actualBytes  Actual number of bytes retrieved from source.
      * @return   OI_OK if successful. ER_NONE if source is exhausted. Otherwise an error.
      */
-    QStatus PullBytes(void*buf, size_t reqBytes, size_t& actualBytes);
+    QStatus PullBytes(void*buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout = Event::WAIT_FOREVER);
 
     /**
      * Push bytes into the sink.
@@ -77,7 +77,7 @@ class SslSocket : public qcc::Stream {
      * @param numSent      Number of bytes actually consumed by sink.
      * @return   ER_OK if successful.
      */
-    QStatus PushBytes(void*buf, size_t numBytes, size_t& numSent);
+    QStatus PushBytes(const void* buf, size_t numBytes, size_t& numSent);
 
     /**
      * Get the Event indicating that data is available.
@@ -94,15 +94,14 @@ class SslSocket : public qcc::Stream {
     qcc::Event& GetSinkEvent() { return *sinkEvent; }
 
     /**
-     * Import a public key from a PEM-encoded public key.
+     * Import a PEM-encoded public key.
      */
     QStatus ImportPEM(void);
 
   private:
 
     BIO* bio;                 /**< SSL socket descriptor for OpenSSL */
-    X509* x509;               /**< Hard-coded Server Certificate */
-    X509* issuer;             /**< Hard-coded Issuer Certificate */
+    X509* rootCert;           /**< Hard-coded Root Certificate */
     qcc::Event*sourceEvent;   /**< Event signaled when data is available */
     qcc::Event*sinkEvent;     /**< Event signaled when sink can accept data */
 };
