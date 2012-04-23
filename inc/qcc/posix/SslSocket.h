@@ -102,6 +102,7 @@ class SslSocket : public qcc::Stream {
 
     BIO* bio;                 /**< SSL socket descriptor for OpenSSL */
     X509* x509;               /**< Hard-coded Server Certificate */
+    X509* issuer;             /**< Hard-coded Issuer Certificate */
     qcc::Event*sourceEvent;   /**< Event signaled when data is available */
     qcc::Event*sinkEvent;     /**< Event signaled when sink can accept data */
 };

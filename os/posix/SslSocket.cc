@@ -69,20 +69,35 @@ SslSocket::SslSocket()
             OpenSSL_add_all_algorithms();
             sslCtx = SSL_CTX_new(SSLv23_client_method());
             if (sslCtx) {
-                if (!SSL_CTX_load_verify_locations(sslCtx, "/home/padmapri/certs/ca.pem", NULL)) {
-                    QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): Cannot initialize SSL trust store"));
-                    SSL_CTX_free(sslCtx);
-                    sslCtx = NULL;
-                }
-#if 0
-                X509_STORE* store = X509_STORE_new();
-                SSL_CTX_set_cert_store(sslCtx, store);
-#endif
+
+            	  if (!SSL_CTX_load_verify_locations(sslCtx, "/home/padmapri/certs/ca.pem", NULL)) {
+
+            	    QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): Cannot initialize SSL trust store"));
+
+            	    SSL_CTX_free(sslCtx);
+
+            	    sslCtx = NULL;
+
+            	  }
+
+/*                X509_STORE* store = X509_STORE_new();
+                SSL_CTX_set_cert_store(sslCtx, store);*/
+
                 X509_STORE* myStore = SSL_CTX_get_cert_store(sslCtx);
                 QCC_DbgPrintf(("SslSocket::SslSocket(): myStore = 0x%x", myStore));
 
-                int ret = X509_STORE_add_cert(myStore, x509);
-                QCC_DbgPrintf(("SslSocket::SslSocket(): ret = %d", ret));
+                QStatus status = ImportPEM();
+                if(status == ER_OK) {
+                    int ret = X509_STORE_add_cert(myStore, issuer);
+                    QCC_DbgPrintf(("SslSocket::SslSocket(): issuer ret = %d", ret));
+                    QCC_LogError(ER_SSL_INIT, ("X509_STORE_add_cert: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
+
+                    ret = X509_STORE_add_cert(myStore, x509);
+                    QCC_DbgPrintf(("SslSocket::SslSocket(): ret = %d", ret));
+                    QCC_LogError(ER_SSL_INIT, ("X509_STORE_add_cert: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
+                } else {
+                	QCC_LogError(status, ("ImportPEM() failed"));
+                }
             }
             if (!sslCtx) {
                 QCC_LogError(ER_SSL_INIT, ("OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
@@ -103,6 +118,12 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
 {
     QStatus status = ER_OK;
 
+    SSL_library_init();
+    SSL_load_error_strings();
+    ERR_load_BIO_strings();
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
+
     /* Sanity check */
     if (!sslCtx) {
         QCC_LogError(ER_SSL_INIT, ("SSL failed to initialize"));
@@ -110,26 +131,36 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
     }
 
     /* Create the descriptor for this SSL socket */
-    SSL*ssl;
+    SSL* ssl;
     bio = BIO_new_ssl_connect(sslCtx);
+    QCC_LogError(ER_SSL_INIT, ("BIO_new_ssl_connect: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
 
     if (bio) {
         /* Set SSL modes */
         BIO_get_ssl(bio, &ssl);
+        QCC_LogError(ER_SSL_INIT, ("BIO_get_ssl: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
         SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+        QCC_LogError(ER_SSL_INIT, ("SSL_set_mode: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
 
         /* Set destination host name and port */
         int intPort = (int) port;
         BIO_set_conn_hostname(bio, hostName.c_str());
+        QCC_LogError(ER_SSL_INIT, ("BIO_set_conn_hostname: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
         BIO_set_conn_int_port(bio, &intPort);
+        QCC_LogError(ER_SSL_INIT, ("BIO_set_conn_int_port: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
 
         /* Connect to destination */
         if (0 < BIO_do_connect(bio)) {
+        	QCC_LogError(ER_SSL_INIT, ("BIO_do_connect: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
             /* Verify the certificate */
-            if (SSL_get_verify_result(ssl) != X509_V_OK) {
+        	long int ret = SSL_get_verify_result(ssl);
+        	QCC_LogError(ER_SSL_INIT, ("SSL_get_verify_result: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
+        	QCC_DbgPrintf(("SslSocket::Connect(): ret = %d", ret));
+            if (ret != X509_V_OK) {
                 status = ER_SSL_VERIFY;
             }
         } else {
+        	QCC_LogError(ER_SSL_INIT, ("BIO_do_connect: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
             status = ER_SSL_CONNECT;
         }
     } else {
@@ -139,6 +170,7 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
     /* Set the events */
     if (ER_OK == status) {
         int fd = BIO_get_fd(bio, 0);
+        QCC_LogError(ER_SSL_INIT, ("BIO_get_fd: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
         sourceEvent = new qcc::Event(fd, qcc::Event::IO_READ, false);
         sinkEvent = new qcc::Event(fd, qcc::Event::IO_WRITE, false);
     }
@@ -146,6 +178,7 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
     /* Cleanup on error */
     if (bio && (ER_OK != status)) {
         BIO_free_all(bio);
+        QCC_LogError(ER_SSL_INIT, ("BIO_free_all: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
         bio = NULL;
     }
 
@@ -222,15 +255,22 @@ QStatus SslSocket::PushBytes(void*buf, size_t numBytes, size_t& numSent)
 
 QStatus SslSocket::ImportPEM()
 {
-#ifndef NDEBUG
     ERR_load_crypto_strings();
-#endif
     QStatus status = ER_CRYPTO_ERROR;
     BIO* bio = BIO_new(BIO_s_mem());
     BIO_write(bio, x509RendezvousServerCert, sizeof(x509RendezvousServerCert));
-    X509* x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     BIO_free(bio);
     if (x509) {
+        status = ER_OK;
+    }
+
+    status = ER_CRYPTO_ERROR;
+    bio = BIO_new(BIO_s_mem());
+    BIO_write(bio, x509IssuerCert, sizeof(x509IssuerCert));
+    issuer = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    BIO_free(bio);
+    if (issuer) {
         status = ER_OK;
     }
 
