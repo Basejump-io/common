@@ -29,12 +29,19 @@
 #include <qcc/Config.h>
 #include <qcc/Mutex.h>
 #include <qcc/Debug.h>
+#include <qcc/RendezvousServerCertificateAuthority.h>
 
+#include <openssl/bn.h>
+#include <openssl/pem.h>
+#include <openssl/evp.h>
 #include <openssl/bio.h>
-#include <openssl/ssl.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 #include <openssl/err.h>
+#include <openssl/ssl.h>
 
 #include "Status.h"
+
 
 #define QCC_MODULE  "SSL"
 
@@ -47,6 +54,7 @@ static qcc::Mutex ctxMutex;
 
 SslSocket::SslSocket()
     : bio(NULL),
+    x509(NULL),
     sourceEvent(&qcc::Event::neverSet),
     sinkEvent(&qcc::Event::neverSet)
 {
@@ -61,13 +69,20 @@ SslSocket::SslSocket()
             OpenSSL_add_all_algorithms();
             sslCtx = SSL_CTX_new(SSLv23_client_method());
             if (sslCtx) {
-                qcc::Config*cfg = qcc::Config::GetConfig();
-                qcc::String trustStore = cfg->GetValue("SSL_TRUST_STORE");
-                if (!SSL_CTX_load_verify_locations(sslCtx, trustStore.c_str(), NULL)) {
-                    QCC_LogError(ER_SSL_INIT, ("Cannot initialize SSL trust store \"%s\"", trustStore.c_str()));
+                if (!SSL_CTX_load_verify_locations(sslCtx, "/home/padmapri/certs/ca.pem", NULL)) {
+                    QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): Cannot initialize SSL trust store"));
                     SSL_CTX_free(sslCtx);
                     sslCtx = NULL;
                 }
+#if 0
+                X509_STORE* store = X509_STORE_new();
+                SSL_CTX_set_cert_store(sslCtx, store);
+#endif
+                X509_STORE* myStore = SSL_CTX_get_cert_store(sslCtx);
+                QCC_DbgPrintf(("SslSocket::SslSocket(): myStore = 0x%x", myStore));
+
+                int ret = X509_STORE_add_cert(myStore, x509);
+                QCC_DbgPrintf(("SslSocket::SslSocket(): ret = %d", ret));
             }
             if (!sslCtx) {
                 QCC_LogError(ER_SSL_INIT, ("OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
@@ -201,6 +216,25 @@ QStatus SslSocket::PushBytes(void*buf, size_t numBytes, size_t& numSent)
         status = ER_FAIL;
         QCC_LogError(status, ("BIO_write failed with error=%d", ERR_get_error()));
     }
+
+    return status;
+}
+
+QStatus SslSocket::ImportPEM()
+{
+#ifndef NDEBUG
+    ERR_load_crypto_strings();
+#endif
+    QStatus status = ER_CRYPTO_ERROR;
+    BIO* bio = BIO_new(BIO_s_mem());
+    BIO_write(bio, x509RendezvousServerCert, sizeof(x509RendezvousServerCert));
+    X509* x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    BIO_free(bio);
+    if (x509) {
+        status = ER_OK;
+    }
+
+    QCC_DbgPrintf(("SslSocket::ImportPEM(): status = %s", QCC_StatusText(status)));
 
     return status;
 }

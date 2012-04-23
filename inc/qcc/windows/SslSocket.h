@@ -1,7 +1,8 @@
 /**
  * @file
  *
- * SSL stream-based socket.
+ * SSL stream-based socket implementation.
+ *
  */
 
 /******************************************************************************
@@ -19,19 +20,20 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
-#ifndef _OSERSSLSOCKET_H
-#define _OSERSSLSOCKET_H
 
-#include "platform.h"
-#include "Status.h"
-#include "Stream.h"
+#ifndef _OSSSLSOCKET_H
+#define _OSSSLSOCKET_H
 
+#include <qcc/platform.h>
+#include <qcc/Stream.h>
 #include <openssl/bio.h>
+#include "Status.h"
 
+namespace qcc {
 /**
  * SSL Socket
  */
-class SslSocket : public Stream {
+class SslSocket : public qcc::Stream {
 
   public:
 
@@ -49,7 +51,7 @@ class SslSocket : public Stream {
      *
      * @return  ER_OK if successful.
      */
-    QStatus Connect(const std::string hostname, uint16_t port);
+    QStatus Connect(const qcc::String hostname, uint16_t port);
 
     /**
      * Close an SSL socket.
@@ -82,20 +84,22 @@ class SslSocket : public Stream {
      *
      * @return Event that is set when data is available.
      */
-    er::Event& GetSourceEvent() { return *sourceEvent; }
+    qcc::Event& GetSourceEvent() { return *sourceEvent; }
 
     /**
      * Get the Event indicating that sink can accept data.
      *
      * @return Event set when socket can accept more data via PushBytes
      */
-    er::Event& GetSinkEvent() { return *sinkEvent; }
+    qcc::Event& GetSinkEvent() { return *sinkEvent; }
 
   private:
 
-    BIO*bio;                 /**< SSL socket descriptor for OpenSSL */
-    er::Event*sourceEvent;   /**< Event signaled when data is available */
-    er::Event*sinkEvent;     /**< Event signaled when sink can accept data */
+    BIO* bio;                 /**< SSL socket descriptor for OpenSSL */
+    qcc::Event*sourceEvent;   /**< Event signaled when data is available */
+    qcc::Event*sinkEvent;     /**< Event signaled when sink can accept data */
 };
+
+}  /* namespace */
 
 #endif

@@ -93,9 +93,15 @@ class SslSocket : public qcc::Stream {
      */
     qcc::Event& GetSinkEvent() { return *sinkEvent; }
 
+    /**
+     * Import a public key from a PEM-encoded public key.
+     */
+    QStatus ImportPEM(void);
+
   private:
 
-    BIO*bio;                  /**< SSL socket descriptor for OpenSSL */
+    BIO* bio;                 /**< SSL socket descriptor for OpenSSL */
+    X509* x509;               /**< Hard-coded Server Certificate */
     qcc::Event*sourceEvent;   /**< Event signaled when data is available */
     qcc::Event*sinkEvent;     /**< Event signaled when sink can accept data */
 };

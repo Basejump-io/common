@@ -344,39 +344,4 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
     return ER_OK;
 }
 
-QStatus GetLiveInterfacesByType(bool enableIPv6,
-                                std::vector<IfConfigEntry>& ethEntries,
-                                std::vector<IfConfigEntry>& wifiEntries,
-                                std::vector<IfConfigEntry>& mobileNwEntries)
-{
-    QCC_DbgPrintf(("GetLiveInterfacesByType(): The Windows way"));
-
-    std::vector<IfConfigEntry> entries;
-    QStatus status = IfConfig(entries);
-
-    if (status != ER_OK) {
-        QCC_LogError(status, ("GetLiveInterfacesByType(): IfConfig() failed"));
-    } else {
-        /* Populate the entries as per their interface type */
-        for (std::vector<IfConfigEntry>::const_iterator j = entries.begin(); j != entries.end(); ++j) {
-
-            /* Skip processing the entry if it does not have an IP Address*/
-            if ((*j).m_family == QCC_AF_UNSPEC) {
-                continue;
-            }
-
-            /* Skip processing the entry if IPv6 is not enabled and the entry at hand is IPv6*/
-            if ((!enableIPv6) && ((*j).m_family == QCC_AF_INET6)) {
-                continue;
-            }
-
-            // PPN - Add support to distinguish entries based on the interface type for Windows
-
-            QCC_DbgPrintf(("Entry %s with address %s\n", (*j).m_name.c_str(), (*j).m_addr.c_str()));
-        }
-    }
-
-    return status;
-}
-
 } // namespace qcc

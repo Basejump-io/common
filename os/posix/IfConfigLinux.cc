@@ -624,51 +624,6 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
     return ER_OK;
 }
 
-QStatus GetLiveInterfacesByType(bool enableIPv6,
-                                std::vector<IfConfigEntry>& ethEntries,
-                                std::vector<IfConfigEntry>& wifiEntries,
-                                std::vector<IfConfigEntry>& mobileNwEntries)
-{
-    QCC_DbgPrintf(("GetLiveInterfacesByType(): The Linux way"));
-
-    std::vector<IfConfigEntry> entries;
-    QStatus status = IfConfig(entries);
-
-    if (status != ER_OK) {
-        QCC_LogError(status, ("GetLiveInterfacesByType(): IfConfig() failed"));
-    } else {
-        /* Populate the entries as per their interface type */
-        for (std::vector<IfConfigEntry>::const_iterator j = entries.begin(); j != entries.end(); ++j) {
-
-            /* Skip processing the entry if it does not have an IP Address*/
-            if ((*j).m_family == QCC_AF_UNSPEC) {
-                continue;
-            }
-
-            /* Skip processing the entry if IPv6 is not enabled and the entry at hand is IPv6*/
-            if ((!enableIPv6) && ((*j).m_family == QCC_AF_INET6)) {
-                continue;
-            }
-
-            // PPN - This method of comparison needs to be re visited for linux
-            if ((*j).m_name.find("eth") != String::npos) {
-                ethEntries.push_back((*j));
-                QCC_DbgPrintf(("Ethernet: \n"));
-            } else if ((*j).m_name.find("wlan") != String::npos) {
-                wifiEntries.push_back((*j));
-                QCC_DbgPrintf(("Wi-Fi: \n"));
-            }  else if ((*j).m_name.find("ppp") != String::npos) {
-                mobileNwEntries.push_back((*j));
-                QCC_DbgPrintf(("Mobile Network: \n"));
-            }
-
-            QCC_DbgPrintf(("Entry %s with address %s\n", (*j).m_name.c_str(), (*j).m_addr.c_str()));
-        }
-    }
-
-    return status;
-}
-
 } // namespace ajn
 
 #endif // !defined(QCC_OS_DARWIN)

@@ -20,7 +20,7 @@ all: crypto
 crypto : CryptoAES.o \
          CryptoHash.o \
          CryptoRand.o \
-         CryptoRSA.o
+         CryptoRSA.o 
 
 %.o:%.cc
 	$(CC) $(CXXFLAGS) $(CPPDEFINES) $(INCLUDE) -c -o $@ $<
