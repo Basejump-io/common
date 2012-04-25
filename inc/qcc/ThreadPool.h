@@ -105,7 +105,7 @@ class Runnable : public qcc::RefCountBase, public qcc::AlarmListener {
     /**
      * A reference back to the thread pool that causes the run method to be
      * called.  We need this reference so the thread pool can hook a "done"
-     * event since it would otherwise be unaware of the execution of the 
+     * event since it would otherwise be unaware of the execution of the
      * runderlying timer alarm callback that it arranged to be called.
      */
     ThreadPool* m_threadpool;

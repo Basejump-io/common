@@ -29,7 +29,7 @@ namespace qcc {
 /**
  * An intrusive smart pointer class.
  */
-template<typename T>
+template <typename T>
 class Ptr {
   public:
 
@@ -48,13 +48,13 @@ class Ptr {
     /**
      * A conversion constructor to allow for casting between Ptr types.
      */
-    template<typename U>
+    template <typename U>
     Ptr(Ptr<U>& other);
 
     /**
      * A conversion constructor to allow for casting between Ptr types.
      */
-    template<typename U>
+    template <typename U>
     Ptr(const Ptr<U>& other);
 
     /**
@@ -94,12 +94,12 @@ class Ptr {
     T* ptr;
 };
 
-template<typename T>
+template <typename T>
 Ptr<T>::Ptr() : ptr(NULL)
 {
 }
 
-template<typename T>
+template <typename T>
 Ptr<T>::Ptr(T *p) : ptr(p)
 {
     if (ptr) {
@@ -107,8 +107,8 @@ Ptr<T>::Ptr(T *p) : ptr(p)
     }
 }
 
-template<typename T>
-template<typename U>
+template <typename T>
+template <typename U>
 Ptr<T>::Ptr(Ptr<U>& other)
     : ptr(other.Peek())
 {
@@ -117,8 +117,8 @@ Ptr<T>::Ptr(Ptr<U>& other)
     }
 }
 
-template<typename T>
-template<typename U>
+template <typename T>
+template <typename U>
 Ptr<T>::Ptr(const Ptr<U>& other)
     : ptr(other.Peek())
 {
@@ -127,7 +127,7 @@ Ptr<T>::Ptr(const Ptr<U>& other)
     }
 }
 
-template<typename T>
+template <typename T>
 Ptr<T>::~Ptr()
 {
     if (ptr) {
@@ -135,7 +135,7 @@ Ptr<T>::~Ptr()
     }
 }
 
-template<typename T>
+template <typename T>
 Ptr<T>& Ptr<T>::operator=(Ptr const& other)
 {
     //
@@ -172,19 +172,19 @@ Ptr<T>& Ptr<T>::operator=(Ptr const& other)
     return *this;
 }
 
-template<typename T>
+template <typename T>
 T* Ptr<T>::operator->()
 {
     return ptr;
 }
 
-template<typename T>
+template <typename T>
 T& Ptr<T>::operator*()
 {
     return *ptr;
 }
 
-template<typename T>
+template <typename T>
 T* Ptr<T>::Peek(void)
 {
     return ptr;
@@ -194,7 +194,7 @@ T* Ptr<T>::Peek(void)
 // What follows are a number of convenience functions that allow new objects to
 // be created and assigned to new Ptr instances.  We do this via non-member
 // functions to avoid adding single argument constructors.  A singe argument
-// constructor makes conversion operators and conversion constructors 
+// constructor makes conversion operators and conversion constructors
 // ambiguous and prevents us from casting Ptr from one flavor to another.
 //
 // To use, do something like:
@@ -250,7 +250,7 @@ Ptr<T> NewPtr(A1 arg1, A2 arg2, A3 arg3, A4 arg4, A5 arg5, A6 arg6, A7 arg7)
 }
 
 template <typename T, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7, typename A8>
-    Ptr<T> NewPtr(A1 arg1, A2 arg2, A3 arg3, A4 arg4, A5 arg5, A6 arg6, A7 arg7, A8 arg8)
+Ptr<T> NewPtr(A1 arg1, A2 arg2, A3 arg3, A4 arg4, A5 arg5, A6 arg6, A7 arg7, A8 arg8)
 {
     return Ptr<T>(new T(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8));
 }
