@@ -379,11 +379,7 @@ QStatus Event::SetEvent()
 {
     QStatus status;
 
-    // PPN - Changed to this from if (GEN_PURPOSE == eventType) as we have instances in SPLICE code
-    // where in we want an IO event to also function as general purpose. And this code does not
-    // allow us to manually set IO events and this check for gen purpose will be incorrect as
-    // the event type is IO_READ but we still want to set it as it has a general purpose attribute.
-    if (0 <= signalFd) {
+    if (GEN_PURPOSE == eventType) {
         char val = 's';
         int ret = write(signalFd, &val, sizeof(val));
         status = (sizeof(val) == ret) ? ER_OK : ER_FAIL;
@@ -409,11 +405,7 @@ QStatus Event::ResetEvent()
 {
     QStatus status = ER_OK;
 
-    // PPN - Changed to this from if (GEN_PURPOSE == eventType) as we have instances in SPLICE code
-    // where in we want an IO event to also function as general purpose. And this code does not
-    // allow us to manually set IO events and this check for gen purpose will be incorrect as
-    // the event type is IO_READ but we still want to set it as it has a general purpose attribute.
-    if (0 <= signalFd) {
+    if (GEN_PURPOSE == eventType) {
         char buf[32];
         int ret = sizeof(buf);
         while (sizeof(buf) == ret) {
