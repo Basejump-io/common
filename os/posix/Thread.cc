@@ -124,7 +124,9 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
     alertCode(0),
     auxListeners(),
     auxListenersLock(),
-    joinCtx(NULL)
+    waitCount(0),
+    waitLock(),
+    hasBeenJoined(false)
 {
     /* qcc::String is not thread safe.  Don't use it here. */
     funcName[0] = '\0';
@@ -150,6 +152,12 @@ Thread::~Thread(void)
         Stop();
         Join();
     }
+
+    /* Keep object alive until waitCount goes to zero */
+    while (waitCount) {
+        qcc::Sleep(2);
+    }
+
     QCC_DbgHLPrintf(("Thread::~Thread() destroyed %s - %x -- started:%d running:%d joined:%d", funcName, handle, started, running, joined));
 }
 
@@ -255,10 +263,8 @@ QStatus Thread::Start(void* arg, ThreadListener* listener)
         int ret;
 
         /* Clear/initialize the join context */
-        while (joinCtx) {
-            Join();
-        }
-        joinCtx = new JoinContext();
+        hasBeenJoined = false;
+        waitCount = 0;
 
         /*  Reset the stop event so the thread doesn't start out alerted. */
         stopEvent.ResetEvent();
@@ -391,11 +397,6 @@ QStatus Thread::Join(void)
      */
     if (state == DEAD) {
         QCC_DbgPrintf(("Thread::Join() thread is dead [%s]", funcName));
-        if (joinCtx) {
-            delete joinCtx;
-        }
-        joinCtx = NULL;
-
         return ER_OK;
     }
     /*
@@ -406,26 +407,20 @@ QStatus Thread::Join(void)
         usleep(1000 * 5);
     }
 
-    /* Threads that join themselves must detach without blocking in JoinContext.lock */
+    /* Threads that join themselves must detach without blocking */
     if (handle == pthread_self()) {
-        JoinContext* jc = joinCtx;
-        if (jc) {
-            IncrementAndFetch(&jc->count);
-            if (!jc->hasBeenJoined) {
-                jc->hasBeenJoined = true;
-                int ret = pthread_detach(handle);
-                if (ret == 0) {
-                    ++joined;
-                } else {
-                    status = ER_OS_ERROR;
-                    QCC_LogError(status, ("Detaching thread: %d - %s", ret, strerror(ret)));
-                }
-            }
-            if (0 == DecrementAndFetch(&jc->count)) {
-                joinCtx = NULL;
-                delete jc;
+        int32_t waiters = IncrementAndFetch(&waitCount);
+        if ((waiters == 1) && !hasBeenJoined) {
+            hasBeenJoined = true;
+            int ret = pthread_detach(handle);
+            if (ret == 0) {
+                ++joined;
+            } else {
+                status = ER_OS_ERROR;
+                QCC_LogError(status, ("Detaching thread: %d - %s", ret, strerror(ret)));
             }
         }
+        DecrementAndFetch(&waitCount);
         handle = 0;
         isStopping = false;
     }
@@ -439,21 +434,15 @@ QStatus Thread::Join(void)
      */
     if (handle) {
         int ret = 0;
-        JoinContext* jc = joinCtx;
-        if (jc) {
-            IncrementAndFetch(&jc->count);
-            jc->lock.Lock();
-            if (!jc->hasBeenJoined) {
-                jc->hasBeenJoined = true;
-                ret = pthread_join(handle, NULL);
-                ++joined;
-            }
-            jc->lock.Unlock();
-            if (0 == DecrementAndFetch(&jc->count)) {
-                joinCtx = NULL;
-                delete jc;
-            }
+        int32_t waiters = IncrementAndFetch(&waitCount);
+        waitLock.Lock();
+        if ((waiters == 1) && !hasBeenJoined) {
+            hasBeenJoined = true;
+            ret = pthread_join(handle, NULL);
+            ++joined;
         }
+        waitLock.Unlock();
+        DecrementAndFetch(&waitCount);
 
         if (ret != 0) {
             status = ER_OS_ERROR;

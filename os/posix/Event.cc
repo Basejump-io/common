@@ -364,8 +364,6 @@ Event::Event(uint32_t timestamp, uint32_t period)
 
 Event::~Event()
 {
-    QStatus status;
-
     /* Threads should not be waiting */
     if ((GEN_PURPOSE == eventType) || (TIMED == eventType)) {
         SetEvent();

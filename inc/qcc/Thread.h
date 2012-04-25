@@ -403,12 +403,9 @@ class Thread {
     Mutex auxListenersLock;
 
 #ifdef QCC_OS_GROUP_POSIX
-    struct JoinContext {
-        bool hasBeenJoined;         ///< Indicates that this thread has been joined at least once
-        Mutex lock;                 ///< Mutex that protects hasBeenJoined
-        int32_t count;              ///< Number of threads that have joined this one
-    };
-    JoinContext* joinCtx;
+    int32_t waitCount;
+    Mutex waitLock;
+    bool hasBeenJoined;
 #endif
 
     /** Lock that protects global list of Threads and their handles */
