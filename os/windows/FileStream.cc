@@ -78,7 +78,7 @@ FileSource::FileSource(qcc::String fileName) : handle(INVALID_HANDLE_VALUE), eve
                          INVALID_HANDLE_VALUE);
 
     if (INVALID_HANDLE_VALUE == handle) {
-        QCC_LogError(ER_OS_ERROR, ("CreateFile(GENERIC_READ) %s failed (%d)", fileName.c_str(), GetLastError()));
+        QCC_LogError(ER_OS_ERROR, ("CreateFile(GENERIC_READ) %s failed (%d)", fileName.c_str(), ::GetLastError()));
     }
 }
 
@@ -87,7 +87,7 @@ FileSource::FileSource() : handle(INVALID_HANDLE_VALUE), event(&Event::alwaysSet
     handle = GetStdHandle(STD_INPUT_HANDLE);
 
     if (NULL == handle) {
-        QCC_LogError(ER_OS_ERROR, ("GetStdHandle failed (%d)", GetLastError()));
+        QCC_LogError(ER_OS_ERROR, ("GetStdHandle failed (%d)", ::GetLastError()));
     }
 }
 
@@ -134,7 +134,7 @@ QStatus FileSource::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, u
         actualBytes = readBytes;
         return ((0 < reqBytes) && (0 == readBytes)) ? ER_NONE : ER_OK;
     } else {
-        DWORD error = GetLastError();
+        DWORD error = ::GetLastError();
         if (ERROR_HANDLE_EOF == error) {
             actualBytes = 0;
             return ER_NONE;
@@ -208,6 +208,7 @@ FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALU
 
     for (size_t end = fileName.find('\\', begin); end != String::npos; end = fileName.find('\\', begin)) {
 
+
         /* Skip consecutive slashes */
         if (begin == end) {
             ++begin;
@@ -220,12 +221,15 @@ FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALU
         /* Only try to create the directory if it doesn't already exist */
         if (CreateDirectoryA(p.c_str(), NULL)) {
             if (!SetFileAttributesA(p.c_str(), attributes)) {
-                QCC_LogError(ER_OS_ERROR, ("SetFileAttributes() %s failed with (%d)", p.c_str(), GetLastError()));
+                QCC_LogError(ER_OS_ERROR, ("SetFileAttributes() %s failed with (%d)", p.c_str(), ::GetLastError()));
                 return;
             }
-        } else if (ERROR_ALREADY_EXISTS != GetLastError()) {
-            QCC_LogError(ER_OS_ERROR, ("CreateDirectory() %s failed with (%d)", p.c_str(), GetLastError()));
-            return;
+        } else {
+            DWORD lastError = ::GetLastError();
+            if (ERROR_ALREADY_EXISTS != lastError) {
+                QCC_LogError(ER_OS_ERROR, ("CreateDirectory() %s failed with (%d)", p.c_str(), lastError));
+                return;
+            }
         }
         begin = end + 1;
     }
@@ -240,7 +244,7 @@ FileSink::FileSink(qcc::String fileName, Mode mode) : handle(INVALID_HANDLE_VALU
                          INVALID_HANDLE_VALUE);
 
     if (INVALID_HANDLE_VALUE == handle) {
-        QCC_LogError(ER_OS_ERROR, ("CreateFile(GENERIC_WRITE) %s failed (%d)", fileName.c_str(), GetLastError()));
+        QCC_LogError(ER_OS_ERROR, ("CreateFile(GENERIC_WRITE) %s failed (%d)", fileName.c_str(), ::GetLastError()));
     }
 }
 
@@ -249,7 +253,7 @@ FileSink::FileSink() : handle(INVALID_HANDLE_VALUE), event(&Event::alwaysSet), o
     handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
     if (NULL == handle) {
-        QCC_LogError(ER_OS_ERROR, ("GetStdHandle failed (%d)", GetLastError()));
+        QCC_LogError(ER_OS_ERROR, ("GetStdHandle failed (%d)", ::GetLastError()));
     }
 }
 
@@ -296,7 +300,7 @@ QStatus FileSink::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
         numSent = writeBytes;
         return ER_OK;
     } else {
-        QCC_LogError(ER_FAIL, ("WriteFile failed. error=%d", GetLastError()));
+        QCC_LogError(ER_FAIL, ("WriteFile failed. error=%d", ::GetLastError()));
         return ER_FAIL;
     }
 }
