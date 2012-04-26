@@ -29,9 +29,6 @@ namespace qcc {
 /**
  * An intrusive smart pointer class.
  */
-
-/* *INDENT-OFF* - turns off whitespace scan, per cdowell, 2012-04-26 */
-
 template <typename T>
 class Ptr {
   public:
@@ -257,8 +254,6 @@ Ptr<T> NewPtr(A1 arg1, A2 arg2, A3 arg3, A4 arg4, A5 arg5, A6 arg6, A7 arg7, A8 
 {
     return Ptr<T>(new T(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8));
 }
-
-/* *INDENT-ON* - turns whitespace scan back on */
 
 class RefCountBase {
   public:
