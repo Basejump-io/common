@@ -24,6 +24,8 @@
 
 #include "Status.h"
 
+#define QCC_MODULE "RENDEZVOUS_SERVER_ROOT_CERTIFICATE"
+
 namespace qcc {
 
 static const char* RendezvousServerRootCertificate;
@@ -110,5 +112,7 @@ static QStatus InitializeServerRootCertificate(String Server)
 
 
 } // namespace qcc
+
+#undef QCC_MODULE
 
 #endif // _RENDEZVOUS_SERVER_ROOT_CERTIFICATE_H

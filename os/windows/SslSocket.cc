@@ -45,11 +45,12 @@ namespace qcc {
 static SSL_CTX*sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
-SslSocket::SslSocket(String ipAddress)
+SslSocket::SslSocket(String ipAddress, String host)
     : bio(NULL),
     sourceEvent(&qcc::Event::neverSet),
     sinkEvent(&qcc::Event::neverSet),
-    localIPAddress(ipAddress)
+    localIPAddress(ipAddress),
+    Host(host)
 {
     /* Initialize the global SSL context is this is the first SSL socket */
     if (!sslCtx) {

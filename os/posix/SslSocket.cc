@@ -52,12 +52,13 @@ namespace qcc {
 static SSL_CTX* sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
-SslSocket::SslSocket(String ipAddress):
+SslSocket::SslSocket(String ipAddress, String host):
 	bio(NULL),
 	rootCert(NULL),
     sourceEvent(&qcc::Event::neverSet),
     sinkEvent(&qcc::Event::neverSet),
-    localIPAddress(ipAddress)
+    localIPAddress(ipAddress),
+    Host(host)
 {
     /* Initialize the global SSL context is this is the first SSL socket */
     if (!sslCtx) {
@@ -143,7 +144,9 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
         int intPort = (int) port;
         BIO_set_conn_hostname(bio, hostName.c_str());
         BIO_set_conn_int_port(bio, &intPort);
-        BIO_set_conn_ip(bio, localIPAddress.c_str());
+        // PPN - Need to find a way to set the interface type over which we want the SSL
+        // socket to be setup
+        //BIO_set_conn_ip(bio, localIPAddress.c_str());
 
         /* Connect to destination */
         if (0 < BIO_do_connect(bio)) {
@@ -247,10 +250,18 @@ QStatus SslSocket::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
 
 QStatus SslSocket::ImportPEM()
 {
+    /* Initialize the appropriate root certificate to be used for HTTPS connection */
+    QStatus status = InitializeServerRootCertificate(Host);
+
+    if (status != ER_OK) {
+        QCC_LogError(status, ("SslSocket::ImportPEM(): %s", QCC_StatusText(status)));
+    }
+
     ERR_load_crypto_strings();
-    QStatus status = ER_CRYPTO_ERROR;
+    status = ER_CRYPTO_ERROR;
     BIO* bio = BIO_new(BIO_s_mem());
-    BIO_write(bio, RendezvousServerRootCertificate, sizeof(RendezvousServerRootCertificate));
+    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(RendezvousServerRootCertificate).c_str()));
+    BIO_write(bio, RendezvousServerRootCertificate, String(RendezvousServerRootCertificate).size());
     rootCert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     BIO_free(bio);
     if (rootCert) {

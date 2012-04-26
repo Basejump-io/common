@@ -38,7 +38,7 @@ class SslSocket : public qcc::Stream {
   public:
 
     /** Construct an SSL socket. */
-    SslSocket(String ipAddress);
+    SslSocket(String ipAddress, String host);
 
     /** Destroy SSL socket */
     ~SslSocket();
@@ -99,6 +99,7 @@ class SslSocket : public qcc::Stream {
     qcc::Event*sourceEvent;   /**< Event signaled when data is available */
     qcc::Event*sinkEvent;     /**< Event signaled when sink can accept data */
     String localIPAddress;    /**< IP address of the local interface to be used for connection */
+    String Host;              /**< Host to connect to */
 };
 
 }  /* namespace */
