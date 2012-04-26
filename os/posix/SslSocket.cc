@@ -52,11 +52,12 @@ namespace qcc {
 static SSL_CTX* sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
-SslSocket::SslSocket():
+SslSocket::SslSocket(String ipAddress):
 	bio(NULL),
 	rootCert(NULL),
     sourceEvent(&qcc::Event::neverSet),
-    sinkEvent(&qcc::Event::neverSet)
+    sinkEvent(&qcc::Event::neverSet),
+    localIPAddress(ipAddress)
 {
     /* Initialize the global SSL context is this is the first SSL socket */
     if (!sslCtx) {
@@ -142,6 +143,7 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
         int intPort = (int) port;
         BIO_set_conn_hostname(bio, hostName.c_str());
         BIO_set_conn_int_port(bio, &intPort);
+        BIO_set_conn_ip(bio, localIPAddress.c_str());
 
         /* Connect to destination */
         if (0 < BIO_do_connect(bio)) {

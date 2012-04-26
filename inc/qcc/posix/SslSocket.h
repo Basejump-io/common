@@ -38,7 +38,7 @@ class SslSocket : public Stream {
   public:
 
     /** Construct an SSL socket. */
-    SslSocket();
+    SslSocket(String ipAddress);
 
     /** Destroy SSL socket */
     ~SslSocket();
@@ -104,6 +104,7 @@ class SslSocket : public Stream {
     X509* rootCert;           /**< Hard-coded Root Certificate */
     qcc::Event*sourceEvent;   /**< Event signaled when data is available */
     qcc::Event*sinkEvent;     /**< Event signaled when sink can accept data */
+    String localIPAddress;    /**< IP address of the local interface to be used for connection */
 };
 
 }  /* namespace */
