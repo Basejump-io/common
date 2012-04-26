@@ -46,7 +46,7 @@ elif env['OS'] == 'linux':
 elif env['OS'] == 'darwin':
     env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto'])
 elif env['OS'] == 'android':
-    env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc', 'wpa_client', 'cutils'])
+    env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc', 'ssl'])
 elif env['OS'] == 'android_donut':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log'])
 elif env['OS'] == 'maemo':
