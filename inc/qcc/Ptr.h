@@ -100,7 +100,7 @@ Ptr<T>::Ptr() : ptr(NULL)
 }
 
 template <typename T>
-Ptr<T>::Ptr(T *p) : ptr(p)
+Ptr<T>::Ptr(T*p) : ptr(p)
 {
     if (ptr) {
         ptr->IncRef();
