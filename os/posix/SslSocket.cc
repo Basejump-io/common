@@ -144,9 +144,6 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
         int intPort = (int) port;
         BIO_set_conn_hostname(bio, hostName.c_str());
         BIO_set_conn_int_port(bio, &intPort);
-        // PPN - Need to find a way to set the interface type over which we want the SSL
-        // socket to be setup
-        //BIO_set_conn_ip(bio, localIPAddress.c_str());
 
         /* Connect to destination */
         if (0 < BIO_do_connect(bio)) {
