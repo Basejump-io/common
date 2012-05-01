@@ -75,6 +75,33 @@
 namespace qcc {
 
 /**
+ * The enum defining the high level operating system on the device.
+ */
+typedef enum _OSType {
+
+    /*Invalid*/
+    NONE = 0,
+
+    /*Android*/
+    ANDROID_OS,
+
+    /*Windows*/
+    WINDOWS_OS,
+
+    /*Darwin*/
+    DARWIN_OS,
+
+    /*Linux*/
+    LINUX_OS
+
+} OSType;
+
+/**
+ * @brief Get the OS type.
+ */
+OSType GetSystemOSType(void);
+
+/**
  * Return an 8 bit random number.
  *
  * @return An 8 bit random number

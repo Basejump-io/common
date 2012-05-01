@@ -85,6 +85,15 @@ qcc::String qcc::GetHomeDir()
     return Environ::GetAppEnviron()->Find("HOME", "/");
 }
 
+qcc::OSType qcc::GetSystemOSType(void)
+{
+#if defined (QCC_OS_ANDROID)
+    return qcc::ANDROID_OS;
+#elif defined (QCC_OS_LINUX)
+    return qcc::LINUX_OS;
+#endif
+}
+
 QStatus qcc::GetDirListing(const char* path, DirListing& listing)
 {
     DIR* dir;

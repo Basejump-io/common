@@ -104,6 +104,11 @@ qcc::String qcc::GetHomeDir()
     return Environ::GetAppEnviron()->Find("USERPROFILE");
 }
 
+qcc::OSType qcc::GetSystemOSType(void)
+{
+    return qcc::WINDOWS_OS;
+}
+
 QStatus qcc::GetDirListing(const char* path, DirListing& listing)
 {
     return ER_NOT_IMPLEMENTED;
