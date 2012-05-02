@@ -602,9 +602,8 @@ QStatus Recv(SocketFd sockfd, void* buf, size_t len, size_t& received)
         QCC_DbgHLPrintf(("Recv (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
     } else {
         received = static_cast<size_t>(ret);
+        QCC_DbgRemoteData(buf, received);
     }
-
-    QCC_DbgRemoteData(buf, received);
 
     return status;
 }
