@@ -1062,11 +1062,17 @@ QStatus SetNagle(SocketFd sockfd, bool useNagle)
 QStatus SetReuseAddress(SocketFd sockfd, bool reuse)
 {
     QStatus status = ER_OK;
-    int arg = reuse ? 1 : -0;
-    int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&arg, sizeof(arg));
-    if (r != 0) {
-        status = ER_OS_ERROR;
-        QCC_LogError(status, ("Setting SO_REUSEADDR failed: (%d) %s", GetLastError(), GetLastErrorString().c_str()));
+    /*
+     * On Windows SO_REUSEADDR allows an application to bind an steal a port that is already in use.
+     * This is different than the posix behavior. Setting SO_EXCLUSIVEADDRUSE establishes the
+     * required behavior.
+     */
+    if (status == ER_OK) {
+        int arg = reuse ? 1 : -0;
+        int r = setsockopt(sockfd, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char*)&arg, sizeof(arg));
+        if (r != 0) {
+            QCC_LogError(ER_OS_ERROR, ("Setting SO_EXCLUSIVEADDRUSE failed: (%d) %s", GetLastError(), GetLastErrorString().c_str()));
+        }
     }
     return status;
 }
