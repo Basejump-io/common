@@ -83,6 +83,7 @@ KeyBlob::KeyBlob(const qcc::String& secret, size_t len, const Type initType) : b
     } else {
         size = 0;
         data = NULL;
+        role = NO_ROLE;
     }
 }
 
@@ -217,6 +218,7 @@ KeyBlob::KeyBlob(const KeyBlob& other)
     } else {
         data = NULL;
         size = 0;
+        role = NO_ROLE;
     }
     blobType = other.blobType;
 }
