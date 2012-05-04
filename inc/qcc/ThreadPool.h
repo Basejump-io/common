@@ -137,7 +137,7 @@ class ThreadPool {
     /**
      * Request that we cancel all of our dispatched threads.
      */
-    QStatus Stop() { return m_dispatcher.Stop(); }
+    QStatus Stop();
 
     /**
      * Wait for all of the threads in our associated timer to exit.  Once
@@ -145,7 +145,7 @@ class ThreadPool {
      * Note that this call can block or a time limited only by the execution
      * time of the threads dispatched.
      */
-    QStatus Join() { return m_dispatcher.Join(); }
+    QStatus Join();
 
     /**
      * Determine the underlying concurrency of the thread pool.
@@ -236,6 +236,11 @@ class ThreadPool {
      * Copy constructor is private - ThreadPools cannot be copied.
      */
     ThreadPool(const ThreadPool& other);
+
+    /**
+     * A flag to remind if the thread pool is stopping or stopped.
+     */
+    bool m_stopping;
 
     /**
      * A mutex to protect the underlying data structures.

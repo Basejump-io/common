@@ -79,6 +79,7 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_TIMER_EXITING" value="0x101d" comment="Cannot add an alarm to a timer that is exiting"/>
   <status name="ER_INVALID_GUID" value="0x101e" comment="String is not a hex encoded GUID string"/>
   <status name="ER_THREADPOOL_EXHAUSTED" value="0x101f" comment="A thread pool has reached its specified concurrency"/>
+  <status name="ER_THREADPOOL_STOPPING" value="0x1020" comment="Cannot execute a closure on a stopping thread pool"/>
 
   <status name="ER_NONE" value="0xffff" comment="No error code to report"/>
 </status_block>

@@ -49,7 +49,7 @@ void Runnable::AlarmTriggered(const Alarm& alarm, QStatus reason)
 }
 
 ThreadPool::ThreadPool(const char* name, uint32_t poolsize)
-    : m_poolsize(poolsize), m_dispatcher(name, false, poolsize)
+    : m_stopping(false), m_poolsize(poolsize), m_dispatcher(name, false, poolsize)
 {
     QCC_DbgPrintf(("ThreadPool::ThreadPool()"));
 
@@ -79,8 +79,35 @@ ThreadPool::~ThreadPool()
 {
     QCC_DbgPrintf(("ThreadPool::~ThreadPool()"));
 
+    m_lock.Lock();
+    QCC_DbgPrintf(("ThreadPool::~ThreadPool(): %d closures remain", m_closures.size()));
     Stop();
     Join();
+    m_lock.Unlock();
+
+    /*
+     * We have joined the underlying timer, so all of its threads must be
+     * stopped.  That doesn't necessarily mean that they have executed the
+     * AlarmTriggered() function that would take the closure off of the
+     * pending closures list.  In this case, we need to make sure we clear
+     * the closures map so we release the underlying Ptr and free the
+     * runnable.
+     */
+    m_closures.clear();
+}
+
+QStatus ThreadPool::Stop()
+{
+    QCC_DbgPrintf(("ThreadPool::Stop()"));
+    m_stopping = true;
+    return m_dispatcher.Stop();
+}
+
+QStatus ThreadPool::Join()
+{
+    QCC_DbgPrintf(("ThreadPool::Join()"));
+    assert(m_stopping && "ThreadPool::Join(): must have previously Stop()ped");
+    return m_dispatcher.Join();
 }
 
 /*
@@ -107,6 +134,15 @@ QStatus ThreadPool::Execute(Ptr<Runnable> runnable)
     m_lock.Lock();
 
     /*
+     * Refuse to add any new closures if we're in the process of closing.
+     */
+    if (m_stopping) {
+        m_lock.Unlock();
+        QCC_DbgPrintf(("ThreadPool::Execute(): Stopping"));
+        return ER_THREADPOOL_STOPPING;
+    }
+
+    /*
      * Since AllJoyn is at its heart a distributed network application, and what
      * drives the execution of our threads will be network traffic, we need to
      * be able to apply backpressure to the network to avoid exhausting all
@@ -127,8 +163,9 @@ QStatus ThreadPool::Execute(Ptr<Runnable> runnable)
      * underlying runnable object pointer, but the smart pointer is saved in the
      * map in order to hold a reference to the object.
      */
+    QCC_DbgPrintf(("ThreadPool::Execute(): Schedule runnable"));
     m_closures[runnable.Peek()] = runnable;
-    m_lock.Unlock();
+    QCC_DbgPrintf(("ThreadPool::Execute(): %d closures remain", m_closures.size()));
 
     /*
      * Tell the runnable object where to contact us when it is done executing.
@@ -152,7 +189,9 @@ QStatus ThreadPool::Execute(Ptr<Runnable> runnable)
      */
     Alarm alarm = Alarm(0, runnable.Peek(), 0, NULL);
     QCC_DbgPrintf(("ThreadPool::Execute(): AddAlarm()"));
-    return m_dispatcher.AddAlarm(alarm);
+    QStatus status = m_dispatcher.AddAlarm(alarm);
+    m_lock.Unlock();
+    return status;
 }
 
 void ThreadPool::Release(Runnable* runnable)
@@ -182,6 +221,9 @@ void ThreadPool::Release(Runnable* runnable)
      * waiting for an available thread to do its work.
      */
     m_event.SetEvent();
+
+    QCC_DbgPrintf(("ThreadPool::Release(): %d closures remain", m_closures.size()));
+
     m_lock.Unlock();
 }
 
@@ -190,11 +232,18 @@ QStatus ThreadPool::WaitForAvailableThread(void)
     QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread()"));
 
     /*
-     * This method needs to work in conjunction with Execute() and Releas() to
+     * This method needs to work in conjunction with Execute() and Release() to
      * ensure that no more than m_poolSize threads are dispatched at any one
      * time.
      */
     m_lock.Lock();
+
+    if (m_stopping) {
+        m_lock.Unlock();
+        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Stopping"));
+        return ER_THREADPOOL_STOPPING;
+    }
+
     bool threadAvailable = m_closures.size() < m_poolsize;
 
     /*
@@ -244,6 +293,15 @@ QStatus ThreadPool::WaitForAvailableThread(void)
          * event.
          */
         m_event.ResetEvent();
+
+        /*
+         * We can't have an available thread if we're stopping.
+         */
+        if (m_stopping) {
+            m_lock.Unlock();
+            QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Stopping"));
+            return ER_THREADPOOL_STOPPING;
+        }
 
         /*
          * If there's an available thread, return and allow the calling thread
