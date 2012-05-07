@@ -52,9 +52,9 @@ namespace qcc {
 static SSL_CTX* sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
-SslSocket::SslSocket(String ipAddress, String host):
-	bio(NULL),
-	rootCert(NULL),
+SslSocket::SslSocket(String ipAddress, String host) :
+    bio(NULL),
+    rootCert(NULL),
     sourceEvent(&qcc::Event::neverSet),
     sinkEvent(&qcc::Event::neverSet),
     localIPAddress(ipAddress),
@@ -76,7 +76,7 @@ SslSocket::SslSocket(String ipAddress, String host):
 
             if (sslCtx) {
 
-            	/* Set up our own trust store */
+                /* Set up our own trust store */
                 X509_STORE* store = X509_STORE_new();
 
                 /* Replace the certificate verification storage of sslCtx with store */
@@ -87,19 +87,19 @@ SslSocket::SslSocket(String ipAddress, String host):
 
                 /* Convert the PEM-encoded root certificate defined by RendezvousServerRootCertificate in to the X509 format*/
                 QStatus status = ImportPEM();
-                if(status == ER_OK) {
+                if (status == ER_OK) {
 
-                	/* Add the root certificate to the current certificate verification storage */
+                    /* Add the root certificate to the current certificate verification storage */
                     X509_STORE_add_cert(sslCtxstore, rootCert);
 
                     /* Set the default verify paths for the SSL context */
-                    if((SSL_CTX_set_default_verify_paths(sslCtx)) != 1) {
-                    	QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): SSL_CTX_set_default_verify_paths: OpenSSL error is \"%s\"",
-                    			     ERR_reason_error_string(ERR_get_error())));
+                    if ((SSL_CTX_set_default_verify_paths(sslCtx)) != 1) {
+                        QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): SSL_CTX_set_default_verify_paths: OpenSSL error is \"%s\"",
+                                                   ERR_reason_error_string(ERR_get_error())));
                     }
 
                 } else {
-                	QCC_LogError(status, ("SslSocket::SslSocket(): ImportPEM() failed"));
+                    QCC_LogError(status, ("SslSocket::SslSocket(): ImportPEM() failed"));
                 }
             }
 
@@ -152,7 +152,7 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
                 status = ER_SSL_VERIFY;
             }
         } else {
-        	QCC_LogError(ER_SSL_INIT, ("SslSocket::Connect(): BIO_do_connect: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
+            QCC_LogError(ER_SSL_INIT, ("SslSocket::Connect(): BIO_do_connect: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
             status = ER_SSL_CONNECT;
         }
     } else {
