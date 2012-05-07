@@ -383,12 +383,12 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                         if (tt->state == TimerThread::IDLE) {
                             QStatus status = tt->Alert();
                             if (status != ER_OK) {
-                                QCC_LogError(status, ("Error alerting timer thread %s", tt->GetName().c_str()));
+                                QCC_LogError(status, ("Error alerting timer thread %s", tt->GetName()));
                             }
                         } else if (tt->state == TimerThread::STOPPED) {
                             QStatus status = tt->Start(NULL, timer);
                             if (status != ER_OK) {
-                                QCC_LogError(status, ("Error starting timer thread %s", tt->GetName().c_str()));
+                                QCC_LogError(status, ("Error starting timer thread %s", tt->GetName()));
                             }
                         }
                     }

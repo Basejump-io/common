@@ -71,7 +71,7 @@ void LockTrace::Dump()
 {
     if (!queue.empty()) {
         std::deque<Info>::iterator iter = queue.begin();
-        QCC_DbgPrintf(("Lock trace for thread %s", thread->GetName().c_str()));
+        QCC_DbgPrintf(("Lock trace for thread %s", thread->GetName()));
         while (iter != queue.end()) {
             QCC_DbgPrintf(("   Lock %u held by %s:%u", iter->mutex, iter->file.c_str(), iter->line));
             ++iter;

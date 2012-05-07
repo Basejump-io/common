@@ -103,7 +103,7 @@ void Thread::CleanExternalThreads()
     threadListLock.Unlock();
 }
 
-Thread::Thread(qcc::String funcName, Thread::ThreadFunction func, bool isExternal) :
+Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
 #ifndef NDEBUG
     lockTrace(this),
 #endif
@@ -146,7 +146,7 @@ Thread::~Thread(void)
         CloseHandle(handle);
         ++stopped;
     }
-    QCC_DbgHLPrintf(("Thread::~Thread() [%s,%x] started:%d running:%d stopped:%d", GetName().c_str(), this, started, running, stopped));
+    QCC_DbgHLPrintf(("Thread::~Thread() [%s,%x] started:%d running:%d stopped:%d", GetName(), this, started, running, stopped));
 }
 
 
@@ -160,7 +160,7 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
 
     ++started;
 
-    QCC_DbgTrace(("Thread::RunInternal() [%s]", thread->GetName().c_str()));
+    QCC_DbgTrace(("Thread::RunInternal() [%s]", thread->GetName()));
 
     /* Add this Thread to list of running threads */
     threadListLock.Lock();
@@ -330,7 +330,7 @@ QStatus Thread::Join(void)
     }
 
     QCC_DbgPrintf(("[%s - %x] %s thread %x [%s - %x]",
-                   self ? funcName.c_str() : GetThread()->funcName,
+                   self ? funcName : GetThread()->funcName,
                    self ? threadId : GetThread()->threadId,
                    self ? "Closing" : "Joining",
                    threadId, funcName, threadId));

@@ -98,7 +98,7 @@ class Thread {
      *
      * @return The thread function name.
      */
-    static const char* GetThreadName() { return GetThread()->GetName().c_str(); }
+    static const char* GetThreadName() { return GetThread()->GetName(); }
 
     /**
      * Release and deallocate all threads that are marked as "external"
@@ -240,9 +240,9 @@ class Thread {
     /**
      * Get the name of the thread.
      *
-     * @return  A pointer to a C string of the thread name (may be NULL).
+     * @return  A pointer to a C string of the thread name.
      */
-    qcc::String GetName(void) const { return qcc::String(funcName); }
+    const char* GetName(void) const { return funcName; }
 
     /**
      * Return underlying thread handle.
