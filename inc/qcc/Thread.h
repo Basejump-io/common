@@ -242,7 +242,7 @@ class Thread {
      *
      * @return  A pointer to a C string of the thread name (may be NULL).
      */
-    qcc::String GetName(void) const { return funcName; }
+    qcc::String GetName(void) const { return qcc::String(funcName); }
 
     /**
      * Return underlying thread handle.
@@ -389,7 +389,7 @@ class Thread {
 
 
     bool isStopping;                ///< Thread has received a stop request
-    qcc::String funcName;           ///< Function name (used mostly in debug output).
+    char funcName[80];              ///< Function name (used mostly in debug output).
     ThreadFunction function;        ///< Thread entry point or NULL is using Run() as entry point
     ThreadHandle handle;            ///< Thread handle.
     ThreadReturn exitValue;         ///< The returned 'value' from Run.

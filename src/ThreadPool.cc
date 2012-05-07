@@ -99,15 +99,22 @@ ThreadPool::~ThreadPool()
 QStatus ThreadPool::Stop()
 {
     QCC_DbgPrintf(("ThreadPool::Stop()"));
+    m_lock.Lock();
     m_stopping = true;
-    return m_dispatcher.Stop();
+    QStatus status = m_dispatcher.Stop();
+    m_lock.Unlock();
+    return status;
+
 }
 
 QStatus ThreadPool::Join()
 {
     QCC_DbgPrintf(("ThreadPool::Join()"));
     assert(m_stopping && "ThreadPool::Join(): must have previously Stop()ped");
-    return m_dispatcher.Join();
+    m_lock.Lock();
+    QStatus status = m_dispatcher.Join();
+    m_lock.Unlock();
+    return status;
 }
 
 /*
