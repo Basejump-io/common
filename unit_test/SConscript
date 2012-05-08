@@ -96,9 +96,9 @@ else:
     if(env['OS_CONF'] == 'android'):
         unittest_env.Append(LIBPATH = ['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/lib'])
     
-    # using the alljoyn library to test common sicne the status object file is not
+    # using the alljoyn library to test common since the status object file is not
     # compiled till alljoyn_core is compiled.
-    unittest_env.Append(LIBS = ['gtest', 'alljoyn'])
+    unittest_env.Prepend(LIBS = ['gtest', 'alljoyn'])
     
     obj = unittest_env.Object(test_src);
     # statically link the stlport lib
