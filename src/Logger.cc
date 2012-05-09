@@ -109,7 +109,7 @@ static void Output(DbgMsgType type,
         LOG_DEBUG       // Local data messages
     };
 
-    Log(priorityMap[type], msg);
+    Log(priorityMap[type], "%s", msg);
 }
 
 LoggerSetting* LoggerSetting::singleton = NULL;
