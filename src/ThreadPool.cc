@@ -77,13 +77,9 @@ ThreadPool::ThreadPool(const char* name, uint32_t poolsize)
 
 ThreadPool::~ThreadPool()
 {
-    QCC_DbgPrintf(("ThreadPool::~ThreadPool()"));
-
-    m_lock.Lock();
     QCC_DbgPrintf(("ThreadPool::~ThreadPool(): %d closures remain", m_closures.size()));
     Stop();
     Join();
-    m_lock.Unlock();
 
     /*
      * We have joined the underlying timer, so all of its threads must be
@@ -99,10 +95,8 @@ ThreadPool::~ThreadPool()
 QStatus ThreadPool::Stop()
 {
     QCC_DbgPrintf(("ThreadPool::Stop()"));
-    m_lock.Lock();
     m_stopping = true;
     QStatus status = m_dispatcher.Stop();
-    m_lock.Unlock();
     return status;
 
 }
@@ -111,9 +105,7 @@ QStatus ThreadPool::Join()
 {
     QCC_DbgPrintf(("ThreadPool::Join()"));
     assert(m_stopping && "ThreadPool::Join(): must have previously Stop()ped");
-    m_lock.Lock();
     QStatus status = m_dispatcher.Join();
-    m_lock.Unlock();
     return status;
 }
 
