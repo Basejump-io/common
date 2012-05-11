@@ -323,7 +323,6 @@ class ScatterGatherList {
             }
             copyCnt -= copyLen;
             QCC_DbgPrintf(("Copied %u bytes (%u left)", copyLen, copyCnt));
-            QCC_DbgLocalData(dest->buf, copyLen);
             pos += copyLen;
         }
         dataSize = static_cast<size_t>(pos - reinterpret_cast<const uint8_t*>(buf));
