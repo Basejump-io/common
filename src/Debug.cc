@@ -394,12 +394,17 @@ void DebugContext::Vprintf(const char* fmt, va_list ap)
     int mlen;
 
     if (stdoutLock.Lock()) {
-        mlen = vsnprintf(msg + msgLen, sizeof(msg) - msgLen, fmt, ap);
-        stdoutLock.Unlock();
+        if (msgLen < sizeof(msg)) {
+            mlen = vsnprintf(msg + msgLen, sizeof(msg) - msgLen, fmt, ap);
 
-        if ((mlen > 0) && ((mlen + msgLen) <= sizeof(msg))) {
-            msgLen += mlen;
+            if (mlen > 0) {
+                msgLen += mlen;
+                if (msgLen > sizeof(msg)) {
+                    msgLen = sizeof(msg);
+                }
+            }
         }
+        stdoutLock.Unlock();
     }
 }
 
