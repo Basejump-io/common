@@ -136,7 +136,7 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
     /* qcc::String is not thread safe.  Don't use it here. */
     funcName[0] = '\0';
     strncpy(funcName, name.c_str(), sizeof(funcName));
-    funcName[sizeof(funcName)] = '\0';
+    funcName[sizeof(funcName) - 1] = '\0';
 
     /*
      * External threads are already running so just add them to the thread list.
