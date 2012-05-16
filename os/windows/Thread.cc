@@ -275,7 +275,7 @@ QStatus Thread::Stop(void)
     if (isExternal) {
         QCC_LogError(ER_EXTERNAL_THREAD, ("Cannot stop an external thread"));
         return ER_EXTERNAL_THREAD;
-    } else if (state == DEAD) {
+    } else if ((state == DEAD) || (state == INITIAL)) {
         QCC_DbgPrintf(("Thread::Stop() thread is dead [%s]", funcName));
         return ER_OK;
     } else {
@@ -343,6 +343,7 @@ QStatus Thread::Join(void)
      */
     if (state == DEAD) {
         QCC_DbgPrintf(("Thread::Join() thread is dead [%s]", funcName));
+        isStopping = false;
         return ER_DEAD_THREAD;
     }
     /*
