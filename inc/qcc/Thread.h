@@ -98,7 +98,7 @@ class Thread {
      *
      * @return The thread function name.
      */
-    static const char* GetThreadName() { return GetThread()->GetName(); }
+    static const char* GetThreadName();
 
     /**
      * Release and deallocate all threads that are marked as "external"
