@@ -234,6 +234,8 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     return retVal;
 }
 
+static const uint32_t stacksize = 80 * 1024;
+
 QStatus Thread::Start(void* arg, ThreadListener* listener)
 {
     QStatus status = ER_OK;
@@ -258,7 +260,7 @@ QStatus Thread::Start(void* arg, ThreadListener* listener)
         this->listener = listener;
 
         state = STARTED;
-        handle = reinterpret_cast<HANDLE>(_beginthreadex(NULL, 0, RunInternal, this, 0, &threadId));
+        handle = reinterpret_cast<HANDLE>(_beginthreadex(NULL, stacksize, RunInternal, this, 0, &threadId));
         if (handle == 0) {
             state = DEAD;
             isStopping = false;
