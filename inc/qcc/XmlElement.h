@@ -124,6 +124,14 @@ class XmlElement {
     const std::vector<XmlElement*>& GetChildren() const { return children; }
 
     /**
+     * Get all children with a given name
+     *
+     * @param name   XML child elements name to search for.
+     * @return  A vector containing the matching elements.
+     */
+    std::vector<const XmlElement*> GetChildren(qcc::String name) const;
+
+    /**
      * Get the child element with a given name if it exists.
      *
      * @param name   XML child element name to search for.
@@ -159,9 +167,31 @@ class XmlElement {
      */
     void AddContent(qcc::String content) { this->content.append(content); }
 
+    /**
+     * Get all elements that have the specified path relative to the current element. The path is a
+     * series of tag names separated by '/' with an optional attribute specified by an '@' character
+     * followed by the the attribute name.
+     *
+     * Given the XML below GetPath("foo/bar/value@first") will return the the <value> element
+     * containing "hello" and GetPath("foo/bar/value@second") will return the <value> element
+     * containing "world". GetPath("foo/bar/value") will return both <value> elements.
+     *
+     * <foo>
+     *    <bar>
+     *       <value first="hello"/>
+     *       <value second="world"/>
+     *    </bar>
+     * </foo>
+     *
+     * @param key   The key is a dotted path (with optional attribute) to a value in the XML
+     *
+     * @param path   The path to elements in the XML tree.
+     */
+    std::vector<const XmlElement*> GetPath(qcc::String path) const;
+
   private:
     qcc::String name;                                /**< Element name */
-    std::vector<XmlElement*> children;                /**< XML child elements */
+    std::vector<XmlElement*> children;               /**< XML child elements */
     std::map<qcc::String, qcc::String> attributes;   /**< XML attributes */
     qcc::String content;                             /**< XML text content (unesacped) */
     XmlElement* parent;                              /**< XML parent element or NULL if root */
@@ -185,9 +215,10 @@ struct XmlParseContext {
      *
      * @param source  BufferedSource containing XML formatted data.
      */
-    XmlParseContext(Source& source) : source(source),
-        root(),
+    XmlParseContext(Source& source) :
+        source(source),
         parseState(IN_ELEMENT),
+        root(new XmlElement()),
         curElem(NULL),
         attrInQuote(false),
         isEndTag(false),
@@ -196,11 +227,36 @@ struct XmlParseContext {
     /** Reset state of XmlParseContext in preparation for reuse */
     void Reset();
 
+    /**
+     * Detach the current root and return it. It is the responsiblity of the caller
+     * to free the root when no longer needed.
+     */
+    XmlElement* DetachRoot() {
+        XmlElement* xml = root;
+        root = NULL;
+        Reset();
+        return xml;
+    }
+
+    /**
+     * Return a const pointer to the current root. The root will become invalid when the context is
+     * freed.
+     */
+    const XmlElement* GetRoot() {
+        return root;
+    }
+
+    /**
+     * Destructor
+     */
+    ~XmlParseContext() {
+        delete root;
+    }
+
+  private:
+
     /** Xml source */
     Source& source;
-
-    /** Parsed root element */
-    XmlElement root;
 
     /** Parse state */
     enum {
@@ -211,8 +267,7 @@ struct XmlParseContext {
         PARSE_COMPLETE
     } parseState;
 
-  private:
-
+    XmlElement* root;         /**< Parsed root element */
     XmlElement* curElem;      /**< XML element currently being parsed */
     qcc::String rawContent;   /**< Text content for current element */
     qcc::String elemName;     /**< Name of current element */
