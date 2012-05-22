@@ -19,6 +19,11 @@ Import('env')
 #default crypto for most platforms is openssl
 env['CRYPTO'] = 'openssl'
 
+if(not(env.has_key('BULLSEYE_BIN'))):
+    print('BULLSEYE_BIN not specified')
+else:
+    env.PrependENVPath('PATH', env.get('BULLSEYE_BIN'))
+
 # Platform specifics for common
 if env['OS_GROUP'] == 'windows':
     vars = Variables()
