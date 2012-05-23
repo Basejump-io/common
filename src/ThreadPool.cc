@@ -120,8 +120,10 @@ uint32_t ThreadPool::GetN(void)
     QCC_DbgPrintf(("ThreadPool::GetN()"));
 
     uint32_t n = 0;
+    QCC_DbgPrintf(("ThreadPool::GetN(): Taking lock"));
     m_lock.Lock();
     n = m_closures.size();
+    QCC_DbgPrintf(("ThreadPool::GetN(): Giving lock"));
     m_lock.Unlock();
     return n;
 }
@@ -130,12 +132,14 @@ QStatus ThreadPool::Execute(Ptr<Runnable> runnable)
 {
     QCC_DbgPrintf(("ThreadPool::Execute()"));
 
+    QCC_DbgPrintf(("ThreadPool::Execute(): Taking lock"));
     m_lock.Lock();
 
     /*
      * Refuse to add any new closures if we're in the process of closing.
      */
     if (m_stopping) {
+        QCC_DbgPrintf(("ThreadPool::Execute(): Giving lock"));
         m_lock.Unlock();
         QCC_DbgPrintf(("ThreadPool::Execute(): Stopping"));
         return ER_THREADPOOL_STOPPING;
@@ -149,6 +153,7 @@ QStatus ThreadPool::Execute(Ptr<Runnable> runnable)
      * the threads are in process.  This is a thread pool, not a work queue.
      */
     if (m_closures.size() == m_poolsize) {
+        QCC_DbgPrintf(("ThreadPool::Execute(): Giving lock"));
         m_lock.Unlock();
         QCC_DbgPrintf(("ThreadPool::Execute(): Exhausted"));
         return ER_THREADPOOL_EXHAUSTED;
@@ -189,6 +194,7 @@ QStatus ThreadPool::Execute(Ptr<Runnable> runnable)
     Alarm alarm = Alarm(0, runnable.Peek(), 0, NULL);
     QCC_DbgPrintf(("ThreadPool::Execute(): AddAlarm()"));
     QStatus status = m_dispatcher.AddAlarm(alarm);
+    QCC_DbgPrintf(("ThreadPool::Execute(): Giving lock"));
     m_lock.Unlock();
     return status;
 }
@@ -207,7 +213,10 @@ void ThreadPool::Release(Runnable* runnable)
      * will cause the reference count of the object to be decremented and the
      * underlying object to be deleted if possible.
      */
+    QCC_DbgPrintf(("ThreadPool::Release(): Taking lock"));
     m_lock.Lock();
+    QCC_DbgPrintf(("ThreadPool::Release(): Got lock"));
+
     RunnableEntry::iterator i = m_closures.find(runnable);
     assert(i != m_closures.end() && "ThreadPool::Release(): Cannot find closure to release");
     m_closures.erase(i);
@@ -223,6 +232,7 @@ void ThreadPool::Release(Runnable* runnable)
 
     QCC_DbgPrintf(("ThreadPool::Release(): %d closures remain", m_closures.size()));
 
+    QCC_DbgPrintf(("ThreadPool::Release(): Giving lock"));
     m_lock.Unlock();
 }
 
@@ -231,44 +241,68 @@ QStatus ThreadPool::WaitForAvailableThread(void)
     QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread()"));
 
     /*
-     * This method needs to work in conjunction with Execute() and Release() to
-     * ensure that no more than m_poolSize threads are dispatched at any one
-     * time.
+     * Our job here is loop until a thread is available to execute a closure.
      */
+    QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Taking lock"));
     m_lock.Lock();
 
-    if (m_stopping) {
-        m_lock.Unlock();
-        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Stopping"));
-        return ER_THREADPOOL_STOPPING;
-    }
-
-    bool threadAvailable = m_closures.size() < m_poolsize;
-
-    /*
-     * There is a closure on the m_closures map for the duration of time when a
-     * Runnable closure is waiting to be executed and in process.  So, if the
-     * size of the m_closures map is less than the pool size, it means that not
-     * all of our thread pool threads are occupied and at least one is
-     * available, so we just return.
-     */
-    if (threadAvailable) {
-        m_lock.Unlock();
-        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Thread available"));
-        return ER_OK;
-    }
-
-    /*
-     * We know that all of our threads are occupied, so we have to wait until
-     * one of the Runnable closures is executed.  At the end of the process,
-     * Release() will be called.  This will remove a closure from the m_closures
-     * map and set m_event.  Our job here is then to wait until the event is
-     * set and then look around to see if we should return.  We should only
-     * return if there's a thread available to avoid the thundering herd.
-     */
     for (;;) {
+
+        /*
+         * We can't have an available thread if we're stopping.
+         */
+        if (m_stopping) {
+            QCC_DbgPrintf(("ThreadPool::WaitforAvailableThread(): Giving lock"));
+            m_lock.Unlock();
+            QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Stopping"));
+            return ER_THREADPOOL_STOPPING;
+        }
+
+        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): m_closures.size() == %d.", m_closures.size()));
+        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): m_poolsize == %d.", m_poolsize));
+        
+        /*
+         * There are no available threads for us to use doing our work, so we
+         * must block until one of them completes.  When one completes, in its
+         * Release() function, it will do a SetEvent() on our wait event to let
+         * us know that it is done.  We reset this event here, with the shared
+         * lock taken.  This ensures that there can be no Release() in progress
+         * and when the next one happens we will be notified.
+         *
+         * This may seem a peculiar place to put this reset, but there is a
+         * method to my madness.  It turns out that SetEvent() is implemented by
+         * a write to an FD.  ResetEvent reads the file and empties it.  If the
+         * Release() function always does a SetEvent(), it writes characters to
+         * the underlying file.  If that file is never read, it eventually
+         * blocks writes and SetEvent() blocks.  So there must be ResetEvent()
+         * calls made to read this file even though we may not need to block and
+         * wait for threads to finish.  Thus, even though the ResetEvent() should
+         * logically go right before the Event::Wait() we do it here to drain
+         * the event file (on Linux).
+         */
+        m_event.ResetEvent();
+
+        /*
+         * We enter the loop with the mutex that interlocks us with the release
+         * method taken.  Since the lock is taken, the release function must
+         * not change its state so we can look around safely and see whether
+         * or not there is currently an available thread.
+         *
+         * There is a closure on the m_closures map for the duration of time
+         * when a Runnable closure is waiting to be executed and while it is in
+         * process.  So, if the size of the m_closures map is less than the pool
+         * size, it means that not all of our thread pool threads are occupied
+         * and at least one is available, so we return.
+         */
+        if (m_closures.size() < m_poolsize) {
+            QCC_DbgPrintf(("ThreadPool::WaitforAvailableThread(): Giving lock"));
+            m_lock.Unlock();
+            QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Thread available"));
+            return ER_OK;
+        }
+
+        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Waiting on thread completion event.  Giving lock"));
         m_lock.Unlock();
-        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Waiting on thread completion event"));
 
         /*
          * We are executing in the context of some unknown (to us) thread.  This
@@ -284,39 +318,10 @@ QStatus ThreadPool::WaitForAvailableThread(void)
             return status;
         }
 
-        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Got thread completion event"));
+        QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Taking lock"));
         m_lock.Lock();
-
-        /*
-         * Only allow one thead to return per Release() (thread completion)
-         * event.
-         */
-        m_event.ResetEvent();
-
-        /*
-         * We can't have an available thread if we're stopping.
-         */
-        if (m_stopping) {
-            m_lock.Unlock();
-            QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Stopping"));
-            return ER_THREADPOOL_STOPPING;
-        }
-
-        /*
-         * If there's an available thread, return and allow the calling thread
-         * to proceed with its presumable Execute().  If there's mo available
-         * thread, we need to Event::Wait() again and wait for one.  Since
-         * there's one event, it is possible that multiple waiting threads are
-         * awakened when a thread completes.
-         */
-        if (m_closures.size() < m_poolsize) {
-            m_lock.Unlock();
-            QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): Thread available"));
-            return ER_OK;
-        }
     }
 
-    m_lock.Unlock();
     assert(false && "ThreadPool::WaitForAvailableThread(): Can't happen");
     return ER_FAIL;
 }
