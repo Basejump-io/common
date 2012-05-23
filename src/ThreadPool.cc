@@ -260,7 +260,7 @@ QStatus ThreadPool::WaitForAvailableThread(void)
 
         QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): m_closures.size() == %d.", m_closures.size()));
         QCC_DbgPrintf(("ThreadPool::WaitForAvailableThread(): m_poolsize == %d.", m_poolsize));
-        
+
         /*
          * There are no available threads for us to use doing our work, so we
          * must block until one of them completes.  When one completes, in its
