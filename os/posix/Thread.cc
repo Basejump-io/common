@@ -92,6 +92,26 @@ Thread* Thread::GetThread()
 
     return ret;
 }
+    
+const char* Thread::GetThreadName()
+{
+    Thread *thread = NULL;
+    
+    /* Find thread on Thread::threadList */
+    threadListLock.Lock();
+    map<ThreadHandle, Thread*>::const_iterator iter = threadList.find(pthread_self());
+    if (iter != threadList.end()) {
+        thread = iter->second;
+    }
+    threadListLock.Unlock();
+    
+    /* If the current thread isn't on the list, then don't create an external (wrapper) thread */
+    if (thread == NULL) {
+        return "external";
+    }
+    
+    return thread->GetName();
+}
 
 const char* Thread::GetThreadName()
 {
