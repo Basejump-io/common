@@ -23,19 +23,11 @@
 
 #include <qcc/platform.h>
 
+#include <qcc/Util.h>
 #include <qcc/String.h>
 #include <string.h>
 
-#if defined(__GNUC__) && !defined(ANDROID)
-#define HASH_NAMESPACE __gnu_cxx
-#include <ext/hash_map>
-namespace std {
-using namespace __gnu_cxx;
-}
-#else
-#define HASH_NAMESPACE std
-#include <hash_map>
-#endif
+#include <qcc/STLContainer.h>
 
 namespace qcc {
 
@@ -106,27 +98,25 @@ class StringMapKey {
 
 }  // End of qcc namespace
 
-/**
- * Functor to compute a hash for StringMapKey suitable for use with
- * std::hash_map and std::hash_set.
- */
-namespace HASH_NAMESPACE {
+namespace std {
 
-template <>
-struct hash<qcc::StringMapKey>{
-    inline size_t operator()(const qcc::StringMapKey& k) const { return HASH_NAMESPACE::hash<const char*>() (k.c_str()); }
-};
-
-}
 /**
  * Functor to compute StrictWeakOrder
  */
-namespace std {
-
 template <>
 struct less<qcc::StringMapKey>{
     inline bool operator()(const qcc::StringMapKey& a, const qcc::StringMapKey& b) const { return ::strcmp(a.c_str(), b.c_str()) < 0; }
 };
 
+/**
+ * Functor to compute a hash for StringMapKey suitable for use with
+ * std::unordered_map, std::unordered_set, std::hash_map, std::hash_set.
+ */
+template <>
+struct hash<qcc::StringMapKey>{
+    inline size_t operator()(const qcc::StringMapKey& k) const { return qcc::hash_string(k.c_str()); }
+};
+
 }
+
 #endif
