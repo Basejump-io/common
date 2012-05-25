@@ -41,8 +41,6 @@
 #else
 #include <unordered_map>
 #include <unordered_set>
-//#define hash_map unordered_map
-#pragma pack(show)
 #endif
 
 #endif
