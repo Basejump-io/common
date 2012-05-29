@@ -445,6 +445,11 @@ void _QCC_DbgPrintProcess(void* ctx, DbgMsgType type, const char* module, const 
     delete context;
 }
 
+void _QCC_LogError(QStatus status, const char* filename, int lineno)
+{
+    DebugContext* ctx = reinterpret_cast<DebugContext*>(_QCC_DbgPrintContext(" 0x%04x", status));
+    _QCC_DbgPrintProcess(ctx, DBG_LOCAL_ERROR, "", filename, lineno);
+}
 
 void QCC_RegisterOutputCallback(QCC_DbgMsgCallback cb, void* context)
 {
