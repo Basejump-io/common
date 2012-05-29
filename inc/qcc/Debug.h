@@ -28,6 +28,8 @@
 
 #include <stdio.h>
 
+#include "Status.h"
+
 /** @internal DEBUG */
 #define QCC_MODULE "DEBUG"
 
@@ -39,12 +41,16 @@
  *                  [e.g. ("Disconnecting from %s", nodename)].
  *                  String should not end with a new line.
  */
+#if defined(NDEBUG)
+#define QCC_LogError(_status, _msg) do { _QCC_LogError((_status), __FILE__, __LINE__); } while (0)
+#else
 #define QCC_LogError(_status, _msg)                                     \
     do {                                                                \
         void* ctx = _QCC_DbgPrintContext _msg;                          \
         _QCC_DbgPrintAppend(ctx, ": %s", QCC_StatusText(_status));      \
         _QCC_DbgPrintProcess(ctx, DBG_LOCAL_ERROR, QCC_MODULE, __FILE__, __LINE__); \
     } while (0)
+#endif
 
 /**
  * Macro for high level debug prints.  This is intended for high level summary
@@ -123,9 +129,9 @@
 #if defined(NDEBUG)
 #define _QCC_DbgPrint(_msgType, _msg) do { } while (0)
 #else
-#define _QCC_DbgPrint(_msgType, _msg)                                   \
-    do {                                                                \
-        if (_QCC_DbgPrintCheck((_msgType), QCC_MODULE)) {               \
+#define _QCC_DbgPrint(_msgType, _msg)                                  \
+    do {                                                               \
+        if (_QCC_DbgPrintCheck((_msgType), QCC_MODULE)) {              \
             void* _ctx = _QCC_DbgPrintContext _msg;                    \
             _QCC_DbgPrintProcess(_ctx, (_msgType), QCC_MODULE, __FILE__, __LINE__); \
         }                                                               \
@@ -226,7 +232,6 @@ void QCC_RegisterOutputCallback(QCC_DbgMsgCallback cb, void* context);
  */
 void QCC_RegisterOutputFile(FILE* file);
 
-
 /**
  * @internal
  * Creates and prepares a debug context for printing debug output.
@@ -256,6 +261,15 @@ void _QCC_DbgPrintAppend(void* ctx, const char* fmt, ...);
  */
 void _QCC_DbgPrintProcess(void* ctx, DbgMsgType type, const char* module, const char* filename, int lineno);
 
+/**
+ * @internal
+ * Minimal error logging for release builds.
+ *
+ * @param status    The error status code
+ * @param filename  Filename where the error is being logged
+ * @param lineno    Line number where the error is being logged
+ */
+void _QCC_LogError(QStatus status, const char* filename, int lineno);
 
 /**
  * @internal
@@ -267,7 +281,6 @@ void _QCC_DbgPrintProcess(void* ctx, DbgMsgType type, const char* module, const 
  * @return  1 = print, 0 = don't print
  */
 int _QCC_DbgPrintCheck(DbgMsgType type, const char* module);
-
 
 /**
  * @internal
