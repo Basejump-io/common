@@ -63,7 +63,7 @@ class XmlElement {
      * @param name     XML element name.
      * @param parent   Parent element or NULL if this element is the root.
      */
-    XmlElement(qcc::String name = "", XmlElement* parent = NULL) : name(name), parent(parent) { }
+    XmlElement(const qcc::String& name = String::Empty, XmlElement* parent = NULL) : name(name), parent(parent) { }
 
     /** Destructor */
     ~XmlElement();
@@ -81,7 +81,7 @@ class XmlElement {
      *
      * @return XML element name or empty string if not set.
      */
-    qcc::String GetName() const { return name; }
+    const qcc::String& GetName() const { return name; }
 
     /**
      * Get this element's parent or NULL if none exists.
@@ -95,7 +95,7 @@ class XmlElement {
      *
      * @param name    Name of XML element.`
      */
-    void SetName(qcc::String name) { this->name = name; }
+    void SetName(const qcc::String& name) { this->name = name; }
 
     /**
      * Get the attributes for this element.
@@ -108,7 +108,14 @@ class XmlElement {
      *
      * @param attName   Name of attribute
      */
-    qcc::String GetAttribute(qcc::String attName) const;
+    const qcc::String& GetAttribute(const char* attName) const;
+
+    /**
+     * Get an attribute with a given name or empty string if it doesn't exist.
+     *
+     * @param attName   Name of attribute
+     */
+    const qcc::String& GetAttribute(const qcc::String& attName) const;
 
     /**
      * Add an Xml Attribute
@@ -116,7 +123,7 @@ class XmlElement {
      * @param name    Attribute name.
      * @param value   Attribute value.
      */
-    void AddAttribute(qcc::String name, qcc::String value) { attributes[name] = value; }
+    void AddAttribute(const qcc::String& name, const qcc::String& value) { attributes[name] = value; }
 
     /**
      * Get the element map.
@@ -129,7 +136,7 @@ class XmlElement {
      * @param name   XML child elements name to search for.
      * @return  A vector containing the matching elements.
      */
-    std::vector<const XmlElement*> GetChildren(qcc::String name) const;
+    std::vector<const XmlElement*> GetChildren(const qcc::String& name) const;
 
     /**
      * Get the child element with a given name if it exists.
@@ -137,26 +144,26 @@ class XmlElement {
      * @param name   XML child element name to search for.
      * @return  Pointer to XML child element or NULL if not found.
      */
-    const XmlElement* GetChild(qcc::String name) const;
+    const XmlElement* GetChild(const qcc::String& name) const;
 
     /**
      * Add a child XmlElement.
      *
      * @param name   Child node name.
      */
-    XmlElement& CreateChild(qcc::String name);
+    XmlElement& CreateChild(const qcc::String& name);
 
     /**
      * Get the content.
      */
-    qcc::String GetContent() const { return content; }
+    const qcc::String& GetContent() const { return content; }
 
     /**
      * Set the (unesacped) text content.
      *
      * @param  content    Unescaped ("&" not "&amp;") text content for this node.
      */
-    void SetContent(qcc::String content) { this->content = content; }
+    void SetContent(const qcc::String& content) { this->content = content; }
 
     /**
      * Add text content to this node.
@@ -165,7 +172,7 @@ class XmlElement {
      *
      * @param content   Text content to add to this node.
      */
-    void AddContent(qcc::String content) { this->content.append(content); }
+    void AddContent(const qcc::String& content) { this->content.append(content); }
 
     /**
      * Get all elements that have the specified path relative to the current element. The path is a
@@ -187,7 +194,7 @@ class XmlElement {
      *
      * @param path   The path to elements in the XML tree.
      */
-    std::vector<const XmlElement*> GetPath(qcc::String path) const;
+    std::vector<const XmlElement*> GetPath(const qcc::String& path) const;
 
   private:
     qcc::String name;                                /**< Element name */

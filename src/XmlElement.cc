@@ -38,7 +38,7 @@ using namespace std;
 
 namespace qcc {
 
-static qcc::String escapeXml(const qcc::String str) {
+static qcc::String escapeXml(const qcc::String& str) {
     qcc::String outStr;
     qcc::String::const_iterator it = str.begin();
     int multi = 0;
@@ -114,7 +114,7 @@ static qcc::String escapeXml(const qcc::String str) {
     return outStr;
 }
 
-static qcc::String unescapeXml(const qcc::String str) {
+static qcc::String unescapeXml(const qcc::String& str) {
     bool inEsc = false;
     qcc::String outStr;
     qcc::String escName;
@@ -393,14 +393,14 @@ qcc::String XmlElement::Generate(qcc::String* outStr) const
     return *outStr;
 }
 
-XmlElement& XmlElement::CreateChild(qcc::String name)
+XmlElement& XmlElement::CreateChild(const qcc::String& name)
 {
     QCC_DbgTrace(("XmlElement::CreateChild(\"%s\")", name.c_str()));
     children.push_back(new XmlElement(name, this));
     return *children.back();
 }
 
-std::vector<const XmlElement*> XmlElement::GetChildren(qcc::String name) const
+std::vector<const XmlElement*> XmlElement::GetChildren(const qcc::String& name) const
 {
     std::vector<const XmlElement*> matches;
     vector<XmlElement*>::const_iterator it = children.begin();
@@ -413,7 +413,7 @@ std::vector<const XmlElement*> XmlElement::GetChildren(qcc::String name) const
     return matches;
 }
 
-const XmlElement* XmlElement::GetChild(qcc::String name) const
+const XmlElement* XmlElement::GetChild(const qcc::String& name) const
 {
     vector<XmlElement*>::const_iterator it = children.begin();
     while (it != children.end()) {
@@ -425,21 +425,27 @@ const XmlElement* XmlElement::GetChild(qcc::String name) const
     return NULL;
 }
 
-qcc::String XmlElement::GetAttribute(qcc::String attName) const
+const qcc::String& XmlElement::GetAttribute(const char* attName) const
+{
+    return GetAttribute(String(attName));
+}
+
+const qcc::String& XmlElement::GetAttribute(const qcc::String& attName) const
 {
     map<qcc::String, qcc::String>::const_iterator it = attributes.find(attName);
     if (it == attributes.end()) {
-        return "";
+        return String::Empty;
     } else {
         return it->second;
     }
 }
 
-std::vector<const XmlElement*> XmlElement::GetPath(qcc::String path) const
+std::vector<const XmlElement*> XmlElement::GetPath(const qcc::String& inPath) const
 {
     std::vector<const XmlElement*> matches;
     qcc::String val;
     qcc::String attr;
+    qcc::String path = inPath;
 
     /* Strip attribute from the path if present */
     size_t pos = path.find_first_of('@');
