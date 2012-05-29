@@ -113,35 +113,35 @@ class String {
      *
      * @return  Amount of storage allocated to this string.
      */
-    size_t capacity() const { return context ? context->capacity : 0; }
+    size_t capacity() const { return context->capacity; }
 
     /**
      * Get an iterator to the beginning of the string.
      *
      * @return iterator to start of string
      */
-    iterator begin() { return context ? context->c_str : emptyString; }
+    iterator begin() { return context->c_str; }
 
     /**
      * Get an iterator to the end of the string.
      *
      * @return iterator to end of string.
      */
-    iterator end() { return context ? context->c_str + context->offset : emptyString; }
+    iterator end() { return context->c_str + context->offset; }
 
     /**
      * Get a const_iterator to the beginning of the string.
      *
      * @return iterator to start of string
      */
-    const_iterator begin() const { return context ? context->c_str : emptyString; }
+    const_iterator begin() const { return context->c_str; }
 
     /**
      * Get an iterator to the end of the string.
      *
      * @return iterator to end of string.
      */
-    const_iterator end() const { return context ? context->c_str + context->offset : emptyString; }
+    const_iterator end() const { return context->c_str + context->offset; }
 
     /**
      * Clear contents of string.
@@ -186,6 +186,14 @@ class String {
     String& append(const String& str) { return append(str.c_str(), str.size()); }
 
     /**
+     * Append to string.
+     *
+     * @param c Character to append to string.
+     * @return  Reference to this string.
+     */
+    String& append(const char c);
+
+    /**
      * Erase a range of chars from string.
      *
      * @param pos    Offset first char to erase.
@@ -215,7 +223,7 @@ class String {
      *
      * @param c  Char to push
      */
-    void push_back(char c) { char _c = c; append(&_c, 1); }
+    void push_back(char c) { append(c); }
 
     /**
      * Append to string.
@@ -277,23 +285,20 @@ class String {
     char& operator[](size_t pos);
 
     /**
-     * Get a const reference to the character at a given position.
-     * If pos >= size, then 0 will be returned.
+     * Get a character at a given position. This function performs no range checking so the caller
+     * is responsible for checking that pos is less than the size of the the string.
      *
      * @param pos    Position offset into string.
-     * @return  Reference to character at pos.
+     * @return       The character at pos.
      */
-    char operator[](size_t pos) const
-    {
-        return context ? context->c_str[pos] : *emptyString;
-    }
+    char operator[](size_t pos) const { return context->c_str[pos]; }
 
     /**
      * Get the size of the string.
      *
      * @return size of string.
      */
-    size_t size() const { return context ? context->offset : 0; }
+    size_t size() const { return context->offset; }
 
     /**
      * Get the length of the string.
@@ -307,7 +312,7 @@ class String {
      *
      * @return Null terminated string.
      */
-    const char* c_str() const { return context ? context->c_str : emptyString; }
+    const char* c_str() const { return context->c_str; }
 
     /**
      * Get the not-necessarily null termination char* representation for this String.
@@ -321,7 +326,7 @@ class String {
      *
      * @return true iff string is empty
      */
-    bool empty() const { return context ? (context->offset == 0) : true; }
+    bool empty() const { return context->offset == 0; }
 
     /**
      * Find first occurrence of null terminated string within this string.
@@ -441,12 +446,14 @@ class String {
      * @param str   Nul terminated array of chars to compare against this string.
      * @return  &lt;0 if this string is less than str, &gt;0 if this string is greater than str, 0 if equal.
      */
-    int compare(const char* str) const { return ::strcmp(context ? context->c_str : emptyString, str); }
+    int compare(const char* str) const { return ::strcmp(context->c_str, str); }
+
+    /**
+     * Returns a reference to the empty string
+     */
+    static const String& Empty;
 
   private:
-
-    /** Empty string constant */
-    static char emptyString[];
 
     static const size_t MinCapacity = 16;
 
@@ -458,6 +465,8 @@ class String {
     } ManagedCtx;
 
     ManagedCtx* context;
+
+    static ManagedCtx nullContext;
 
     void IncRef();
 
