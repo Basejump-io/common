@@ -42,7 +42,7 @@ class StringSource : public Source {
      * Construct a StringSource.
      * @param str   Source contents
      */
-    StringSource(const qcc::String str) : str(str), outIdx(0), event(str.empty() ? Event::WAIT_FOREVER : 0, 0) { }
+    StringSource(const qcc::String str) : str(str), outIdx(0) { }
 
     /**
      * Construct a StringSource from data.
@@ -50,7 +50,7 @@ class StringSource : public Source {
      * @param data  Source contents
      * @param len   The length of the data.
      */
-    StringSource(const void* data, size_t len) : outIdx(0), event((len == 0) ? Event::WAIT_FOREVER : 0, 0) { str.insert(0, (const char*)data, len); }
+    StringSource(const void* data, size_t len) : outIdx(0) { str.insert(0, (const char*)data, len); }
 
     /** Destructor */
     virtual ~StringSource() { }
@@ -67,17 +67,9 @@ class StringSource : public Source {
      */
     QStatus PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout = Event::WAIT_FOREVER);
 
-    /**
-     * Get the Event indicating that data is available when signaled.
-     *
-     * @return Event that is signaled when data is available.
-     */
-    Event& GetSourceEvent() { return event; }
-
   private:
     qcc::String str;    /**< storage for byte stream */
     size_t outIdx;      /**< index to next byte in str to be returned */
-    Event event;        /**< reference to static signaled event */
 };
 
 }

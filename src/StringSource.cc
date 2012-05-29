@@ -45,7 +45,6 @@ QStatus StringSource::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes,
         outIdx += actualBytes;
     } else if (outIdx == str.size()) {
         status = ER_NONE;
-        event.ResetTime(Event::WAIT_FOREVER, 0);
     }
     return status;
 }

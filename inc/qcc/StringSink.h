@@ -56,13 +56,6 @@ class StringSink : public Sink {
     }
 
     /**
-     * Get the Event indicating that data is available when signaled.
-     *
-     * @return Event that is signaled when data is available.
-     */
-    Event& GetSinkEvent() { return Event::alwaysSet; }
-
-    /**
      * Get reference to sink storage.
      * @return string used to hold Sink data.
      */
