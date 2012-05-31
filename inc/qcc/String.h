@@ -159,9 +159,10 @@ class String {
      * sensitive information such as passwords and cryptographic keys immediately after they have
      * been used to minimize the time that sensitive information is in memory. This function has
      * the side effect of clearing all copies of this string that may have result from string
-     * assignment operations. To aid in verifying the behavior will be as expected this function
+     * assignment operations. To aid in verifying the behavior is as expected this function
      * returns a count of the number of strings that reference the same internal string data. If
      * this value is not zero then there are other copies of the string that were also cleared.
+     * If this happens it was most likely due to a coding error.
      *
      * @return  The number of other string instances that were cleared as a side-effect of clearing
      *          this string.
@@ -169,7 +170,8 @@ class String {
     size_t secure_clear();
 
     /**
-     * Append to string.
+     * Append a string or substring to string. This function will append all characters up to the
+     * specified length including embedded nuls.
      *
      * @param str  Value to append to string.
      * @param len  Number of characters to append or 0 to insert up to first nul byte in str.
@@ -178,7 +180,7 @@ class String {
     String& append(const char* str, size_t len = 0);
 
     /**
-     * Append to string.
+     * Append a string to another to string.
      *
      * @param str  Value to append to string.
      * @return  Reference to this string.
@@ -186,7 +188,7 @@ class String {
     String& append(const String& str) { return append(str.c_str(), str.size()); }
 
     /**
-     * Append to string.
+     * Append a single character to string.
      *
      * @param c Character to append to string.
      * @return  Reference to this string.
@@ -224,6 +226,14 @@ class String {
      * @param c  Char to push
      */
     void push_back(char c) { append(c); }
+
+    /**
+     * Append a character.
+     *
+     * @param c Character to append to string.
+     * @return  Reference to this string.
+     */
+    String& operator+=(const char c) { return append(c); }
 
     /**
      * Append to string.
