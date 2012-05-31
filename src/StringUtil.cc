@@ -480,3 +480,21 @@ bool qcc::IsWhite(char c, const char* whiteChars) {
     }
     return false;
 }
+
+qcc::String qcc::StringVectorToString(const vector<qcc::String>* list, const char* sep)
+{
+    qcc::String out;
+    if (list) {
+        std::vector<qcc::String>::const_iterator it = list->begin();
+        if (it != list->end()) {
+            while (true) {
+                out += *it++;
+                if (it == list->end()) {
+                    break;
+                }
+                out += sep;
+            }
+        }
+    }
+    return out;
+}

@@ -25,6 +25,8 @@
 #ifndef _QCC_STRINGUTIL_H
 #define _QCC_STRINGUTIL_H
 
+#include <vector>
+
 #include <qcc/platform.h>
 #include <qcc/String.h>
 
@@ -194,6 +196,14 @@ bool IsWhite(char c, const char* whiteChars = 0);
  * @return  The formatted string.
  */
 qcc::String LineBreak(const qcc::String& inStr, size_t maxLen = 64, size_t indent = 0);
+
+/**
+ * Concatenate strings in a string vector
+ *
+ * @param list  A vector of strings
+ * @param sep   A separator to put between the strings
+ */
+qcc::String StringVectorToString(const std::vector<qcc::String>* list, const char* sep = "");
 
 }   /* End namespace */
 
