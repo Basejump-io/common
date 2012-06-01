@@ -102,6 +102,11 @@ class SslSocket : public Stream {
 
   private:
 
+    /** SslSockets cannot be copied or assigned */
+    SslSocket(const SslSocket& other);
+
+    SslSocket operator=(const SslSocket& other);
+
     /** Forward declaration of OS specific (hidden) internal state for SslSocket */
     struct Internal;
 
