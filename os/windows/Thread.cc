@@ -63,18 +63,6 @@ QStatus Sleep(uint32_t ms) {
     return ER_OK;
 }
 
-HANDLE GetCurrentThreadWaitableHandle() {
-    HANDLE handle = NULL;
-    DuplicateHandle(GetCurrentProcess(),
-                    GetCurrentThread(),
-                    GetCurrentProcess(),
-                    &handle,
-                    0,
-                    TRUE,
-                    DUPLICATE_SAME_ACCESS);
-    return handle;
-}
-
 Thread* Thread::GetThread()
 {
     Thread* ret = NULL;
@@ -144,7 +132,7 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
     state(isExternal ? RUNNING : DEAD),
     isStopping(false),
     function(isExternal ? NULL : func),
-    handle(NULL),
+    handle(isExternal ? GetCurrentThread() : 0),
     exitValue(NULL),
     arg(NULL),
     threadId(isExternal ? GetCurrentThreadId() : 0),
@@ -164,12 +152,6 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
      * External threads are already running so just add them to the thread list.
      */
     if (isExternal) {
-        handle = GetCurrentThreadWaitableHandle();
-        if (NULL == handle) {
-            state = DEAD;
-            isStopping = false;
-            QCC_LogError(ER_OS_ERROR, ("Creating external thread"));
-        }
         threadListLock.Lock();
         threadList[(ThreadHandle)threadId] = this;
         threadListLock.Unlock();
@@ -182,12 +164,9 @@ Thread::~Thread(void)
     if (IsRunning()) {
         Stop();
         Join();
-    }
-    if (!isExternal) {
-        if (NULL != handle) {
-            CloseHandle(handle);
-            handle = NULL;
-        }
+    } else if (!isExternal && handle) {
+        CloseHandle(handle);
+        handle = 0;
         ++stopped;
     }
     QCC_DbgHLPrintf(("Thread::~Thread() [%s,%x] started:%d running:%d stopped:%d", GetName(), this, started, running, stopped));
@@ -355,6 +334,9 @@ QStatus Thread::Kill(void)
 
 QStatus Thread::Join(void)
 {
+
+    assert(!isExternal);
+
     QStatus status = ER_OK;
     bool self = (threadId == GetCurrentThreadId());
 
@@ -381,18 +363,24 @@ QStatus Thread::Join(void)
                    self ? threadId : GetThread()->threadId,
                    self ? "Closing" : "Joining",
                    threadId, funcName, threadId));
-
-    if (handle) {
+    /*
+     * make local copy of handle so it is not deleted if two threads are in
+     * Join at the same time.
+     */
+    HANDLE goner = handle;
+    if (goner) {
         DWORD ret;
+        handle = 0;
         if (self) {
             ret = WAIT_OBJECT_0;
         } else {
-            ret = WaitForSingleObjectEx(handle, INFINITE, FALSE);
+            ret = WaitForSingleObject(goner, INFINITE);
         }
         if (ret != WAIT_OBJECT_0) {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Joining thread: %d", ret));
         }
+        CloseHandle(goner);
         ++stopped;
     }
     isStopping = false;
