@@ -52,9 +52,14 @@ namespace qcc {
 static SSL_CTX* sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
+struct SslSocket::Internal
+{
+    BIO* bio;                      /**< SSL socket descriptor for OpenSSL */
+    X509* rootCert;                /**< Hard-coded Root Certificate */
+};
+
 SslSocket::SslSocket(String ipAddress, String host) :
-    bio(NULL),
-    rootCert(NULL),
+    internal(new Internal()),
     sourceEvent(&qcc::Event::neverSet),
     sinkEvent(&qcc::Event::neverSet),
     localIPAddress(ipAddress),
@@ -90,7 +95,7 @@ SslSocket::SslSocket(String ipAddress, String host) :
                 if (status == ER_OK) {
 
                     /* Add the root certificate to the current certificate verification storage */
-                    X509_STORE_add_cert(sslCtxstore, rootCert);
+                    X509_STORE_add_cert(sslCtxstore, internal->rootCert);
 
                     /* Set the default verify paths for the SSL context */
                     if ((SSL_CTX_set_default_verify_paths(sslCtx)) != 1) {
@@ -117,6 +122,7 @@ SslSocket::SslSocket(String ipAddress, String host) :
 
 SslSocket::~SslSocket() {
     Close();
+    delete internal;
 }
 
 QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
@@ -133,20 +139,20 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
 
     /* Create the descriptor for this SSL socket */
     SSL* ssl;
-    bio = BIO_new_ssl_connect(sslCtx);
+    internal->bio = BIO_new_ssl_connect(sslCtx);
 
-    if (bio) {
+    if (internal->bio) {
         /* Set SSL modes */
-        BIO_get_ssl(bio, &ssl);
+        BIO_get_ssl(internal->bio, &ssl);
         SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
 
         /* Set destination host name and port */
         int intPort = (int) port;
-        BIO_set_conn_hostname(bio, hostName.c_str());
-        BIO_set_conn_int_port(bio, &intPort);
+        BIO_set_conn_hostname(internal->bio, hostName.c_str());
+        BIO_set_conn_int_port(internal->bio, &intPort);
 
         /* Connect to destination */
-        if (0 < BIO_do_connect(bio)) {
+        if (0 < BIO_do_connect(internal->bio)) {
             /* Verify the certificate */
             if (SSL_get_verify_result(ssl) != X509_V_OK) {
                 status = ER_SSL_VERIFY;
@@ -161,15 +167,15 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
 
     /* Set the events */
     if (ER_OK == status) {
-        int fd = BIO_get_fd(bio, 0);
+        int fd = BIO_get_fd(internal->bio, 0);
         sourceEvent = new qcc::Event(fd, qcc::Event::IO_READ, false);
         sinkEvent = new qcc::Event(fd, qcc::Event::IO_WRITE, false);
     }
 
     /* Cleanup on error */
-    if (bio && (ER_OK != status)) {
-        BIO_free_all(bio);
-        bio = NULL;
+    if (internal->bio && (ER_OK != status)) {
+        BIO_free_all(internal->bio);
+        internal->bio = NULL;
     }
 
     ctxMutex.Unlock();
@@ -184,9 +190,9 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
 
 void SslSocket::Close()
 {
-    if (bio) {
-        BIO_free_all(bio);
-        bio = NULL;
+    if (internal->bio) {
+        BIO_free_all(internal->bio);
+        internal->bio = NULL;
     }
 
     if (sourceEvent != &qcc::Event::neverSet) {
@@ -204,11 +210,11 @@ QStatus SslSocket::PullBytes(void*buf, size_t reqBytes, size_t& actualBytes, uin
     QStatus status;
     int r;
 
-    if (!bio) {
+    if (!internal->bio) {
         return ER_FAIL;
     }
 
-    r = BIO_read(bio, buf, reqBytes);
+    r = BIO_read(internal->bio, buf, reqBytes);
 
     if (0 == r) {
         actualBytes = r;
@@ -228,11 +234,11 @@ QStatus SslSocket::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
     QStatus status;
     int s;
 
-    if (!bio) {
+    if (!internal->bio) {
         return ER_FAIL;
     }
 
-    s = BIO_write(bio, buf, numBytes);
+    s = BIO_write(internal->bio, buf, numBytes);
 
     if (0 < s) {
         status = ER_OK;
@@ -259,9 +265,9 @@ QStatus SslSocket::ImportPEM()
     BIO* bio = BIO_new(BIO_s_mem());
     QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(RendezvousServerRootCertificate).c_str()));
     BIO_write(bio, RendezvousServerRootCertificate, String(RendezvousServerRootCertificate).size());
-    rootCert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    internal->rootCert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     BIO_free(bio);
-    if (rootCert) {
+    if (internal->rootCert) {
         status = ER_OK;
     }
 
