@@ -52,8 +52,7 @@ namespace qcc {
 static SSL_CTX* sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
-struct SslSocket::Internal
-{
+struct SslSocket::Internal {
     BIO* bio;                      /**< SSL socket descriptor for OpenSSL */
     X509* rootCert;                /**< Hard-coded Root Certificate */
 };
