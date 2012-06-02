@@ -381,8 +381,16 @@ QStatus Event::SetEvent()
 
     if (GEN_PURPOSE == eventType) {
         char val = 's';
-        int ret = write(signalFd, &val, sizeof(val));
-        status = (sizeof(val) == ret) ? ER_OK : ER_FAIL;
+        fd_set rdSet;
+        struct timeval tv;
+        tv.tv_sec = tv.tv_usec = 0;
+        FD_ZERO(&rdSet);
+        FD_SET(fd, &rdSet);
+        int ret = select(fd + 1, &rdSet, NULL, NULL, &tv);
+        if (ret == 0) {
+            ret = write(signalFd, &val, sizeof(val));
+        }
+        status = (ret == 1) ? ER_OK : ER_FAIL;
     } else if (TIMED == eventType) {
         uint32_t now = GetTimestamp();
         if (now < timestamp) {
