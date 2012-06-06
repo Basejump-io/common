@@ -95,7 +95,7 @@ Thread* Thread::GetThread()
 
 const char* Thread::GetThreadName()
 {
-    Thread* thread = NULL;
+    Thread*thread = NULL;
 
     /* Find thread on Thread::threadList */
     threadListLock.Lock();

@@ -164,7 +164,13 @@ QStatus Crypto_ASN1::EncodeV(const char*& syntax, qcc::String& asn, va_list* arg
             asn.push_back((char)ASN_INTEGER);
             uint32_t v = va_arg(argp, uint32_t);
             if (v) {
-                uint8_t n[5] =  { 0, v >> 24, v >> 16, v >> 8, v };
+                uint8_t n[5];
+                //c++0x does not allow implicit typecast from uint32_t to uint8_t
+                n[0] = 0;
+                n[1] = ((uint8_t)(v >> 24));
+                n[2] = ((uint8_t)(v >> 16));
+                n[3] = ((uint8_t)(v >> 8));
+                n[4] = ((uint8_t)(v & 0xFF));
                 size_t i = 0;
                 while (!n[i]) {
                     ++i;
@@ -517,7 +523,12 @@ void Crypto_ASN1::EncodeLen(qcc::String& asn, size_t len)
     if (len < 128) {
         asn.push_back((char)len);
     } else {
-        uint8_t v[4] = { len >> 24, len >> 16, len >> 8, len };
+        uint8_t v[4];
+        //c++0x does not allow implicit typecast from uint32_t to uint8_t
+        v[0] = ((uint8_t)(len >> 24));
+        v[1] = ((uint8_t)(len >> 16));
+        v[2] = ((uint8_t)(len >> 8));
+        v[3] = ((uint8_t)(len & 0xFF));
         size_t n = 0;
         // Suppress leading zeroes
         while (!v[n]) {
@@ -558,7 +569,13 @@ QStatus Crypto_ASN1::EncodeOID(qcc::String& asn, const qcc::String& oid)
         for (size_t i = 2; i < numNums; ++i) {
             uint32_t v = nums[i];
             // Encode bytes base 128
-            uint8_t b128[5] = { (v >> 28) | 0x80, (v >> 21) | 0x80, (v >> 14) | 0x80, (v >> 7) | 0x80, v  & 0x7f };
+            uint8_t b128[5];
+            //c++0x does not allow implicit typecast from uint32_t to uint8_t
+            b128[0] = (v >> 28) | 0x80;
+            b128[1] =  (v >> 21) | 0x80;
+            b128[2] = (v >> 14) | 0x80;
+            b128[3] = (v >> 7) | 0x80;
+            b128[4] = v  & 0x7f;
             size_t n = 0;
             // Suppress leading zeroes
             while (b128[n] == 0x80) {

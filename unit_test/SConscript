@@ -48,7 +48,9 @@ else:
         # Android include paths
         if ndkVersion >= 5:
             gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
-                                      '$ANDROID_NDK/sources/cxx-stl/stlport/stlport'])
+                                      #Using GNU STL instead of STLPORT
+                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include',
+                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/libs/armeabi/include'])
     gtest_obj = gtest_env.StaticObject(target = 'gtest-all', source = ['$GTEST_DIR/src/gtest-all.cc'])
     gtest_env.StaticLibrary(target = 'gtest', source = gtest_obj)
     
@@ -79,7 +81,9 @@ else:
         # Android include paths
         if ndkVersion >= 5:
             unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
-                                '$ANDROID_NDK/sources/cxx-stl/stlport/stlport',
+                                #Using GNU STL instead of STLPORT
+                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include',
+                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/libs/armeabi/include',
                                 '$ANDROID_SRC/external/bluetooth/bluez/include',
                                 '$ANDROID_SRC/external/openssl/include'])
 
@@ -101,9 +105,6 @@ else:
     unittest_env.Prepend(LIBS = ['gtest', 'alljoyn'])
     
     obj = unittest_env.Object(test_src);
-    # statically link the stlport lib
-    if(env['OS_CONF'] == 'android'):
-        obj.append('$ANDROID_NDK/sources/cxx-stl/stlport/libs/armeabi/libstlport_static.a')
 
     unittest_prog = unittest_env.Program('cmtest', obj)
     unittest_env.Install('$TESTDIR/bin', unittest_prog)
