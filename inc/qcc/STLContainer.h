@@ -25,23 +25,8 @@
 #ifndef _STLCONTAINER_H
 #define _STLCONTAINER_H
 
-#if !defined(QCC_NO_STLPORT)
-
-#define unordered_map hash_map
-#define unordered_multimap hash_multimap
-#define unordered_set hash_set
-
-#if defined(__GNUC__) && !defined(ANDROID)
-#include <ext/hash_map>
-#include <ext/hash_set>
-#else
-#include <hash_map>
-#include <hash_set>
-#endif
-#else
 #include <unordered_map>
 #include <unordered_set>
-#endif
 
 #endif
 
