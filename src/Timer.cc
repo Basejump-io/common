@@ -370,7 +370,7 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                 TimerThread* tt = NULL;
                 if (isController) {
                     /* Look for an idle or stopped worker to execute alarm callback for us */
-                    for (size_t i = 1; i < timer->concurency; ++i) {
+                    for (size_t i = 0; i < timer->concurency; ++i) {
                         if (i != static_cast<size_t>(index)) {
                             if (timer->timerThreads[i]->state == TimerThread::IDLE) {
                                 tt = timer->timerThreads[i];
