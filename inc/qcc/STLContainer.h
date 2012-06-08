@@ -30,7 +30,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#ifdef _MSC_VER and _MSC_VER == 1500
+#if defined _MSC_VER && _MSC_VER == 1500
 /*
  * For MSVC2008 unordered_map, unordered_multimap, unordered_set, and hash
  * are found in the tr1 libraries while in new version of MSVC and in GNU
