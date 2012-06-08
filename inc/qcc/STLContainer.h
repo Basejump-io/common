@@ -25,8 +25,27 @@
 #ifndef _STLCONTAINER_H
 #define _STLCONTAINER_H
 
+
+
 #include <unordered_map>
 #include <unordered_set>
+
+#ifdef _MSC_VER and _MSC_VER == 1500
+/*
+ * For MSVC2008 unordered_map, unordered_multimap, unordered_set, and hash
+ * are found in the tr1 libraries while in new version of MSVC and in GNU
+ * the libraries are all found in std namespace.
+ */
+using std::tr1::unordered_map;
+using std::tr1::unordered_multimap;
+using std::tr1::unordered_set;
+using std::tr1::hash;
+#else
+using std::unordered_map;
+using std::unordered_multimap;
+using std::unordered_set;
+using std::hash;
+#endif
 
 #endif
 
