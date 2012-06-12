@@ -107,6 +107,47 @@ Ptr<T>::Ptr(T* p) : ptr(p)
     }
 }
 
+/**
+ * A copy constructor that allows for cast operations.
+ *
+ * This is an unusual enough construct that it deserves a bit of discussion.  We
+ * need to be able to cast our smart pointers from derived classes to base
+ * classes.  In order to make this easy (converting method parameters) it means
+ * putting together a conversion constructor that allows implicit type
+ * conversion.  For completeness we also include assignment operators.
+ * 
+ * Notice that the class Ptr declaration is a templated class.
+ *
+ *     template <typename T>
+ *     class Ptr {
+ *         ...
+ *
+ *         template <typename U>
+ *         Ptr(Ptr<U>& other);
+ *
+ *         ...
+ *     }
+ *
+ * Also notice that the members implementing assignment and conversion
+ * constructors are also templated.  This technique is called Member Templates.
+ *
+ * In the definition o the conversion constructors there are nested template statements
+ *
+ *     template <typename T>
+ *     template <typename U>
+ *     Ptr<T>::Ptr(Ptr<U>& other)
+ *
+ * This is not a template-template declaration, but is a so-called inner
+ * template declaration.  The inner (second) template statement in the
+ * definition corresponds to the member teplate of the declaration.  All of this
+ * allows us to deal with assignments for which there is an implicit type
+ * conversion.  The implicit type conversion of interest is a cast operation of
+ * a derived "other" Ptr to a base class Ptr.
+ *
+ * There is a good discussion of this in C++ Templates, The Complete Guide
+ * (Vandevoorde and Josuttis) in Chapter 5: Tricky Basics -- section 5.3 Member
+ * Templates.
+ */
 template <typename T>
 template <typename U>
 Ptr<T>::Ptr(Ptr<U>& other)
@@ -117,6 +158,10 @@ Ptr<T>::Ptr(Ptr<U>& other)
     }
 }
 
+/**
+ * A copy constructor that allows for const cast operations.
+ *
+ */
 template <typename T>
 template <typename U>
 Ptr<T>::Ptr(const Ptr<U>& other)
