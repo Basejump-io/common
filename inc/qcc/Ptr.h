@@ -115,7 +115,7 @@ Ptr<T>::Ptr(T* p) : ptr(p)
  * classes.  In order to make this easy (converting method parameters) it means
  * putting together a conversion constructor that allows implicit type
  * conversion.  For completeness we also include assignment operators.
- * 
+ *
  * Notice that the class Ptr declaration is a templated class.
  *
  *     template <typename T>
