@@ -40,10 +40,17 @@ inline void ScatterGatherList::AddBuffer(void* buffer, size_t length)
         iov.len = (uint32_t)length;
         sg.push_back(iov);
     } else {
-        IOVec& last = sg.back();
+        if (!sg.empty()) {
+            IOVec& last = sg.back();
 
-        if (reinterpret_cast<uint8_t*>(last.buf) + last.len == buffer) {
-            last.len += (uint32_t)length;
+            if (reinterpret_cast<uint8_t*>(last.buf) + last.len == buffer) {
+                last.len += (uint32_t)length;
+            } else {
+                IOVec iov;
+                iov.buf = reinterpret_cast<char FAR*>(buffer);
+                iov.len = (uint32_t)length;
+                sg.push_back(iov);
+            }
         } else {
             IOVec iov;
             iov.buf = reinterpret_cast<char FAR*>(buffer);
