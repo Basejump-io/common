@@ -28,6 +28,8 @@
 #include <qcc/posix/Event.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/Event.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/Event.h>
 #else
 #error No OS GROUP defined.
 #endif

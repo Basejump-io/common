@@ -15,6 +15,7 @@
 
 import os
 Import('env')
+from os.path import basename
 
 #default crypto for most platforms is openssl
 env['CRYPTO'] = 'openssl'
@@ -46,6 +47,11 @@ if env['OS_GROUP'] == 'windows':
         env.Append(LIBPATH = ['$OPENSSL_BASE/lib'])
         env.AppendUnique(LIBS = ['libeay32', 'ssleay32'])
         print 'Using OPENSSL crypto libraries'
+elif env['OS_GROUP'] == 'winrt':
+    env['CRYPTO'] = 'winrt'
+    print 'Using WINRT crypto libraries'
+    env.AppendUnique(CFLAGS=['/D_WINRT_DLL'])
+    env.AppendUnique(CXXFLAGS=['/D_WINRT_DLL'])	
 elif env['OS'] == 'linux':
     env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto', 'ssl'])
 elif env['OS'] == 'darwin':
@@ -75,7 +81,7 @@ env.VariantDir('$OBJDIR/os', 'os/${OS_GROUP}', duplicate = 0)
 env.VariantDir('$OBJDIR/crypto', 'crypto/${CRYPTO}', duplicate = 0)
 env.VariantDir('$OBJDIR/test', 'test', duplicate = 0)
 
-# Setup dependent include directorys
+# Setup dependent include directories
 hdrs = { 'qcc': env.File(['inc/qcc/Log.h',
                           'inc/qcc/ManagedObj.h',
                           'inc/qcc/String.h',
@@ -86,7 +92,7 @@ hdrs = { 'qcc': env.File(['inc/qcc/Log.h',
                                       'inc/qcc/${OS_GROUP}/platform_types.h',
                                       'inc/qcc/${OS_GROUP}/unicode.h']) }
 
-if env['OS_GROUP'] == 'windows':
+if env['OS_GROUP'] == 'windows' or env['OS_GROUP'] == 'win8':
     hdrs['qcc/${OS_GROUP}'] += env.File(['inc/qcc/${OS_GROUP}/mapping.h'])
 
 env.Append(CPPPATH = [env.Dir('inc')])
@@ -98,7 +104,25 @@ if env['OS'] == 'darwin':
         env.Append(LIBPATH = [os.environ.get('SRCROOT') + '/../common/crypto/openssl/openssl-1.01/build/' + os.environ.get('CONFIGURATION') + '-' + os.environ.get('PLATFORM_NAME')])
         
 # Build the sources
-srcs = env.Glob('$OBJDIR/*.cc') + env.Glob('$OBJDIR/os/*.cc') + env.Glob('$OBJDIR/crypto/*.cc')
+scattergather_src = ['ScatterGatherList.cc']
+status_cpp0x_src = ['Status_CPP0x.cc']
+status_src = ['Status.cc']
+
+if env['OS_GROUP'] == 'winrt':
+    srcs = env.Glob('$OBJDIR/*.cc') + env.Glob('$OBJDIR/os/*.cc') + env.Glob('$OBJDIR/os/wrapper/src/*.cc') + env.Glob('$OBJDIR/crypto/*.cc')
+    env.Append(CPPPATH = [env.Dir('os/${OS_GROUP}/wrapper/inc')])
+else:
+    srcs = env.Glob('$OBJDIR/*.cc') + env.Glob('$OBJDIR/os/*.cc') + env.Glob('$OBJDIR/crypto/*.cc')
+    
+if env['OS_GROUP'] == 'winrt':
+    srcs = [ f for f in srcs if basename(str(f)) not in scattergather_src ]
+   
+if env['OS_GROUP'] == 'winrt':
+    srcs = [ f for f in srcs if basename(str(f)) not in status_cpp0x_src ]
+
+# Make sure Status never gets included from common for contained projects
+srcs = [ f for f in srcs if basename(str(f)) not in status_src ]
+	
 objs = env.Object(srcs)
 
 # Test programs

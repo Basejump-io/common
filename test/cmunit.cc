@@ -318,10 +318,15 @@ static bool testNextAlarm(const Timespec& expectedTime, void* context)
         GetTimeNow(&ts);
         uint64_t alarmTime = ts.GetAbsoluteMillis();
         uint64_t expectedTimeMs = expectedTime.GetAbsoluteMillis();
-        ret = (p.first == ER_OK) && (context == p.second.GetContext()) && (alarmTime >= expectedTimeMs) && (alarmTime < (expectedTimeMs + jitter));
+        ret = (p.first == ER_OK) && (context == p.second->GetContext()) && (alarmTime >= expectedTimeMs) && (alarmTime < (expectedTimeMs + jitter));
         if (!ret) {
+<<<<<<< HEAD
             printf("Failed Triggered Alarm: status=%s, a.alarmTime=%" PRIu64 ", a.context=%p, expectedTimeMs=%" PRIu64 "\n",
                    QCC_StatusText(p.first), alarmTime, p.second.GetContext(), expectedTimeMs);
+=======
+            printf("Failed Triggered Alarm: status=%s, a.alarmTime=%llu, a.context=%p, expectedTimeMs=%llu\n",
+                   QCC_StatusText(p.first), alarmTime, p.second->GetContext(), expectedTimeMs);
+>>>>>>> 0ad4234... master plus squash win8-2, 2012-06-18
         }
     }
     triggeredAlarmsLock.Unlock();
@@ -356,14 +361,18 @@ static QStatus testTimer()
 
     /* Simple relative alarm */
     void* context = (void*) 0x12345678;
-    Alarm a1(1000, &alarmListener1, 0, context);
+    uint32_t timeout = 1000;
+    uint32_t zero = 0;
+    AlarmListener* al = &alarmListener1;
+    Alarm a1(timeout, al, context, zero);
     status = t1.AddAlarm(a1);
     TEST_ASSERT(status == ER_OK);
     GetTimeNow(&ts);
-    TEST_ASSERT(testNextAlarm(ts + 1000, context));
+    TEST_ASSERT(testNextAlarm(ts + timeout, context));
 
     /* Recurring simple alarm */
-    Alarm a2(1000, &alarmListener1, 1000);
+    void* vptr = NULL;
+    Alarm a2(timeout, al, vptr, timeout);
     status = t1.AddAlarm(a2);
     TEST_ASSERT(status == ER_OK);
     GetTimeNow(&ts);
@@ -386,22 +395,24 @@ static QStatus testTimer()
     status = t2.Start();
     TEST_ASSERT(status == ER_OK);
 
-    Alarm a3(1, &alarmListener10);
+    uint32_t one = 1;
+    al = &alarmListener10;
+    Alarm a3(one, al);
     status = t2.AddAlarm(a3);
     TEST_ASSERT(status == ER_OK);
-    Alarm a4(1, &alarmListener10);
+    Alarm a4(one, al);
     status = t2.AddAlarm(a4);
     TEST_ASSERT(status == ER_OK);
-    Alarm a5(1, &alarmListener10);
+    Alarm a5(one, al);
     status = t2.AddAlarm(a5);
     TEST_ASSERT(status == ER_OK);
-    Alarm a6(1, &alarmListener10);
+    Alarm a6(one, al);
     status = t2.AddAlarm(a6);
     TEST_ASSERT(status == ER_OK);
-    Alarm a7(1, &alarmListener10);
+    Alarm a7(one, al);
     status = t2.AddAlarm(a7);
     TEST_ASSERT(status == ER_OK);
-    Alarm a8(1, &alarmListener10);
+    Alarm a8(one, al);
     status = t2.AddAlarm(a8);
     TEST_ASSERT(status == ER_OK);
 
@@ -418,8 +429,11 @@ static QStatus testTimer()
     status = t3.Start();
     TEST_ASSERT(status == ER_OK);
 
-    Alarm ar1(2000, &alarmListener1);
-    Alarm ar2(5000, &alarmListener1);
+    al = &alarmListener1;
+    timeout = 2000;
+    Alarm ar1(timeout, al);
+    timeout = 5000;
+    Alarm ar2(timeout, al);
     GetTimeNow(&ts);
     status = t3.AddAlarm(ar1);
     TEST_ASSERT(status == ER_OK);

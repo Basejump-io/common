@@ -1,0 +1,46 @@
+# Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
+# 
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+# 
+#        http://www.apache.org/licenses/LICENSE-2.0
+# 
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+# 
+
+import os
+from os.path import basename
+Import('env')
+
+env.Append(CPPPATH=['../../../../../../../../inc'])
+env.Append(CPPPATH=['inc'])
+env.Append(CPPDEFINES=['COMMON_WINRT_PUBLIC', '_WINRT_DLL'])
+   
+# manually add dependencies for xml to h, and for files included in the xml
+env.Depends('inc/Status.h', '../../../../../../../../src/Status.xml')
+
+env.Status('../../../../../../../../src/Status')
+
+winmdswitch = '\"/WINMDFILE:%s\"' % os.path.abspath('qcc.winrt.winmd')
+env.Append(LINKFLAGS=['/MANIFEST:NO', '/SUBSYSTEM:CONSOLE', '/TLBID:1', '/APPCONTAINER', '/WINMD', winmdswitch])
+
+# Platform specific sources
+excluded_src = ['ScatterGatherList.cc', 'Status_CPP0x.cc']
+winrt_srcs = [ f for f in env.Glob('../../../../../../../../os/winrt/*.cc') ]
+common_srcs = [ f for f in env.Glob('../../../../../../../../src/*.cc') ]
+crypto_srcs =  [ f for f in env.Glob('../../../../../../../../crypto/winrt/*.cc') ]
+common_srcs = [ f for f in common_srcs if basename(str(f)) not in excluded_src ]
+
+winrt_objs = env.Object(winrt_srcs);
+common_objs = env.Object(common_srcs);
+crypto_objs = env.Object(crypto_srcs);
+
+# Build the Windows daemon.
+qcc_winrt_dll = env.SharedLibrary('qcc.winrt.dll', winrt_objs + common_objs + crypto_objs)
+
+

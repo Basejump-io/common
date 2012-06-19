@@ -33,6 +33,11 @@ namespace qcc {
 extern const SocketFd INVALID_SOCKET_FD;
 
 /**
+ * Platform dependent value for an max listen backlog
+ */
+extern const int MAX_LISTEN_CONNECTIONS;
+
+/**
  * Close a socket descriptor.
  *
  * @param sockfd        Socket descriptor.

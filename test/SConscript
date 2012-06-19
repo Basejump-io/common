@@ -15,9 +15,14 @@
 
 Import('env')
 
-# Test Programs
-progs = [
-    env.Program('cmunit',        ['cmunit.cc']),
-    ]
+if env['OS'] != 'win8':
+    # Test Programs
+    progs = [
+        env.Program('cmunit',        ['cmunit.cc']),
+        ]
 
+    Return('progs')
+    
+#win8
+progs=[]
 Return('progs')

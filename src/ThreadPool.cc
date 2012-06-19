@@ -191,7 +191,10 @@ QStatus ThreadPool::Execute(Ptr<Runnable> runnable)
      * AlarmListener which defines which actual callback which the alarm will
      * call.
      */
-    Alarm alarm = Alarm(0, runnable.Peek(), 0, NULL);
+    uint32_t zero = 0;
+    void* voidptr = NULL;
+    AlarmListener* listener = runnable.Peek();
+    Alarm alarm = Alarm(zero, listener, voidptr, zero);
     QCC_DbgPrintf(("ThreadPool::Execute(): AddAlarm()"));
     QStatus status = m_dispatcher.AddAlarm(alarm);
     QCC_DbgPrintf(("ThreadPool::Execute(): Giving lock"));

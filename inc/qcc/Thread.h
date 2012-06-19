@@ -40,6 +40,8 @@
 #include <qcc/posix/Thread.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/Thread.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/Thread.h>
 #else
 #error No OS GROUP defined.
 #endif
@@ -389,6 +391,11 @@ class Thread {
     unsigned int threadId;          ///< Thread ID used by windows
     ThreadListener* listener;       ///< Listener notified of thread events (or NULL).
     bool isExternal;                ///< If true, Thread is external (i.e. lifecycle not managed by Thread obj)
+<<<<<<< HEAD
+=======
+    const void* noBlockResource;    ///< No-block resource for this thread
+    void* platformContext;              ///< Context data specific to platform implementation
+>>>>>>> 0ad4234... master plus squash win8-2, 2012-06-18
     uint32_t alertCode;             ///< Context passed from alerter to alertee
 
     typedef std::set<ThreadListener*> ThreadListeners;

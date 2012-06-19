@@ -44,6 +44,8 @@
 #include <qcc/posix/util.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/util.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/util.h>
 #else
 #error No OS GROUP defined.
 #endif
@@ -247,6 +249,18 @@ QStatus ExecAs(const char* user, const char* exec, const ExecArgs& args, const q
  * @param runningCrc  [IN/OUT] Initial CRC16 value on input, final CRC16 value on output.
  */
 void CRC16_Compute(const uint8_t* buffer, size_t bufLen, uint16_t*runningCrc);
+
+/**
+ * Resolves a hostname to its packed address representation.
+ *
+ * @param hostname  hostname to resolve.
+ * @param addr      Buffer to receive the packed address.
+ * @param addrSize  Size of the buffer specified in addr.
+ * @param addrLen   The number of bytes copied into the addr buffer.
+ *
+ * @return  ER_OK if conversion was successful.
+ */
+QStatus ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSize, size_t & addrLen);
 
 };
 #endif

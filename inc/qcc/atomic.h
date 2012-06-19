@@ -30,6 +30,8 @@
 #include <qcc/posix/atomic.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/atomic.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/atomic.h>
 #else
 #error No OS GROUP defined.
 #endif

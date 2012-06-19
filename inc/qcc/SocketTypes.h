@@ -28,6 +28,8 @@
 #include <qcc/posix/SocketTypes.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/SocketTypes.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/SocketTypes.h>
 #else
 #error No OS GROUP defined.
 #endif

@@ -303,6 +303,18 @@ class Crypto_RSA {
     size_t size;
     void* cert;
     void* key;
+
+    bool RSA_Init();
+
+    /**
+     * Opaque type for the internal state
+     */
+    struct CertContext;
+
+    /**
+     * Private internal key state
+     */
+    CertContext* certContext;
 };
 
 /**
@@ -853,11 +865,18 @@ class Crypto_ASN1 {
      *
      * '}'                Indicates the end of a set-of, there are no arguments this item.
      *
+     * '['  ASN_TAGGED    Indicates the start of an explicitly tagged type, there are no arguments this item.
+     *
+     * ']'                Indicates the end of an explicitly tagged type, there are no arguments this item.
+     *
      * '?'                A single element that is extracted but not decoded, the argument must be a
      *                    pointer to a qcc::String or NULL to ignore this item.
      *
      * '*'                Zero or more optional elements up to the end of the enclosing sequence or set
      *                    are skipped.
+     *
+     * '.'                Elements up to the end of the enclosing sequence are extracted and returned.
+     *                    Argument must be a pointer to a qcc::String or NULL to ignore this item.
      *
      * '/'                Before the final syntatic element of a sequence or set this indicates that
      *                    the element is optional. If the element exists it is decoded. The argument

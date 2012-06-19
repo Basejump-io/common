@@ -168,14 +168,17 @@ VOID CALLBACK IoEventCallback(PVOID arg, BOOLEAN TimerOrWaitFired)
                 }
                 while (evit != eventList->events.end()) {
                     Event* ev = (*evit);
+                    bool isSet = false;
+
                     if ((ioEvents.lNetworkEvents & WRITE_SET) && (ev->GetEventType() == Event::IO_WRITE)) {
+                        isSet = true;
                         QCC_DbgHLPrintf(("Setting write event %d", ev->GetHandle()));
-                        if (!::SetEvent(ev->GetHandle())) {
-                            QCC_LogError(ER_OS_ERROR, ("SetEvent returned %d", ret));
-                        }
                     }
                     if ((ioEvents.lNetworkEvents & READ_SET) && (ev->GetEventType() == Event::IO_READ)) {
+                        isSet = true;
                         QCC_DbgHLPrintf(("Setting read event %d", ev->GetHandle()));
+                    }
+                    if (isSet) {
                         if (!::SetEvent(ev->GetHandle())) {
                             QCC_LogError(ER_OS_ERROR, ("SetEvent returned %d", ret));
                         }

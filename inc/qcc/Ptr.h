@@ -45,6 +45,14 @@ class Ptr {
      */
     Ptr(T* p);
 
+#ifdef QCC_OS_GROUP_WINRT
+    /**
+     * A copy constructor without Ptr type casting.
+     * This is to work around a compiler bug in WinRT ARM compiler (Build 8400)
+     * that causes the problem of decreasing the object reference count twice.
+     */
+    Ptr(Ptr<T>& other);
+#else
     /**
      * A conversion constructor to allow for casting between Ptr types.
      */
@@ -56,6 +64,7 @@ class Ptr {
      */
     template <typename U>
     Ptr(const Ptr<U>& other);
+#endif
 
     /**
      * Destroy a Ptr.  Typically happens when Ptr objects go out of language
@@ -149,6 +158,15 @@ Ptr<T>::Ptr(T* p) : ptr(p)
  * Templates.
  */
 template <typename T>
+Ptr<T>::Ptr(Ptr<T>& other)
+    : ptr(other.Peek())
+{
+    if (ptr) {
+        ptr->IncRef();
+    }
+}
+#else
+template <typename T>
 template <typename U>
 Ptr<T>::Ptr(Ptr<U>& other)
     : ptr(other.Peek())
@@ -171,6 +189,7 @@ Ptr<T>::Ptr(const Ptr<U>& other)
         ptr->IncRef();
     }
 }
+#endif
 
 template <typename T>
 Ptr<T>::~Ptr()

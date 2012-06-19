@@ -26,6 +26,8 @@
 #include <pwd.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <unistd.h>
 
 #include <qcc/Debug.h>
@@ -206,4 +208,42 @@ QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, co
 #endif
     }
     return ER_OK;
+}
+
+QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSize, size_t& addrLen)
+{
+    QStatus status = ER_BAD_HOSTNAME;
+
+    while (true) {
+        if (qcc::IPAddress::IPv6_SIZE != addrSize) {
+            status = ER_BAD_HOSTNAME;
+            break;
+        }
+
+        struct addrinfo* info;
+        if (0 == getaddrinfo(hostname.c_str(), NULL, NULL, &info)) {
+            if (info->ai_family == AF_INET6) {
+                struct sockaddr_in6* sa = (struct sockaddr_in6*) info->ai_addr;
+                memcpy((void*)addr, &sa->sin6_addr, qcc::IPAddress::IPv6_SIZE);
+                addrSize = qcc::IPAddress::IPv6_SIZE;
+                status = ER_OK;
+            } else if (info->ai_family == AF_INET) {
+                struct sockaddr_in* sa = (struct sockaddr_in*) info->ai_addr;
+                memcpy(&addr[qcc::IPAddress::IPv6_SIZE - qcc::IPAddress::IPv4_SIZE],
+                       &sa->sin_addr,
+                       qcc::IPAddress::IPv4_SIZE);
+                addrSize = qcc::IPAddress::IPv4_SIZE;
+                status = ER_OK;
+            } else {
+                status = ER_BAD_HOSTNAME;
+                break;
+            }
+        } else {
+            status = ER_BAD_HOSTNAME;
+            break;
+        }
+
+        break;
+    }
+    return status;
 }

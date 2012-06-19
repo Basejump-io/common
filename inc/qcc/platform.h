@@ -30,6 +30,10 @@
 #include <qcc/windows/platform_types.h>
 #include <qcc/windows/unicode.h>
 #include <qcc/windows/mapping.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/platform_types.h>
+#include <qcc/winrt/unicode.h>
+#include <qcc/winrt/mapping.h>
 #else
 #error No OS GROUP defined.
 #endif

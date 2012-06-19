@@ -108,6 +108,13 @@ struct less<qcc::StringMapKey>{
     inline bool operator()(const qcc::StringMapKey& a, const qcc::StringMapKey& b) const { return ::strcmp(a.c_str(), b.c_str()) < 0; }
 };
 
+<<<<<<< HEAD
+=======
+}
+
+namespace HASH_NAMESPACE {
+
+>>>>>>> 0ad4234... master plus squash win8-2, 2012-06-18
 /**
  * Functor to compute a hash for StringMapKey suitable for use with
  * std::unordered_map, std::unordered_set, std::hash_map, std::hash_set.

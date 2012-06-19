@@ -36,6 +36,7 @@
 
 #define QCC_MODULE  "NETWORK"
 
+#if !defined(QCC_OS_GROUP_WINRT)
 namespace qcc {
 
 /**
@@ -364,11 +365,14 @@ class ScatterGatherList {
 };
 
 }
+#endif
 
 #if defined(QCC_OS_GROUP_POSIX)
 #include <qcc/posix/ScatterGatherList.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/ScatterGatherList.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+// No scatter gather support on WinRT
 #else
 #error No OS GROUP defined.
 #endif

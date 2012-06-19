@@ -57,7 +57,7 @@ static const qcc::String OID_CN              = "2.5.4.3";
 static const qcc::String OID_ORG             = "2.5.4.10";
 
 
-static bool RSA_Init()
+bool Crypto_RSA::RSA_Init()
 {
     if (!rsaHandle) {
         if (BCryptOpenAlgorithmProvider(&rsaHandle, BCRYPT_RSA_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0) < 0) {
@@ -624,7 +624,7 @@ QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, const qcc::String& p
 
         // Encode the private key components in PKCS#8 order
         qcc::String pk;
-        status = Crypto_ASN1::Encode(pk, "(illllllll)", 0, &n, &e, &d, &p, &q, &e1, &e1, &c);
+        status = Crypto_ASN1::Encode(pk, "(illllllll)", 0, &n, &e, &d, &p, &q, &e1, &e2, &c);
 
         // Clear out secret stuff we no longer need
         p.secure_clear();
@@ -873,7 +873,7 @@ QStatus Crypto_RSA::Verify(const uint8_t* data, size_t len, const uint8_t* signa
     return VerifyDigest(digest, Crypto_SHA1::DIGEST_SIZE, signature, sigLen);
 }
 
-Crypto_RSA::Crypto_RSA() : size(0), cert(NULL), key(NULL)
+Crypto_RSA::Crypto_RSA() : size(0), cert(NULL), key(NULL), certContext(NULL)
 {
 }
 

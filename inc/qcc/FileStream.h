@@ -28,6 +28,8 @@
 #include <qcc/posix/FileStream.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/FileStream.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/FileStream.h>
 #else
 #error No OS GROUP defined.
 #endif

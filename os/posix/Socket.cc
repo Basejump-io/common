@@ -52,6 +52,7 @@
 namespace qcc {
 
 const SocketFd INVALID_SOCKET_FD = -1;
+const int MAX_LISTEN_CONNECTIONS = SOMAXCONN;
 
 #if defined(QCC_OS_DARWIN)
 #define MSG_NOSIGNAL 0
@@ -143,7 +144,9 @@ static QStatus GetSockAddr(const sockaddr_storage* addrBuf, socklen_t addrSize,
          * Inquisition or the interface.
          */
         char* p = strchr(hostname, '%');
-        if (p) *p = 0;
+        if (p) {
+            *p = '\0';
+        }
         addr = IPAddress(hostname);
         port = atoi(servInfo);
     }

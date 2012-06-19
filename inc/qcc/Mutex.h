@@ -30,6 +30,8 @@
 #include <qcc/posix/Mutex.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/Mutex.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/Mutex.h>
 #else
 #error No OS GROUP defined.
 #endif

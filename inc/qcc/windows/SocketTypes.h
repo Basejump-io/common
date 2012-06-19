@@ -78,20 +78,6 @@ struct MsgHdr {
     DWORD flags;            /**< Flags on received message. */
 };
 
-
-#define INET_NTOP qcc::InetNtoP
-#define INET_PTON qcc::InetPtoN
-
-/**
- * Windows versions prior to Vista don't provide this API.
- */
-const char* InetNtoP(int af, const void* src, char* dst, socklen_t size);
-
-/**
- * Windows versions prior to Vista don't provide this API.
- */
-int InetPtoN(int af, const char* src, void* dst);
-
 }
 
 #endif

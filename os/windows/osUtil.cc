@@ -29,8 +29,11 @@
 #define SECURITY_WIN32
 #include <security.h>
 #include <secext.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 
 #include <qcc/Util.h>
+#include <qcc/IPAddress.h>
 #include <qcc/String.h>
 #include <qcc/Crypto.h>
 #include <qcc/Debug.h>
@@ -124,4 +127,42 @@ QStatus qcc::Exec(const char* exec, const ExecArgs& args, const qcc::Environ& en
 QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, const qcc::Environ& envs)
 {
     return ER_NOT_IMPLEMENTED;
+}
+
+QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSize, size_t& addrLen)
+{
+    QStatus status = ER_BAD_HOSTNAME;
+
+    while (true) {
+        if (qcc::IPAddress::IPv6_SIZE != addrSize) {
+            status = ER_BAD_HOSTNAME;
+            break;
+        }
+
+        struct addrinfo* info;
+        if (0 == getaddrinfo(hostname.c_str(), NULL, NULL, &info)) {
+            if (info->ai_family == AF_INET6) {
+                struct sockaddr_in6* sa = (struct sockaddr_in6*) info->ai_addr;
+                memcpy((void*)addr, &sa->sin6_addr, qcc::IPAddress::IPv6_SIZE);
+                addrSize = qcc::IPAddress::IPv6_SIZE;
+                status = ER_OK;
+            } else if (info->ai_family == AF_INET) {
+                struct sockaddr_in* sa = (struct sockaddr_in*) info->ai_addr;
+                memcpy(&addr[qcc::IPAddress::IPv6_SIZE - qcc::IPAddress::IPv4_SIZE],
+                       &sa->sin_addr,
+                       qcc::IPAddress::IPv4_SIZE);
+                addrSize = qcc::IPAddress::IPv4_SIZE;
+                status = ER_OK;
+            } else {
+                status = ER_BAD_HOSTNAME;
+                break;
+            }
+        } else {
+            status = ER_BAD_HOSTNAME;
+            break;
+        }
+
+        break;
+    }
+    return status;
 }

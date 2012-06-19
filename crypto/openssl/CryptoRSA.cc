@@ -106,6 +106,11 @@ static int passphrase_cb(char* buf, int size, int rwflag, void* u)
     return size;
 }
 
+bool Crypto_RSA::RSA_Init()
+{
+    return true;
+}
+
 void Crypto_RSA::Generate(uint32_t keyLen)
 {
     BIGNUM* bn = BN_new();
@@ -480,7 +485,7 @@ QStatus Crypto_RSA::VerifyDigest(const uint8_t* digest, size_t digLen, const uin
     return status;
 }
 
-Crypto_RSA::Crypto_RSA() : size(0), cert(NULL), key(NULL)
+Crypto_RSA::Crypto_RSA() : size(0), cert(NULL), key(NULL), certContext(NULL)
 {
 #ifndef NDEBUG
     ERR_load_crypto_strings();

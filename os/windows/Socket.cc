@@ -51,6 +51,7 @@
 namespace qcc {
 
 const SocketFd INVALID_SOCKET_FD = INVALID_SOCKET;
+const int MAX_LISTEN_CONNECTIONS = SOMAXCONN;
 
 /*
  * Called before any operation that might be called before winsock has been started.
@@ -126,6 +127,16 @@ static QStatus GetSockAddr(const SOCKADDR_STORAGE* addrBuf, socklen_t addrSize,
         status = ER_OS_ERROR;
         QCC_LogError(status, ("GetSockAddr: %s", StrError().c_str()));
     } else {
+        /*
+         * In the case of IPv6, the hostname will have the interface number
+         * tacked on the end, as in "fe80::20c:29ff:fe7b:6f10%1".  We
+         * need to chop that off since nobody expects either the Spanish
+         * Inquisition or the interface.
+         */
+        char* p = strchr(hostname, '%');
+        if (p) {
+            *p = '\0';
+        }
         addr = IPAddress(hostname);
         port = atoi(servInfo);
     }
@@ -1346,5 +1357,4 @@ QStatus SetBroadcast(SocketFd sockfd, bool broadcast)
     }
     return status;
 }
-
 }   /* namespace */

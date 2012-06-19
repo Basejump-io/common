@@ -217,6 +217,7 @@ QStatus GetLocalAddress(SocketFd sockfd, IPAddress& addr, uint16_t& port);
 QStatus SendTo(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
                const void* buf, size_t len, size_t& sent);
 
+#if !defined(QCC_OS_GROUP_WINRT)
 /**
  * Send a collection of buffers from a scatter-gather list to a remote host on a socket.
  *
@@ -241,6 +242,7 @@ QStatus SendSG(SocketFd sockfd, const ScatterGatherList& sg, size_t& sent);
  */
 QStatus SendToSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
                  const ScatterGatherList& sg, size_t& sent);
+#endif
 
 /**
  * Receive a buffer of data from a remote host on a socket.
@@ -270,6 +272,7 @@ QStatus Recv(SocketFd sockfd, void* buf, size_t len, size_t& received);
 QStatus RecvFrom(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
                  void* buf, size_t len, size_t& received);
 
+#if !defined(QCC_OS_GROUP_WINRT)
 /**
  * Receive data into a collection of buffers in a scatter-gather list from a
  * host on a socket.
@@ -299,6 +302,7 @@ QStatus RecvSG(SocketFd sockfd, ScatterGatherList& sg, size_t& received);
 QStatus RecvFromSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
                    ScatterGatherList& sg, size_t& received);
 
+#endif
 
 /**
  * Receive a buffer of data from a remote host on a socket and any file descriptors accompanying the
@@ -405,7 +409,7 @@ QStatus SetReusePort(SocketFd sockfd, bool reuse);
  * @param interface A string containing the interface name (e.g., "wlan0") on
  *     which to join the group.
  */
-QStatus JoinMulticastGroup(SocketFd sockfd, AddressFamily family, String multicastGroup, String interface);
+QStatus JoinMulticastGroup(SocketFd sockfd, AddressFamily family, String multicastGroup, String iface);
 
 /**
  * Ask a UDP-based socket to join the specified multicast group.

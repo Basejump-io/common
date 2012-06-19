@@ -172,6 +172,28 @@ class IPAddress {
     static qcc::String IPv6ToString(const uint8_t addrBuf[]);
 
     /**
+     * Helper function to convert an IPv6 address string to its byte packed equivalent.
+     *
+     * @param address           IPv6 string to convert
+     * @param addrBuf           Buffer to store the packed bytes from conversion
+     * @param addrBufSize   Length of the addrBuf buffer. This must be 16.
+     *
+     * @return  ER_OK iff conversion was successful.
+     */
+    static QStatus StringToIPv6(qcc::String address, uint8_t addrBuf[], size_t addrBufSize);
+
+    /**
+     * Helper function to convert an IPv6 address string to its byte packed equivalent.
+     *
+     * @param address           IPv4 string to convert
+     * @param addrBuf           Buffer to store the packed bytes from conversion
+     * @param addrBufSize   Length of the addrBuf buffer. This must be 4.
+     *
+     * @return  ER_OK iff conversion was successful.
+     */
+    static QStatus StringToIPv4(qcc::String address, uint8_t addrBuf[], size_t addrBufSize);
+
+    /**
      * Renders the IPv4 address in binary format into a buffer.
      *
      * @param addrBuf       An array for storing the IPv4 address.

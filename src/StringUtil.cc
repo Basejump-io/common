@@ -57,21 +57,6 @@ qcc::String qcc::BytesToHexString(const uint8_t* bytes, size_t len, bool toLower
 }
 
 
-static uint8_t CharToU8(const char c)
-{
-    if (c >= '0' && c <= '9') {
-        return (uint8_t)(c - '0');
-    }
-    if (c >= 'A' && c <= 'F') {
-        return (uint8_t)(10 + c - 'A');
-    }
-    if (c >= 'a' && c <= 'f') {
-        return (uint8_t)(10 + c - 'a');
-    }
-    return 255;
-}
-
-
 size_t qcc::HexStringToBytes(const qcc::String& hex, uint8_t* outBytes, size_t len, char separator)
 {
     if (separator) {
@@ -497,4 +482,56 @@ qcc::String qcc::StringVectorToString(const vector<qcc::String>* list, const cha
         }
     }
     return out;
+}
+
+bool qcc::IsDecimalDigit(char c)
+{
+    if (c >= '0' && c <= '9') {
+        return true;
+    }
+    return false;
+}
+
+bool qcc::IsOctalDigit(char c)
+{
+    if (c >= '0' && c <= '7') {
+        return true;
+    }
+    return false;
+}
+
+bool qcc::IsHexDigit(char c)
+{
+    if (c >= '0' && c <= '9') {
+        return true;
+    } else if (c >= 'a' && c <= 'f') {
+        return true;
+    } else if (c >= 'A' && c <= 'F') {
+        return true;
+    }
+    return false;
+}
+
+uint8_t qcc::CharToU8(const char c)
+{
+    if (c >= '0' && c <= '9') {
+        return (uint8_t)(c - '0');
+    }
+    if (c >= 'A' && c <= 'F') {
+        return (uint8_t)(10 + c - 'A');
+    }
+    if (c >= 'a' && c <= 'f') {
+        return (uint8_t)(10 + c - 'a');
+    }
+    return 255;
+}
+
+char qcc::U8ToChar(uint8_t d)
+{
+    if (d >= 0 && d <= 9) {
+        return (char)(d + '0');
+    } else if (d >= 0xa && d <= 0xf) {
+        return (char)(d - 0xa + 'a');
+    }
+    return '\0';
 }

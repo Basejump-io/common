@@ -84,9 +84,6 @@ struct MsgHdr {
     int flags;              /**< Flags on received message. */
 };
 
-#define INET_NTOP inet_ntop
-#define INET_PTON inet_pton
-
 }
 
 #endif

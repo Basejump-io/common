@@ -290,6 +290,13 @@ QStatus Crypto_ASN1::EncodeV(const char*& syntax, qcc::String& asn, va_list* arg
             asn += *val;
             break;
 
+        case 't':
+            val = va_arg(argp, qcc::String*);
+            asn.push_back((char)ASN_UTC_TIME);
+            EncodeLen(asn, val->size());
+            asn += *val;
+            break;
+
         case 'p':
             val = va_arg(argp, qcc::String*);
             asn.push_back((char)ASN_PRINTABLE);
@@ -301,6 +308,13 @@ QStatus Crypto_ASN1::EncodeV(const char*& syntax, qcc::String& asn, va_list* arg
             val = va_arg(argp, qcc::String*);
             asn.push_back((char)ASN_UTF8);
             EncodeLen(asn, val->size());
+            asn += *val;
+            break;
+
+        // This is a raw string inserted into the ASN.1 output.
+        // It will only decode correctly if the argument is pre-encoded.
+        case 'R':
+            val = va_arg(argp, qcc::String*);
             asn += *val;
             break;
 
@@ -423,6 +437,20 @@ QStatus Crypto_ASN1::DecodeV(const char*& syntax, const uint8_t* asn, size_t asn
             }
             continue;
 
+        case '[':
+            if (!DecodeLen(asn, eod, len)) {
+                status = ER_FAIL;
+            } else {
+                status = DecodeV(syntax, asn, len, &argp);
+                if (status == ER_OK) {
+                    asn += len;
+                }
+                if (*syntax++ != ']') {
+                    status = ER_FAIL;
+                }
+            }
+            continue;
+
         case 'a':
             if ((tag != ASN_ASCII) || !DecodeLen(asn, eod, len)) {
                 status = ER_FAIL;
@@ -471,6 +499,19 @@ QStatus Crypto_ASN1::DecodeV(const char*& syntax, const uint8_t* asn, size_t asn
             }
             asn += len;
             continue;
+
+        case '.':
+        {
+            // consume the rest of the items
+            const uint8_t* start = asn - 1;
+            len = eod - start;
+            val = va_arg(argp, qcc::String*);
+            if (val) {
+                val->assign((char*)start, len);
+            }
+            asn += len; // move asn forward
+            continue;
+        }
 
         default:
             status = ER_BAD_ARG_1;

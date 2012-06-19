@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -30,12 +30,23 @@
 #include <qcc/Mutex.h>
 #include <qcc/Thread.h>
 #include <qcc/time.h>
+#include <qcc/ManagedObj.h>
+
+#if defined(QCC_OS_GROUP_POSIX)
+#include <qcc/posix/OSTimer.h>
+#elif defined(QCC_OS_GROUP_WINDOWS)
+#include <qcc/windows/OSTimer.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/OSTimer.h>
+#else
+#error No OS GROUP defined.
+#endif
 
 namespace qcc {
 
 /** @internal Forward declaration */
 class Timer;
-class Alarm;
+class _Alarm;
 class TimerThread;
 
 /**
@@ -62,7 +73,7 @@ class AlarmListener {
     virtual void AlarmTriggered(const Alarm& alarm, QStatus reason) = 0;
 };
 
-class Alarm {
+class _Alarm : OSAlarm {
     friend class Timer;
     friend class TimerThread;
 
@@ -74,65 +85,63 @@ class Alarm {
     /**
      * Create a default (unusable) alarm.
      */
-    Alarm() : listener(NULL), periodMs(0), context(NULL), id(IncrementAndFetch(&nextId)) { }
+    _Alarm();
 
     /**
      * Create an alarm that can be added to a Timer.
      *
      * @param absoluteTime    Alarm time.
      * @param listener        Object to call when alarm is triggered.
-     * @param periodMs        Periodicity of alarm in ms or 0 for no repeat.
      * @param context         Opaque context passed to listener callback.
+     * @param periodMs        Periodicity of alarm in ms or 0 for no repeat.
      */
-    Alarm(Timespec absoluteTime, AlarmListener* listener, uint32_t periodMs = 0, void* context = NULL)
-        : alarmTime(absoluteTime), listener(listener), periodMs(periodMs), context(context), id(IncrementAndFetch(&nextId)) { }
+    _Alarm(Timespec absoluteTime, AlarmListener* listener, void* context = NULL, uint32_t periodMs = 0);
 
     /**
      * Create an alarm that can be added to a Timer.
      *
      * @param relativeTimed   Number of ms from now that alarm will trigger.
      * @param listener        Object to call when alarm is triggered.
+     * @param context         Opaque context passed to listener callback.
      * @param periodMs        Periodicity of alarm in ms or 0 for no repeat.
+     */
+    _Alarm(uint32_t relativeTime, AlarmListener* listener, void* context = NULL, uint32_t periodMs = 0);
+
+    /**
+     * Create an alarm that immediately calls a listener.
+     *
+     * @param listener        Object to call
      * @param context         Opaque context passed to listener callback.
      */
-    Alarm(uint32_t relativeTime, AlarmListener* listener, uint32_t periodMs = 0, void* context = NULL)
-        : alarmTime(), listener(listener), periodMs(periodMs), context(context), id(IncrementAndFetch(&nextId))
-    {
-        if (relativeTime == WAIT_FOREVER) {
-            alarmTime = END_OF_TIME;
-        } else {
-            GetTimeNow(&alarmTime);
-            alarmTime += relativeTime;
-        }
-    }
+    _Alarm(AlarmListener* listener, void* context = NULL);
 
     /**
      * Get context associated with alarm.
      *
      * @return User defined context.
      */
-    void* GetContext(void) const { return context; }
+    void* GetContext(void) const;
+
+    /**
+     * Set context associated with alarm.
+     *
+     */
+    void SetContext(void* c) const;
 
     /**
      * Get the absolute alarmTime in milliseconds
      */
-    uint64_t GetAlarmTime() const { return alarmTime.GetAbsoluteMillis(); }
+    uint64_t GetAlarmTime() const;
 
     /**
      * Return true if this Alarm's time is less than the passed in alarm's time
      */
-    bool operator<(const Alarm& other) const
-    {
-        return (alarmTime < other.alarmTime) || ((alarmTime == other.alarmTime) && (id < other.id));
-    }
+    bool operator<(const _Alarm& other) const;
 
     /**
      * Return true if two alarm instances are equal.
      */
-    bool operator==(const Alarm& other) const
-    {
-        return (alarmTime == other.alarmTime) && (id == other.id);
-    }
+    bool operator==(const _Alarm& other) const;
 
   private:
 
@@ -144,8 +153,12 @@ class Alarm {
     int32_t id;
 };
 
+/**
+ * Alarm is a reference counted (managed) version of _Alarm
+ */
+typedef qcc::ManagedObj<_Alarm> Alarm;
 
-class Timer : public ThreadListener {
+class Timer : OSTimer, public ThreadListener {
     friend class TimerThread;
 
   public:
@@ -218,6 +231,7 @@ class Timer : public ThreadListener {
      *
      * @param listener  The specific listener.
      * @param alarm     Alarm that was removed
+     * @return  true iff the given alarm was found and removed.
      */
     bool RemoveAlarm(const AlarmListener& listener, Alarm& alarm);
 
@@ -281,7 +295,13 @@ class Timer : public ThreadListener {
      */
     void ThreadExit(qcc::Thread* thread);
 
-  private:
+    /**
+     * Callback used for asyncronous implementations of timer
+     * For internal use only.
+     */
+    void TimerCallback(void* context);
+
+  protected:
 
     Mutex lock;
     std::multiset<Alarm, std::less<Alarm> >  alarms;
