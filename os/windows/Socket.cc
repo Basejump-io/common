@@ -232,7 +232,7 @@ QStatus Bind(SocketFd sockfd, const IPAddress& localAddr, uint16_t localPort)
     ret = bind(static_cast<SOCKET>(sockfd), reinterpret_cast<struct sockaddr*>(&addr), addrLen);
     if (ret == SOCKET_ERROR) {
         status = (WSAGetLastError() == WSAEADDRNOTAVAIL) ? ER_SOCKET_BIND_ERROR : ER_OS_ERROR;
-        QCC_LogError(status, ("Binding to %s %d: %s", localAddr.ToString().c_str(), localPort, StrError().c_str()));
+        QCC_DbgPrintf(("Binding to %s %d failed: %s", localAddr.ToString().c_str(), localPort, StrError().c_str()));
     }
     return status;
 }
@@ -329,6 +329,16 @@ QStatus Shutdown(SocketFd sockfd)
     ret = shutdown(static_cast<SOCKET>(sockfd), SD_BOTH);
     if (ret == SOCKET_ERROR) {
         status = ER_OS_ERROR;
+    } else {
+        /*
+         * The winsock documentation recommends flushing data from the IP transport
+         * by receiving until the recv returns 0 or fails.
+         */
+        int ret;
+        do {
+            char buf[64];
+            ret = recv(static_cast<SOCKET>(sockfd), buf, sizeof(buf), 0);
+        } while (ret > 0);
     }
     return status;
 }
@@ -1064,8 +1074,8 @@ QStatus SetReuseAddress(SocketFd sockfd, bool reuse)
     QStatus status = ER_OK;
     /*
      * On Windows SO_REUSEADDR allows an application to bind an steal a port that is already in use.
-     * This is different than the posix behavior. Setting SO_EXCLUSIVEADDRUSE establishes the
-     * required behavior.
+     * This is different than the posix behavior and definitely not the expected behavior. Setting
+     * SO_EXCLUSIVEADDRUSE prevents other applications from stealing the port from underneath us.
      */
     if (status == ER_OK) {
         int arg = reuse ? 1 : -0;
@@ -1077,28 +1087,14 @@ QStatus SetReuseAddress(SocketFd sockfd, bool reuse)
     return status;
 }
 
-/*
- * Some systems do not define SO_REUSEPORT (which is a BSD-ism from the first
- * days of multicast support).  In this case they special case SO_REUSEADDR in
- * the presence of multicast addresses to perform the same function, which is to
- * allow multiple processes to bind to the same multicast address/port.  In this
- * case, SO_REUSEADDR provides the equivalent functionality of SO_REUSEPORT, so
- * it is quite safe to substitute them.  Interestingly, Darwin which is actually
- * BSD-derived does not define SO_REUSEPORT, but Linux which is supposedly not
- * BSD does.  Go figure.
- */
-#ifndef SO_REUSEPORT
-#define SO_REUSEPORT SO_REUSEADDR
-#endif
-
 QStatus SetReusePort(SocketFd sockfd, bool reuse)
 {
     QStatus status = ER_OK;
     int arg = reuse ? 1 : -0;
-    int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&arg, sizeof(arg));
+    int r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&arg, sizeof(arg));
     if (r != 0) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Setting SO_REUSEPORT failed: (%d) %s", GetLastError(), GetLastErrorString().c_str()));
+        QCC_LogError(status, ("Setting SO_REUSEADDR failed: (%d) %s", GetLastError(), GetLastErrorString().c_str()));
     }
     return status;
 }
