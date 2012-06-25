@@ -61,8 +61,10 @@ static const char Prime48[] = "82F9F1CA3DF619271030FA6E907318F6F4D925EFCA114736A
 static const char Prime50[] = "BC5A136B0D466A89DEB3128C9EC165E3185E1CD887944721F7ED50DC9E6382AF7B6CA3792ADF94317FE8866D35D55B3AE41D";
 static const char Prime60[] = "35A1CA5BF199C4358281E5DE37F564991DBA8844C0D32A069A16C447B0F5CE750705A33E324DC7E01FA9110CE656CF5A298BCC3E77B28880319A8B3F";
 static const char Prime62[] = "8E82D6EE289D224EBCA3FD35151D04A2446E33A715391611CC659AEF0E5E799B97650ABC4BFEA43564ED773A14E08FBEA4E8C4BD1904B6E3153CE24C8745";
-
-static const char* Primes[] = {
+/*
+ * Primes[] is currently not used
+ */
+/*static const char* Primes[] = {
     Prime60,
     Prime50,
     Prime48,
@@ -75,7 +77,7 @@ static const char* Primes[] = {
     Prime32,
     Prime30,
     Prime28
-};
+   };*/
 
 static const uint8_t zeroes[256] = { 0 };
 //}
@@ -84,8 +86,8 @@ TEST(BigNumTest, bit_len) {
     BigNum bn3 = 1;
     BigNum bn4;
 
-    EXPECT_EQ(1, bn3.bit_len());
-    EXPECT_EQ(0, bn4.bit_len());
+    EXPECT_EQ(static_cast<size_t>(1), bn3.bit_len());
+    EXPECT_EQ(static_cast<size_t>(0), bn4.bit_len());
 }
 
 TEST(BigNumTest, SetGetBytes) {
@@ -122,11 +124,11 @@ TEST(BigNumTest, BasicArithmetic) {
     bn1.set_hex("0x10000000000000000");
     bn2.set_hex("0x10000000000000001");
 
-    ASSERT_EQ(65, bn1.bit_len());
+    ASSERT_EQ(static_cast<size_t>(65), bn1.bit_len());
     ASSERT_TRUE(bn1.test_bit(64));
     ASSERT_FALSE(bn1.test_bit(63));
 
-    ASSERT_EQ(65, bn2.bit_len());
+    ASSERT_EQ(static_cast<size_t>(65), bn2.bit_len());
     ASSERT_TRUE(bn2.test_bit(64));
     ASSERT_TRUE(bn2.test_bit(0));
 

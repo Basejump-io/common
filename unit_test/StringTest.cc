@@ -30,9 +30,9 @@ TEST(StringTest, find_first_of) {
     qcc::String s(testStr);
 
     /* Test find_first_of */
-    ASSERT_EQ(3, s.find_first_of('d'));
-    ASSERT_EQ(3, s.find_first_of('d', 3));
-    ASSERT_EQ(3, s.find_first_of("owed", 3));
+    ASSERT_EQ(static_cast<size_t>(3), s.find_first_of('d'));
+    ASSERT_EQ(static_cast<size_t>(3), s.find_first_of('d', 3));
+    ASSERT_EQ(static_cast<size_t>(3), s.find_first_of("owed", 3));
     ASSERT_EQ(+qcc::String::npos, s.find_first_of('d', 8));
 }
 
@@ -41,8 +41,8 @@ TEST(StringTest, find_last_of) {
     qcc::String s(testStr);
 
     /* Test find_last_of */
-    ASSERT_EQ(7, s.find_last_of('d'));
-    ASSERT_EQ(3, s.find_last_of('d', 7));
+    ASSERT_EQ(static_cast<size_t>(7), s.find_last_of('d'));
+    ASSERT_EQ(static_cast<size_t>(3), s.find_last_of('d', 7));
     /*
      * unusual use of the unary operator '+' makes gcc compiler see qcc::String::npos as a rvalue
      * this prevents an 'undefined reference' compiler error when building with gcc.
@@ -56,8 +56,8 @@ TEST(StringTest, find_first_not_of) {
 
     /* Test find_*_not_of */
     qcc::String ss = "xyxyxyx" + s + "xy";
-    ASSERT_EQ(7, ss.find_first_not_of("xy"));
-    ASSERT_EQ(17, ss.find_last_not_of("xy"));
+    ASSERT_EQ(static_cast<size_t>(7), ss.find_first_not_of("xy"));
+    ASSERT_EQ(static_cast<size_t>(17), ss.find_last_not_of("xy"));
 }
 
 TEST(StringTest, empty) {
@@ -68,7 +68,7 @@ TEST(StringTest, empty) {
     ASSERT_FALSE(s.empty());
     s.clear();
     ASSERT_TRUE(s.empty());
-    ASSERT_EQ(0, s.size());
+    ASSERT_EQ(static_cast<size_t>(0), s.size());
 }
 
 TEST(StringTest, operator_equals) {
@@ -127,14 +127,14 @@ TEST(StringTest, erase) {
 
 TEST(StringTest, resize) {
     qcc::String pre("abcdefghijk");
-    ASSERT_EQ(11, pre.size());
+    ASSERT_EQ(static_cast<size_t>(11), pre.size());
     /* Test resize */
     pre.resize(4, 'x');
-    ASSERT_EQ(4, pre.size());
+    ASSERT_EQ(static_cast<size_t>(4), pre.size());
     ASSERT_STREQ("abcd", pre.c_str());
 
     pre.resize(8, 'x');
-    ASSERT_EQ(8, pre.size());
+    ASSERT_EQ(static_cast<size_t>(8), pre.size());
     ASSERT_STREQ("abcdxxxx", pre.c_str());
 }
 
@@ -245,7 +245,7 @@ TEST(StringTest, plusEqualsOperator) {
 
     /* Test resize */
     s.erase(3, s.size() - 6);
-    ASSERT_EQ(6, s.size());
+    ASSERT_EQ(static_cast<size_t>(6), s.size());
     ASSERT_TRUE(s == "foofoo");
     s.resize(s.size() + 3, 'x');
     ASSERT_TRUE(s == "foofooxxx");
