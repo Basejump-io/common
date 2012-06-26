@@ -124,7 +124,7 @@ bool _Alarm::operator==(const _Alarm& other) const
 }
 
 Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency)
-    : expireOnExit(expireOnExit), concurency(concurency), timerThreads(concurency), isRunning(false), controllerIdx(0), OSTimer(this)
+    : OSTimer(this), expireOnExit(expireOnExit), concurency(concurency), timerThreads(concurency), isRunning(false), controllerIdx(0)
 {
     String nameStr = name;
     for (uint32_t i = 0; i < concurency; ++i) {
