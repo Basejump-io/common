@@ -113,7 +113,7 @@ class Sink {
     virtual ~Sink() { }
 
     /**
-     * Push zero or more bytes into the sink.
+     * Push zero or more bytes into the sink with infinite ttl.
      *
      * @param buf          Buffer to store pulled bytes
      * @param numBytes     Number of bytes from buf to send to sink.
@@ -121,6 +121,17 @@ class Sink {
      * @return   ER_OK if successful.
      */
     virtual QStatus PushBytes(const void* buf, size_t numBytes, size_t& numSent) { return ER_NOT_IMPLEMENTED; }
+
+    /**
+     * Push zero or more bytes into the sink.
+     *
+     * @param buf          Buffer to store pulled bytes
+     * @param numBytes     Number of bytes from buf to send to sink.
+     * @param numSent      Number of bytes actually consumed by sink.
+     * @param ttl          Time-to-live for message or 0 for infinite.
+     * @return   ER_OK if successful.
+     */
+    virtual QStatus PushBytes(const void* buf, size_t numBytes, size_t& numSent, uint32_t ttl) { return PushBytes(buf, numBytes, numSent); }
 
     /**
      * Push one or more byte accompanied by one or more file/socket descriptors to a sink.
