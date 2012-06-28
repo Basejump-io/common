@@ -91,7 +91,10 @@ qcc::OSType qcc::GetSystemOSType(void)
     return qcc::ANDROID_OS;
 #elif defined (QCC_OS_LINUX)
     return qcc::LINUX_OS;
+#elif defined (QCC_OS_DARWIN)
+    return qcc::DARWIN_OS;
 #endif
+    return qcc::NONE;
 }
 
 QStatus qcc::GetDirListing(const char* path, DirListing& listing)

@@ -355,7 +355,7 @@ size_t BigNum::get_bytes(uint8_t* buffer, size_t len, bool pad) const
     for (size_t i = 0; i < length; ++i) {
         uint32_t d = *digit--;
         for (size_t j = 0; j < 4; ++j) {
-            if (nZ |= (*p = (uint8_t)(d >> 24))) {
+            if ((nZ |= (*p = (uint8_t)(d >> 24)))) {
                 ++p;
                 --len;
             }
