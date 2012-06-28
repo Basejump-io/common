@@ -153,11 +153,12 @@ class Timer : public ThreadListener {
     /**
      * Constructor
      *
-     * @param name          Name for the thread.
-     * @param expireOnExit  If true call all pending alarms when this thread exits.
-     * @param concurency    Dispatch up to this number of alarms concurently (using multiple threads).
+     * @param name               Name for the thread.
+     * @param expireOnExit       If true call all pending alarms when this thread exits.
+     * @param concurency         Dispatch up to this number of alarms concurently (using multiple threads).
+     * @param prevenReentrancy   Prevent re-entrant call of AlarmTriggered.
      */
-    Timer(const char* name = "timer", bool expireOnExit = false, uint32_t concurency = 1);
+    Timer(const char* name = "timer", bool expireOnExit = false, uint32_t concurency = 1, bool preventReentrancy = false);
 
     /**
      * Destructor.
@@ -253,6 +254,13 @@ class Timer : public ThreadListener {
     bool HasAlarm(const Alarm& alarm);
 
     /**
+     * Allow the currently executing AlarmTriggered callback to be reentered if another alarm is triggered.
+     * Calling this method has no effect if timer was created with preventReentrancy == false;
+     * Calling this method can only be made from within the AlarmTriggered timer callback.
+     */
+    void EnableReentrancy();
+
+    /**
      * TimerThread ThreadExit callback.
      * For internal use only.
      */
@@ -269,6 +277,8 @@ class Timer : public ThreadListener {
     bool isRunning;
     int32_t controllerIdx;
     qcc::Timespec yieldControllerTime;
+    bool preventReentrancy;
+    Mutex reentrancyLock;
 };
 
 }

@@ -49,12 +49,16 @@ class TimerThread : public Thread {
         STOPPING    /**< Thread is stopping due to extended idle time. Not ready for Start or Alert */
     } state;
 
-    TimerThread(const String& name, int index, Timer* timer)
-        : Thread(name),
+    TimerThread(const String& name, int index, Timer* timer) :
+        Thread(name),
         state(STOPPED),
+        hasTimerLock(false),
         index(index),
         timer(timer),
-        currentAlarm(NULL) { }
+        currentAlarm(NULL)
+    { }
+
+    bool hasTimerLock;
 
     QStatus Start(void* arg, ThreadListener* listener);
 
@@ -73,8 +77,13 @@ class TimerThread : public Thread {
 
 }
 
-Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency)
-    : expireOnExit(expireOnExit), concurency(concurency), timerThreads(concurency), isRunning(false), controllerIdx(0)
+Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy) :
+    expireOnExit(expireOnExit),
+    concurency(concurency),
+    timerThreads(concurency),
+    isRunning(false),
+    controllerIdx(0),
+    preventReentrancy(preventReentrancy)
 {
     String nameStr = name;
     for (uint32_t i = 0; i < concurency; ++i) {
@@ -478,8 +487,15 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
 
                 stopEvent.ResetEvent();
                 timer->lock.Unlock();
+                hasTimerLock = timer->preventReentrancy;
+                if (hasTimerLock) {
+                    timer->reentrancyLock.Lock();
+                }
                 QCC_DbgPrintf(("TimerThread::Run(): ******** AlarmTriggered()"));
                 (top.listener->AlarmTriggered)(top, ER_OK);
+                if (hasTimerLock) {
+                    timer->reentrancyLock.Unlock();
+                }
                 timer->lock.Lock();
                 currentAlarm = NULL;
 
@@ -547,11 +563,29 @@ void Timer::ThreadExit(Thread* thread)
             Alarm alarm = *it;
             alarms.erase(it);
             lock.Unlock();
+            tt->hasTimerLock = preventReentrancy;
+            if (tt->hasTimerLock) {
+                reentrancyLock.Lock();
+            }
             alarm.listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
+            if (tt->hasTimerLock) {
+                reentrancyLock.Unlock();
+            }
             lock.Lock();
         }
     }
     tt->state = TimerThread::STOPPED;
     lock.Unlock();
     tt->Join();
+}
+
+void Timer::EnableReentrancy()
+{
+    TimerThread* tt = static_cast<TimerThread*>(Thread::GetThread());
+    if (tt) {
+        if (tt->hasTimerLock) {
+            tt->hasTimerLock = false;
+            reentrancyLock.Unlock();
+        }
+    }
 }
