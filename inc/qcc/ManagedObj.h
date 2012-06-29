@@ -389,6 +389,11 @@ class ManagedObj {
             free(context);
         }
     }
+
+    /**
+     * Get the reference count
+     */
+    int32_t GetRefCount() const { return context->refCount; }
 };
 
 
