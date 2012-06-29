@@ -155,6 +155,7 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
             /* Verify the certificate */
             if (SSL_get_verify_result(ssl) != X509_V_OK) {
                 status = ER_SSL_VERIFY;
+                QCC_LogError(ER_SSL_INIT, ("SslSocket::Connect(): SSL_get_verify_result: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
             }
         } else {
             QCC_LogError(ER_SSL_INIT, ("SslSocket::Connect(): BIO_do_connect: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
