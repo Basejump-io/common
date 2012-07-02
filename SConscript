@@ -108,11 +108,7 @@ scattergather_src = ['ScatterGatherList.cc']
 status_cpp0x_src = ['Status_CPP0x.cc']
 status_src = ['Status.cc']
 
-if env['OS_GROUP'] == 'winrt':
-    srcs = env.Glob('$OBJDIR/*.cc') + env.Glob('$OBJDIR/os/*.cc') + env.Glob('$OBJDIR/os/wrapper/src/*.cc') + env.Glob('$OBJDIR/crypto/*.cc')
-    env.Append(CPPPATH = [env.Dir('os/${OS_GROUP}/wrapper/inc')])
-else:
-    srcs = env.Glob('$OBJDIR/*.cc') + env.Glob('$OBJDIR/os/*.cc') + env.Glob('$OBJDIR/crypto/*.cc')
+srcs = env.Glob('$OBJDIR/*.cc') + env.Glob('$OBJDIR/os/*.cc') + env.Glob('$OBJDIR/crypto/*.cc')
     
 if env['OS_GROUP'] == 'winrt':
     srcs = [ f for f in srcs if basename(str(f)) not in scattergather_src ]

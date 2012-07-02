@@ -28,7 +28,7 @@
 
 #include <stdio.h>
 
-#include "Status.h"
+#include <Status.h>
 
 /** @internal DEBUG */
 #define QCC_MODULE "DEBUG"

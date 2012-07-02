@@ -23,7 +23,7 @@
 #pragma once
 
 #include <qcc/platform.h>
-#include "SocketTypes.h"
+#include <qcc/SocketTypes.h>
 
 namespace qcc {
 
