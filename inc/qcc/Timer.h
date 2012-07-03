@@ -261,6 +261,21 @@ class Timer : public ThreadListener {
     void EnableReentrancy();
 
     /**
+     * Check whether the current TimerThread is holding the lock
+     *
+     * @return true if the current thread is a timer thread that holds the reentrancy lock
+     */
+    bool ThreadHoldsLock() const;
+
+    /**
+     * Get the name of the Timer thread pool
+     *
+     * @return the name of the timer thread(s)
+     */
+    const qcc::String& GetName() const
+    { return nameStr; }
+
+    /**
      * TimerThread ThreadExit callback.
      * For internal use only.
      */
@@ -279,6 +294,7 @@ class Timer : public ThreadListener {
     qcc::Timespec yieldControllerTime;
     bool preventReentrancy;
     Mutex reentrancyLock;
+    qcc::String nameStr;
 };
 
 }

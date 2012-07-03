@@ -83,9 +83,9 @@ Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool prev
     timerThreads(concurency),
     isRunning(false),
     controllerIdx(0),
-    preventReentrancy(preventReentrancy)
+    preventReentrancy(preventReentrancy),
+    nameStr(name)
 {
-    String nameStr = name;
     for (uint32_t i = 0; i < concurency; ++i) {
         timerThreads[i] = new TimerThread(nameStr, i, this);
     }
@@ -581,11 +581,25 @@ void Timer::ThreadExit(Thread* thread)
 
 void Timer::EnableReentrancy()
 {
-    TimerThread* tt = static_cast<TimerThread*>(Thread::GetThread());
-    if (tt) {
+    Thread* thread = Thread::GetThread();
+    if (nameStr == thread->GetName()) {
+        TimerThread* tt = static_cast<TimerThread*>(thread);
         if (tt->hasTimerLock) {
             tt->hasTimerLock = false;
             reentrancyLock.Unlock();
         }
+    } else {
+        QCC_DbgPrintf(("Invalid call to Timer::EnableReentrancy from thread %s; only allowed from %s", Thread::GetThreadName(), nameStr.c_str()));
     }
+}
+
+bool Timer::ThreadHoldsLock() const
+{
+    Thread* thread = Thread::GetThread();
+    if (nameStr == thread->GetName()) {
+        TimerThread* tt = static_cast<TimerThread*>(thread);
+        return tt->hasTimerLock;
+    }
+
+    return false;
 }
