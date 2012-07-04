@@ -387,13 +387,14 @@ class ManagedObj {
             object->T::~T();
             context->ManagedCtx::~ManagedCtx();
             free(context);
+            context = NULL;
         }
     }
 
     /**
      * Get the reference count
      */
-    int32_t GetRefCount() const { return context->refCount; }
+    int32_t GetRefCount() const { return context ? context->refCount : 0; }
 };
 
 
