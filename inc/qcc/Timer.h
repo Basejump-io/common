@@ -287,7 +287,6 @@ class Timer : public ThreadListener {
     std::multiset<Alarm, std::less<Alarm> >  alarms;
     Alarm* currentAlarm;
     bool expireOnExit;
-    uint32_t concurency;
     std::vector<TimerThread*> timerThreads;
     bool isRunning;
     int32_t controllerIdx;

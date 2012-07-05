@@ -79,14 +79,13 @@ class TimerThread : public Thread {
 
 Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy) :
     expireOnExit(expireOnExit),
-    concurency(concurency),
     timerThreads(concurency),
     isRunning(false),
     controllerIdx(0),
     preventReentrancy(preventReentrancy),
     nameStr(name)
 {
-    for (uint32_t i = 0; i < concurency; ++i) {
+    for (uint32_t i = 0; i < timerThreads.size(); ++i) {
         timerThreads[i] = new TimerThread(nameStr, i, this);
     }
 }
@@ -95,7 +94,7 @@ Timer::~Timer()
 {
     Stop();
     Join();
-    for (uint32_t i = 0; i < concurency; ++i) {
+    for (uint32_t i = 0; i < timerThreads.size(); ++i) {
         delete timerThreads[i];
         timerThreads[i] = NULL;
     }
@@ -136,7 +135,9 @@ QStatus Timer::Stop()
     isRunning = false;
     lock.Unlock();
     for (size_t i = 0; i < timerThreads.size(); ++i) {
+        lock.Lock();
         QStatus tStatus = timerThreads[i]->Stop();
+        lock.Unlock();
         status = (status == ER_OK) ? tStatus : status;
     }
     return status;
@@ -200,7 +201,7 @@ bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
              * There might be a call in progress to the alarm that is being removed.
              * RemoveAlarm must not return until this alarm is finished.
              */
-            for (size_t i = 0; i < concurency; ++i) {
+            for (size_t i = 0; i < timerThreads.size(); ++i) {
                 if (timerThreads[i] == Thread::GetThread()) {
                     continue;
                 }
@@ -232,7 +233,7 @@ QStatus Timer::ReplaceAlarm(const Alarm& origAlarm, const Alarm& newAlarm, bool 
              * There might be a call in progress to origAlarm.
              * RemoveAlarm must not return until this alarm is finished.
              */
-            for (size_t i = 0; i < concurency; ++i) {
+            for (size_t i = 0; i < timerThreads.size(); ++i) {
                 if (timerThreads[i] == Thread::GetThread()) {
                     continue;
                 }
@@ -268,7 +269,7 @@ bool Timer::RemoveAlarm(const AlarmListener& listener, Alarm& alarm)
          * If we are, wait until the listener returns.
          */
         if (!removedOne) {
-            for (size_t i = 0; i < concurency; ++i) {
+            for (size_t i = 0; i < timerThreads.size(); ++i) {
                 if (timerThreads[i] == Thread::GetThread()) {
                     continue;
                 }
@@ -422,7 +423,7 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                     /*
                      * Look for an idle or stopped worker to execute alarm callback for us.
                      */
-                    for (size_t i = 0; i < timer->concurency; ++i) {
+                    for (size_t i = 0; i < timer->timerThreads.size(); ++i) {
                         if (i != static_cast<size_t>(index)) {
                             if (timer->timerThreads[i]->state == TimerThread::IDLE) {
                                 tt = timer->timerThreads[i];
