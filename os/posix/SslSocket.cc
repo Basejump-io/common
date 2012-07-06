@@ -57,12 +57,12 @@ struct SslSocket::Internal {
     X509* rootCert;                /**< Hard-coded Root Certificate */
 };
 
-SslSocket::SslSocket(String ipAddress, String host) :
+SslSocket::SslSocket(String host) :
     internal(new Internal()),
     sourceEvent(&qcc::Event::neverSet),
     sinkEvent(&qcc::Event::neverSet),
-    localIPAddress(ipAddress),
-    Host(host)
+    Host(host),
+    sock(-1)
 {
     /* Initialize the global SSL context is this is the first SSL socket */
     if (!sslCtx) {
@@ -167,9 +167,9 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
 
     /* Set the events */
     if (ER_OK == status) {
-        int fd = BIO_get_fd(internal->bio, 0);
-        sourceEvent = new qcc::Event(fd, qcc::Event::IO_READ, false);
-        sinkEvent = new qcc::Event(fd, qcc::Event::IO_WRITE, false);
+        sock = BIO_get_fd(internal->bio, 0);
+        sourceEvent = new qcc::Event(sock, qcc::Event::IO_READ, false);
+        sinkEvent = new qcc::Event(sock, qcc::Event::IO_WRITE, false);
     }
 
     /* Cleanup on error */
@@ -203,6 +203,8 @@ void SslSocket::Close()
         delete sinkEvent;
         sinkEvent = &qcc::Event::neverSet;
     }
+
+    sock = -1;
 }
 
 QStatus SslSocket::PullBytes(void*buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout)
