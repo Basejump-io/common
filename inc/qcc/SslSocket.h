@@ -40,7 +40,7 @@ class SslSocket : public Stream {
   public:
 
     /** Construct an SSL socket. */
-    SslSocket(String ipAddress, String host);
+    SslSocket(String host);
 
     /** Destroy SSL socket */
     ~SslSocket();
@@ -100,6 +100,13 @@ class SslSocket : public Stream {
      */
     QStatus ImportPEM(void);
 
+    /**
+     * Return the socketFd for this SslSocket.
+     *
+     * @return SocketFd
+     */
+    SocketFd GetSocketFd() { return sock; }
+
   private:
 
     /** SslSockets cannot be copied or assigned */
@@ -113,8 +120,8 @@ class SslSocket : public Stream {
     Internal* internal;        /**< Inernal (OS specific) state for SslSocket instance */
     qcc::Event*sourceEvent;    /**< Event signaled when data is available */
     qcc::Event*sinkEvent;      /**< Event signaled when sink can accept data */
-    String localIPAddress;     /**< IP address of the local interface to be used for connection */
     String Host;               /**< Host to connect to */
+    SocketFd sock;             /**< Socket file descriptor */
 };
 
 }  /* namespace */
