@@ -29,6 +29,7 @@
 #include <qcc/Mutex.h>
 #include <Status.h>
 
+#include <set>
 #include <map>
 
 #ifndef NDEBUG
@@ -399,7 +400,9 @@ class Thread {
     bool isExternal;                ///< If true, Thread is external (i.e. lifecycle not managed by Thread obj)
     const void* noBlockResource;    ///< No-block resource for this thread
     uint32_t alertCode;             ///< Context passed from alerter to alertee
-    std::vector<ThreadListener*> auxListeners;
+
+    typedef std::set<ThreadListener*> ThreadListeners;
+    ThreadListeners auxListeners;
     Mutex auxListenersLock;
 
 #ifdef QCC_OS_GROUP_POSIX

@@ -241,8 +241,11 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
 
     /* Call aux listeners before main listener since main listner may delete the thread */
     thread->auxListenersLock.Lock();
-    for (size_t i = 0; i < thread->auxListeners.size(); ++i) {
-        thread->auxListeners[i]->ThreadExit(thread);
+    ThreadListeners::iterator it = thread->auxListeners.begin();
+    while (it != thread->auxListeners.end()) {
+        ThreadListener* listener = *it;
+        listener->ThreadExit(thread);
+        it = thread->auxListeners.upper_bound(listener);
     }
     thread->auxListenersLock.Unlock();
 
@@ -388,14 +391,14 @@ QStatus Thread::Kill(void)
 void Thread::AddAuxListener(ThreadListener* listener)
 {
     auxListenersLock.Lock();
-    auxListeners.push_back(listener);
+    auxListeners.insert(listener);
     auxListenersLock.Unlock();
 }
 
 void Thread::RemoveAuxListener(ThreadListener* listener)
 {
     auxListenersLock.Lock();
-    vector<ThreadListener*>::iterator it = find(auxListeners.begin(), auxListeners.end(), listener);
+    ThreadListeners::iterator it = auxListeners.find(listener);
     if (it != auxListeners.end()) {
         auxListeners.erase(it);
     }
