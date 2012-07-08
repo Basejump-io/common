@@ -208,16 +208,23 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     thread->state = STOPPING;
     thread->stopEvent.ResetEvent();
 
-    /* Call aux listeners before main listener since main listner may delete the thread */
-    thread->auxListenersLock.Lock();
+    /* 
+     * The following block must be in its own scope because microsoft STL's ITERATOR_DEBUG_LEVEL==2 
+     * falsely concludes that the iterator defined below (without its own scope) is still in scope
+     * when auxListener's destructor runs from within ~Thread. Go Microsoft.
+     */
+    {
+        /* Call aux listeners before main listener since main listner may delete the thread */
+        thread->auxListenersLock.Lock();
 
-    ThreadListeners::iterator it = thread->auxListeners.begin();
-    while (it != thread->auxListeners.end()) {
-        ThreadListener* listener = *it;
-        listener->ThreadExit(thread);
-        it = thread->auxListeners.upper_bound(listener);
+        ThreadListeners::iterator it = thread->auxListeners.begin();
+        while (it != thread->auxListeners.end()) {
+            ThreadListener* listener = *it;
+            listener->ThreadExit(thread);
+            it = thread->auxListeners.upper_bound(listener);
+        }
+        thread->auxListenersLock.Unlock();
     }
-    thread->auxListenersLock.Unlock();
 
     /*
      * Call thread exit callback if specified. Note that ThreadExit may dellocate the thread so the
