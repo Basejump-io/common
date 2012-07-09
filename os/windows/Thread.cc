@@ -207,8 +207,8 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     thread->state = STOPPING;
     thread->stopEvent.ResetEvent();
 
-    /* 
-     * The following block must be in its own scope because microsoft STL's ITERATOR_DEBUG_LEVEL==2 
+    /*
+     * The following block must be in its own scope because microsoft STL's ITERATOR_DEBUG_LEVEL==2
      * falsely concludes that the iterator defined below (without its own scope) is still in scope
      * when auxListener's destructor runs from within ~Thread. Go Microsoft.
      */
