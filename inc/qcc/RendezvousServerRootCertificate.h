@@ -102,7 +102,7 @@ static QStatus InitializeServerRootCertificate(String Server)
 
     if (Server == String("rdvs-test.qualcomm.com")) {
         RendezvousServerRootCertificate = RendezvousTestServerRootCertificate;
-    } else if (Server == String("rdvs.qualcomm.com")) {
+    } else if (Server == String("rdvs.alljoyn.org")) {
         RendezvousServerRootCertificate = RendezvousDeploymentServerRootCertificate;
     } else {
         status = ER_RENDEZVOUS_SERVER_ROOT_CERTIFICATE_UNINITIALIZED;
