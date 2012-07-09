@@ -138,7 +138,6 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
     threadId(isExternal ? GetCurrentThreadId() : 0),
     listener(NULL),
     isExternal(isExternal),
-    noBlockResource(NULL),
     alertCode(0),
     auxListeners(),
     auxListenersLock()
