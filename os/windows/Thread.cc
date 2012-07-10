@@ -180,6 +180,10 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     assert(thread->state = STARTED);
     assert(!thread->isExternal);
 
+    if (thread->state != STARTED) {
+        return 0;
+    }
+
     ++started;
 
     /* Add this Thread to list of running threads */
