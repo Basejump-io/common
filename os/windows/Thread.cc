@@ -332,18 +332,24 @@ QStatus Thread::Kill(void)
         return status;
     }
     QCC_DbgTrace(("Thread::Kill() [%s run: %s]", funcName, IsRunning() ? "true" : "false"));
-    threadListLock.Lock();
     if (IsRunning()) {
-        TerminateThread(handle, 0);
+        if (TerminateThread(handle, 0)) {
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("TerminateThread: GetLastError=%d", GetLastError));
+            return status;
+        }
         CloseHandle(handle);
         handle = 0;
         state = DEAD;
         isStopping = false;
         /* Remove this Thread from list of running threads */
+        threadListLock.Lock();
         threadList.erase((ThreadHandle)threadId);
+        threadListLock.Unlock();
+        if (listener) {
+            listener->ThreadExit(this);
+        }
     }
-    threadListLock.Unlock();
-
     return status;
 }
 
