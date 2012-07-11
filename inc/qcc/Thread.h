@@ -74,7 +74,7 @@ class ThreadListener {
      * this callback returns. This allows implementations to free the Thread
      * if desired.
      *
-     * Under posix, if the thread has been Kill()'d, only async-signal-safe 
+     * Under posix, if the thread has been Kill()'d, only async-signal-safe
      * functions may be called by this function's implementation.
      *
      * @param thread   Thread that has exited.
