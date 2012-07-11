@@ -62,9 +62,17 @@ void Thread::SigHandler(int signal)
 {
     QCC_DbgPrintf(("Signal handler pid=%x", (unsigned long)pthread_self()));
     /* Remove thread from thread list */
+    Thread* thread = NULL;
     threadListLock.Lock();
-    threadList.erase(pthread_self());
+    map<ThreadHandle, Thread*>::iterator iter = threadList.find(pthread_self());
+    if (iter != threadList.end()) {
+        thread = iter->second;
+        threadList.erase(iter);
+    }
     threadListLock.Unlock();
+    if (thread && thread->listener) {
+        thread->listener->ThreadExit(thread);
+    }
     pthread_exit(0);
 }
 
@@ -241,7 +249,7 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
     ThreadHandle handle = thread->handle;
 
 
-    /* Call aux listeners before main listener since main listner may delete the thread */
+    /* Call aux listeners before main listener since main listener may delete the thread */
     thread->auxListenersLock.Lock();
     ThreadListeners::iterator it = thread->auxListeners.begin();
     while (it != thread->auxListeners.end()) {
