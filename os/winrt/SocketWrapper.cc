@@ -1165,11 +1165,11 @@ uint32_t SocketWrapper::SendTo(Platform::String ^ remoteAddr, int remotePort,
                     }
                     concurrency::task<uint32> sendTask(op);
                     _sendOperationsMap[op->Id] = op;
+                    ClearEvent(Events::Write);
                     _sendTasksMap[op->Id] = sendTask.then([ = ] (uint32 progress) {
                                                               UDPSocketSendComplete(op, op->Status);
                                                           });
                     concurrency::task<void> sendTask2 = _sendTasksMap[op->Id];
-                    ClearEvent(Events::Write);
                     _mutex.Unlock();
                     try {
                         sendTask2.wait();
@@ -1209,10 +1209,10 @@ uint32_t SocketWrapper::SendTo(Platform::String ^ remoteAddr, int remotePort,
                         }
                         concurrency::task<uint32> sendTask(op);
                         _sendOperationsMap[op->Id] = op;
+                        ClearEvent(Events::Write);
                         _sendTasksMap[op->Id] = sendTask.then([ = ] (uint32 progress) {
                                                                   UDPSocketSendComplete(op, op->Status);
                                                               });
-                        ClearEvent(Events::Write);
                         // not blocking, wait for data to say it completed
                         sent[0] = len;
                         result = ER_OK;
@@ -1444,11 +1444,11 @@ uint32_t SocketWrapper::Send(const Platform::Array<uint8> ^ buf, int len, Platfo
                         }
                         concurrency::task<uint32> sendTask(op);
                         _sendOperationsMap[op->Id] = op;
+                        ClearEvent(Events::Write);
                         _sendTasksMap[op->Id] = sendTask.then([ = ] (uint32 progress) {
                                                                   TCPSocketSendComplete(op, op->Status);
                                                               });
                         concurrency::task<void> sendTask2 = _sendTasksMap[op->Id];
-                        ClearEvent(Events::Write);
                         _mutex.Unlock();
                         try {
                             sendTask2.wait();
@@ -1487,10 +1487,10 @@ uint32_t SocketWrapper::Send(const Platform::Array<uint8> ^ buf, int len, Platfo
                             }
                             concurrency::task<uint32> sendTask(op);
                             _sendOperationsMap[op->Id] = op;
+                            ClearEvent(Events::Write);
                             _sendTasksMap[op->Id] = sendTask.then([ = ] (uint32 progress) {
                                                                       TCPSocketSendComplete(op, op->Status);
                                                                   });
-                            ClearEvent(Events::Write);
                             // not blocking, wait for data to say it completed
                             sent[0] = len;
                             result = ER_OK;
