@@ -306,6 +306,7 @@ QStatus Thread::Start(void* arg, ThreadListener* listener)
         this->arg = arg;
         this->listener = listener;
 
+        exitCount = 0;
         state = STARTED;
         pthread_attr_t attr;
         ret = pthread_attr_init(&attr);
