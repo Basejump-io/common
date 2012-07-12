@@ -55,6 +55,7 @@ static qcc::Mutex ctxMutex;
 struct SslSocket::Internal {
     BIO* bio;                      /**< SSL socket descriptor for OpenSSL */
     X509* rootCert;                /**< Hard-coded Root Certificate */
+    X509* rootCACert;              /**< Hard-coded Root CA Certificate */
 };
 
 SslSocket::SslSocket(String host) :
@@ -94,10 +95,21 @@ SslSocket::SslSocket(String host) :
                 if (status == ER_OK) {
 
                     /* Add the root certificate to the current certificate verification storage */
-                    X509_STORE_add_cert(sslCtxstore, internal->rootCert);
+                    if (X509_STORE_add_cert(sslCtxstore, internal->rootCert) != 1) {
+                        QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): X509_STORE_add_cert: OpenSSL error is \"%s\"",
+                                                   ERR_reason_error_string(ERR_get_error())));
+                    }
+
+                    if (internal->rootCACert != NULL) {
+                        /* Add the root certificate to the current certificate verification storage */
+                        if (X509_STORE_add_cert(sslCtxstore, internal->rootCACert) != 1) {
+                            QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): X509_STORE_add_cert: OpenSSL error is \"%s\"",
+                                                       ERR_reason_error_string(ERR_get_error())));
+                        }
+                    }
 
                     /* Set the default verify paths for the SSL context */
-                    if ((SSL_CTX_set_default_verify_paths(sslCtx)) != 1) {
+                    if (SSL_CTX_set_default_verify_paths(sslCtx) != 1) {
                         QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): SSL_CTX_set_default_verify_paths: OpenSSL error is \"%s\"",
                                                    ERR_reason_error_string(ERR_get_error())));
                     }
@@ -153,9 +165,10 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
         /* Connect to destination */
         if (0 < BIO_do_connect(internal->bio)) {
             /* Verify the certificate */
-            if (SSL_get_verify_result(ssl) != X509_V_OK) {
+            int verifyResult = SSL_get_verify_result(ssl);
+            if (verifyResult != X509_V_OK) {
                 status = ER_SSL_VERIFY;
-                QCC_LogError(ER_SSL_INIT, ("SslSocket::Connect(): SSL_get_verify_result: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
+                QCC_LogError(status, ("SslSocket::Connect(): SSL_get_verify_result: returns %d OpenSSL error is \"%s\"", verifyResult, ERR_reason_error_string(ERR_get_error())));
             }
         } else {
             QCC_LogError(ER_SSL_INIT, ("SslSocket::Connect(): BIO_do_connect: OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
@@ -272,6 +285,13 @@ QStatus SslSocket::ImportPEM()
     if (internal->rootCert) {
         status = ER_OK;
     }
+
+    // load the CA certificate as well, to enable verification
+    bio = BIO_new(BIO_s_mem());
+    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(RendezvousServerCACertificate).c_str()));
+    BIO_write(bio, RendezvousServerCACertificate, String(RendezvousServerCACertificate).size());
+    internal->rootCACert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    BIO_free(bio);
 
     QCC_DbgPrintf(("SslSocket::ImportPEM(): status = %s", QCC_StatusText(status)));
 
