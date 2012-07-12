@@ -61,18 +61,12 @@ map<ThreadHandle, Thread*> Thread::threadList;
 void Thread::SigHandler(int signal)
 {
     QCC_DbgPrintf(("Signal handler pid=%x", (unsigned long)pthread_self()));
+
     /* Remove thread from thread list */
-    Thread* thread = NULL;
     threadListLock.Lock();
-    map<ThreadHandle, Thread*>::iterator iter = threadList.find(pthread_self());
-    if (iter != threadList.end()) {
-        thread = iter->second;
-        threadList.erase(iter);
-    }
+    threadList.erase(pthread_self());
     threadListLock.Unlock();
-    if (thread && thread->listener) {
-        thread->listener->ThreadExit(thread);
-    }
+
     pthread_exit(0);
 }
 
@@ -153,7 +147,8 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
     auxListenersLock(),
     waitCount(0),
     waitLock(),
-    hasBeenJoined(false)
+    hasBeenJoined(false),
+    exitCount(0)
 {
     /* qcc::String is not thread safe.  Don't use it here. */
     funcName[0] = '\0';
@@ -234,10 +229,14 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
             ++running;
             thread->exitValue = thread->Run(thread->arg);
             --running;
+
+            /* If thread in in process of being killed, skip everything */
+            if (IncrementAndFetch(&thread->exitCount) != 1) {
+                return reinterpret_cast<ThreadInternalReturn>(0);
+            }
             QCC_DbgPrintf(("Thread function exited: %s --> %p", thread->funcName, thread->exitValue));
         }
     }
-
     thread->state = STOPPING;
     thread->stopEvent.ResetEvent();
 
@@ -375,26 +374,43 @@ QStatus Thread::Kill(void)
         QCC_LogError(status, ("Cannot kill an external thread"));
         return status;
     }
+
     QCC_DbgTrace(("Thread::Kill() [%s run: %s]", funcName, IsRunning() ? "true" : "false"));
+
+    /* It is unsafe to kill a thread that is in the STARTED state. */
     threadListLock.Lock();
-    if (IsRunning()) {
+    while (state == STARTED) {
         threadListLock.Unlock();
+        qcc::Sleep(2);
+        threadListLock.Lock();
+    }
+    threadListLock.Unlock();
 
+    /* See if it is safe to kill the thread or if it is exiting on its own */
+    if (IncrementAndFetch(&exitCount) == 1) {
         QCC_DbgPrintf(("Killing thread: %s", funcName));
-
         int ret = pthread_kill(handle, SIGUSR1);
         if (ret == 0) {
             handle = 0;
             state = DEAD;
             isStopping = false;
+
+            /* wait for signal handler to remove thread from list */
+            threadListLock.Lock();
+            while (threadList.find(handle) != threadList.end()) {
+                threadListLock.Unlock();
+                qcc::Sleep(2);
+                threadListLock.Lock();
+            }
+            threadListLock.Unlock();
         } else {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Killing thread: %s", strerror(ret)));
         }
     } else {
-        threadListLock.Unlock();
+        /* Too late to kill so Join instead */
+        status = Join();
     }
-
     return status;
 }
 
