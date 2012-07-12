@@ -399,6 +399,7 @@ class Thread {
     int32_t waitCount;
     Mutex waitLock;
     bool hasBeenJoined;
+    int32_t exitCount;
 #endif
 
     /** Lock that protects global list of Threads and their handles */
