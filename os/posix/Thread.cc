@@ -230,13 +230,15 @@ ThreadInternalReturn Thread::RunInternal(void* threadArg)
             thread->exitValue = thread->Run(thread->arg);
             --running;
 
-            /* If thread in in process of being killed, skip everything */
-            if (IncrementAndFetch(&thread->exitCount) != 1) {
-                return reinterpret_cast<ThreadInternalReturn>(0);
-            }
             QCC_DbgPrintf(("Thread function exited: %s --> %p", thread->funcName, thread->exitValue));
         }
     }
+
+    /* If thread in in process of being killed, skip everything */
+    if (IncrementAndFetch(&thread->exitCount) != 1) {
+        return reinterpret_cast<ThreadInternalReturn>(0);
+    }
+
     thread->state = STOPPING;
     thread->stopEvent.ResetEvent();
 
