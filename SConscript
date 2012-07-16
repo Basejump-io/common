@@ -49,7 +49,9 @@ if env['OS_GROUP'] == 'windows':
 elif env['OS'] == 'linux':
     env.AppendUnique(LIBS =['rt', 'stdc++', 'pthread', 'crypto', 'ssl'])
 elif env['OS'] == 'darwin':
-    env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto'])
+    env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto', 'ssl'])
+    if env['CPU'] == 'arm':
+        env.Append(CPPPATH = ['../common/crypto/openssl/openssl-1.01/include'])    
 elif env['OS'] == 'android':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc', 'ssl'])
     if (env.subst('$ANDROID_NDK_VERSION') == '7' or 
@@ -89,6 +91,12 @@ if env['OS_GROUP'] == 'windows':
 
 env.Append(CPPPATH = [env.Dir('inc')])
 
+# Build OpenSSL if under iOS
+if env['OS'] == 'darwin':
+    if env['CPU'] == 'arm':
+        env.SConscript('crypto/openssl/openssl-1.01/SConscript', variant_dir='$OBJDIR/openssl/lib', duplicate=0)
+        env.Append(LIBPATH = [os.environ.get('SRCROOT') + '/../common/crypto/openssl/openssl-1.01/build/' + os.environ.get('CONFIGURATION') + '-' + os.environ.get('PLATFORM_NAME')])
+        
 # Build the sources
 srcs = env.Glob('$OBJDIR/*.cc') + env.Glob('$OBJDIR/os/*.cc') + env.Glob('$OBJDIR/crypto/*.cc')
 objs = env.Object(srcs)

@@ -1,7 +1,7 @@
 /**
- * @file XmlElement.h
+ * @file STLContainer.h
  *
- * Extremely simple XML Parser/Generator.
+ *
  *
  */
 
@@ -25,12 +25,15 @@
 #ifndef _STLCONTAINER_H
 #define _STLCONTAINER_H
 
-
-
+#if defined(QCC_OS_DARWIN)
+#include <tr1/unordered_map>
+#include <tr1/unordered_set>
+#else
 #include <unordered_map>
 #include <unordered_set>
+#endif
 
-#if defined _MSC_VER && _MSC_VER == 1500
+#if (defined _MSC_VER && _MSC_VER == 1500) || defined(QCC_OS_DARWIN)
 /*
  * For MSVC2008 unordered_map, unordered_multimap, unordered_set, and hash
  * are found in the tr1 libraries while in new version of MSVC and in GNU
