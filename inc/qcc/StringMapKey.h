@@ -113,7 +113,7 @@ struct less<qcc::StringMapKey>{
  * std::unordered_map, std::unordered_set, std::hash_map, std::hash_set.
  */
 template <>
-    struct STL_NAMESPACE_PREFIX::hash<qcc::StringMapKey>{
+struct STL_NAMESPACE_PREFIX::hash<qcc::StringMapKey>{
     inline size_t operator()(const qcc::StringMapKey& k) const { return qcc::hash_string(k.c_str()); }
 };
 
