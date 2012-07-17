@@ -128,14 +128,14 @@ bool _Alarm::operator==(const _Alarm& other) const
 }
 
 Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy) :
+    OSTimer(this),
     currentAlarm(NULL),
     expireOnExit(expireOnExit),
     timerThreads(concurency),
     isRunning(false),
     controllerIdx(0),
     preventReentrancy(preventReentrancy),
-    nameStr(name),
-    OSTimer(this)
+    nameStr(name)
 {
     for (uint32_t i = 0; i < timerThreads.size(); ++i) {
         timerThreads[i] = new TimerThread(nameStr, i, this);
