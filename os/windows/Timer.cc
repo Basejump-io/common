@@ -128,6 +128,7 @@ bool _Alarm::operator==(const _Alarm& other) const
 }
 
 Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy) :
+    currentAlarm(NULL),
     expireOnExit(expireOnExit),
     timerThreads(concurency),
     isRunning(false),
