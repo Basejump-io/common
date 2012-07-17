@@ -128,6 +128,7 @@ bool _Alarm::operator==(const _Alarm& other) const
 }
 
 Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy) :
+    currentAlarm(NULL),
     expireOnExit(expireOnExit),
     timerThreads(concurency),
     isRunning(false),
@@ -186,7 +187,9 @@ QStatus Timer::Stop()
     isRunning = false;
     lock.Unlock();
     for (size_t i = 0; i < timerThreads.size(); ++i) {
+        lock.Lock();
         QStatus tStatus = timerThreads[i]->Stop();
+        lock.Unlock();
         status = (status == ER_OK) ? tStatus : status;
     }
     return status;
@@ -617,7 +620,14 @@ void Timer::ThreadExit(Thread* thread)
             Alarm alarm = *it;
             alarms.erase(it);
             lock.Unlock();
+            tt->hasTimerLock = preventReentrancy;
+            if (tt->hasTimerLock) {
+                reentrancyLock.Lock();
+            }
             alarm->listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
+            if (tt->hasTimerLock) {
+                reentrancyLock.Unlock();
+            }
             lock.Lock();
         }
     }
