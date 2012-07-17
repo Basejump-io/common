@@ -320,13 +320,8 @@ static bool testNextAlarm(const Timespec& expectedTime, void* context)
         uint64_t expectedTimeMs = expectedTime.GetAbsoluteMillis();
         ret = (p.first == ER_OK) && (context == p.second->GetContext()) && (alarmTime >= expectedTimeMs) && (alarmTime < (expectedTimeMs + jitter));
         if (!ret) {
-<<<<<<< HEAD
             printf("Failed Triggered Alarm: status=%s, a.alarmTime=%" PRIu64 ", a.context=%p, expectedTimeMs=%" PRIu64 "\n",
-                   QCC_StatusText(p.first), alarmTime, p.second.GetContext(), expectedTimeMs);
-=======
-            printf("Failed Triggered Alarm: status=%s, a.alarmTime=%llu, a.context=%p, expectedTimeMs=%llu\n",
                    QCC_StatusText(p.first), alarmTime, p.second->GetContext(), expectedTimeMs);
->>>>>>> 0ad4234... master plus squash win8-2, 2012-06-18
         }
     }
     triggeredAlarmsLock.Unlock();

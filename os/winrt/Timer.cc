@@ -106,8 +106,8 @@ void OSAlarm::UpdateComputedTime(Timespec absoluteTime)
     }
 }
 
-Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency)
-    : expireOnExit(expireOnExit), concurency(concurency), timerThreads(concurency), isRunning(false), controllerIdx(0), OSTimer(this)
+Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy)
+    : expireOnExit(expireOnExit), timerThreads(concurency), isRunning(false), controllerIdx(0), OSTimer(this)
 {
 }
 
@@ -358,6 +358,15 @@ bool Timer::HasAlarm(const Alarm& alarm)
 void Timer::ThreadExit(Thread* thread)
 {
     // never called
+}
+
+void Timer::EnableReentrancy()
+{
+}
+
+bool Timer::ThreadHoldsLock() const
+{
+    return false;
 }
 
 OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer)
