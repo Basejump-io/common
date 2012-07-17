@@ -585,11 +585,11 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
             if (isController) {
                 QCC_DbgPrintf(("TimerThread::Run(): Controller going idle"));
                 state = IDLE;
-                stopEvent.ResetEvent();
                 timer->lock.Unlock();
                 Event evt(Event::WAIT_FOREVER, 0);
                 Event::Wait(evt);
                 timer->lock.Lock();
+                stopEvent.ResetEvent();
             } else {
                 QCC_DbgPrintf(("TimerThread::Run(): non-Controller stopping"));
                 state = STOPPING;
