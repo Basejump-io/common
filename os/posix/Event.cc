@@ -43,8 +43,8 @@ using namespace qcc;
 #define QCC_MODULE "EVENT"
 
 static Mutex* pipeLock = NULL;
-static vector<pair<int, int> > freePipeList;
-static vector<pair<int, int> > usedPipeList;
+static vector<pair<int, int> >* freePipeList;
+static vector<pair<int, int> >* usedPipeList;
 
 Event Event::alwaysSet(0, 0);
 
@@ -239,14 +239,16 @@ static void createPipe(int* rdFd, int* wrFd)
     /* TODO: Potential thread safety issue here */
     if (NULL == pipeLock) {
         pipeLock = new Mutex();
+        freePipeList = new vector<pair<int, int> >;
+        usedPipeList = new vector<pair<int, int> >;
     }
 
     /* Check for something on the free pipe list */
     pipeLock->Lock();
-    if (!freePipeList.empty()) {
-        pair<int, int> fdPair = freePipeList.back();
-        usedPipeList.push_back(fdPair);
-        freePipeList.pop_back();
+    if (!freePipeList->empty()) {
+        pair<int, int> fdPair = freePipeList->back();
+        usedPipeList->push_back(fdPair);
+        freePipeList->pop_back();
         *rdFd = fdPair.first;
         *wrFd = fdPair.second;
     } else {
@@ -255,7 +257,7 @@ static void createPipe(int* rdFd, int* wrFd)
         int ret = pipe(fds);
         if (0 == ret) {
             fcntl(fds[0], F_SETFL, O_NONBLOCK);
-            usedPipeList.push_back(pair<int, int>(fds[0], fds[1]));
+            usedPipeList->push_back(pair<int, int>(fds[0], fds[1]));
             *rdFd = fds[0];
             *wrFd = fds[1];
         } else {
@@ -278,20 +280,20 @@ static void destroyPipe(int rdFd, int wrFd)
      * Delete the pipe (permanently) if the number of pipes on the free list is twice as many as
      * on the used list.
      */
-    bool closePipe = (freePipeList.size() >= (2 * (usedPipeList.size() - 1)));
+    bool closePipe = (freePipeList->size() >= (2 * (usedPipeList->size() - 1)));
 
     /* Look for pipe on usedPipeList */
-    vector<pair<int, int> >::iterator it = usedPipeList.begin();
+    vector<pair<int, int> >::iterator it = usedPipeList->begin();
     bool foundPipe = false;
-    while (it != usedPipeList.end()) {
+    while (it != usedPipeList->end()) {
         if (it->first == rdFd) {
             if (closePipe) {
                 close(rdFd);
                 close(wrFd);
             } else {
-                freePipeList.push_back(*it);
+                freePipeList->push_back(*it);
             }
-            usedPipeList.erase(it);
+            usedPipeList->erase(it);
             foundPipe = true;
             break;
         }
@@ -299,21 +301,21 @@ static void destroyPipe(int rdFd, int wrFd)
     }
 
     if (foundPipe) {
-        if (usedPipeList.size() == 0) {
+        if (usedPipeList->size() == 0) {
             /* Empty the free list if this was the last pipe in use */
-            vector<pair<int, int> >::iterator it = freePipeList.begin();
-            while (it != freePipeList.end()) {
+            vector<pair<int, int> >::iterator it = freePipeList->begin();
+            while (it != freePipeList->end()) {
                 close(it->first);
                 close(it->second);
-                it = freePipeList.erase(it);
+                it = freePipeList->erase(it);
             }
         } else if (closePipe) {
             /* Trim freeList down to 2*used pipe */
-            while (freePipeList.size() > (2 * usedPipeList.size())) {
-                pair<int, int> fdPair = freePipeList.back();
+            while (freePipeList->size() > (2 * usedPipeList->size())) {
+                pair<int, int> fdPair = freePipeList->back();
                 close(fdPair.first);
                 close(fdPair.second);
-                freePipeList.pop_back();
+                freePipeList->pop_back();
             }
         } else {
             /* Make sure pipe is empty if reusing */
