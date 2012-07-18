@@ -83,7 +83,7 @@ private
 ref class SocketWrapper sealed {
   public:
     SocketWrapper();
-    ~SocketWrapper();
+    virtual ~SocketWrapper();
 
     uint32_t Init(AddressFamily addrFamily, SocketType type);
     uint32_t SocketDup(Platform::WriteOnlyArray<SocketWrapper ^> ^ dupSocket);
