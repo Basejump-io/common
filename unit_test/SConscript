@@ -122,7 +122,7 @@ else:
     if(env['MSVC_VERSION'] == '11.0'):
         unittest_env.Append(CPPDEFINES = ['_VARIADIC_MAX=10'])
     # path for alljoyn library file
-    unittest_env.Append(LIBPATH = ['$DISTDIR/lib'])
+    unittest_env.Append(LIBPATH = ['$CPP_DISTDIR/lib'])
     # gtest library file is placed in same folder as the the object files.
     unittest_env.Append(LIBPATH = ['./'])
     #the linker must be able to find stlport for android
@@ -140,6 +140,6 @@ else:
              unittest_env.Object(status_src) ]
 
     unittest_prog = unittest_env.Program('cmtest', objs)
-    returnValue = unittest_env.Install('$TESTDIR/bin', unittest_prog)
+    returnValue = unittest_env.Install('$CPP_TESTDIR/bin', unittest_prog)
 
 Return('returnValue')

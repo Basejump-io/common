@@ -33,6 +33,10 @@ if env['VARIANT'] == 'debug':
         else:
             env.PrependENVPath('COVFILE', os.environ['COVFILE'])
 
+# Make alljoyn C++ dist a sub-directory of the alljoyn dist.
+env['CPP_DISTDIR'] = env['DISTDIR'] + '/cpp'
+env['CPP_TESTDIR'] = env['TESTDIR'] + '/cpp'
+
 # Platform specifics for common
 if env['OS_GROUP'] == 'windows':
     vars = Variables()
