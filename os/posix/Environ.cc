@@ -37,7 +37,7 @@
 using namespace std;
 using namespace qcc;
 
-#if defined(QCC_OS_DARWIN)
+#if defined(QCC_OS_DARWIN) && !defined(QCC_OS_IPHONE)
 #include <crt_externs.h>
 #define environ (*_NSGetEnviron())
 #else
