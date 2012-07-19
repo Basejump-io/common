@@ -297,6 +297,11 @@ int _QCC_DbgPrintCheck(DbgMsgType type, const char* module);
 void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, int lineno,
                      const char* dataStr, const void* data, size_t dataLen);
 
+static class DebugInitializer {
+  public:
+    DebugInitializer();
+    ~DebugInitializer();
+} debugInitializer;
 
 #ifdef __cplusplus
 }

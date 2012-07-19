@@ -48,7 +48,12 @@ using namespace qcc;
 #undef min
 #undef max
 
-qcc::Mutex stdoutLock;
+class DebugControl;
+
+static qcc::Mutex* stdoutLock = NULL;
+static DebugControl* dbgControl = NULL;
+static int dbgControlCounter = 0;
+
 
 int QCC_SyncPrintf(const char* fmt, ...)
 {
@@ -56,9 +61,9 @@ int QCC_SyncPrintf(const char* fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    if (ER_OK == stdoutLock.Lock()) {
+    if (ER_OK == stdoutLock->Lock()) {
         ret = vprintf(fmt, ap);
-        stdoutLock.Unlock();
+        stdoutLock->Unlock();
     }
     va_end(ap);
 
@@ -70,10 +75,10 @@ static void WriteMsg(DbgMsgType type, const char* module, const char* msg, void*
 {
     FILE* file = reinterpret_cast<FILE*>(context);
 
-    if (ER_OK == stdoutLock.Lock()) {
+    if (ER_OK == stdoutLock->Lock()) {
         fflush(stdout);             // Helps make output cleaner on Windows.
         fputs(msg, file);
-        stdoutLock.Unlock();
+        stdoutLock->Unlock();
     }
 }
 
@@ -148,7 +153,6 @@ class DebugControl {
     bool printThread;
 };
 
-DebugControl dbgControl;
 
 bool DebugControl::Check(DbgMsgType type, const char* module)
 {
@@ -182,6 +186,23 @@ bool DebugControl::Check(DbgMsgType type, const char* module)
     }
 
     return false;  // Should never get here.
+}
+
+
+DebugInitializer::DebugInitializer()
+{
+    if (0 == dbgControlCounter++) {
+        stdoutLock = new qcc::Mutex();
+        dbgControl = new DebugControl();
+    }
+}
+
+DebugInitializer::~DebugInitializer()
+{
+    if (0 == --dbgControlCounter) {
+        delete dbgControl;
+        delete stdoutLock;
+    }
 }
 
 
@@ -318,7 +339,7 @@ void DebugContext::Process(DbgMsgType type, const char* module, const char* file
 
     oss.reserve(sizeof(msg));
 
-    GenPrefix(oss, type, module, filename, lineno, dbgControl.PrintThread());
+    GenPrefix(oss, type, module, filename, lineno, dbgControl->PrintThread());
 
     if (msg != NULL) {
         oss.append(msg);
@@ -326,14 +347,14 @@ void DebugContext::Process(DbgMsgType type, const char* module, const char* file
 
     oss.push_back('\n');
 
-    dbgControl.WriteDebugMessage(type, module, oss);
+    dbgControl->WriteDebugMessage(type, module, oss);
 }
 
 void DebugContext::Vprintf(const char* fmt, va_list ap)
 {
     int mlen;
 
-    if (ER_OK == stdoutLock.Lock()) {
+    if (ER_OK == stdoutLock->Lock()) {
         if (msgLen < sizeof(msg)) {
             mlen = vsnprintf(msg + msgLen, sizeof(msg) - msgLen, fmt, ap);
 
@@ -344,7 +365,7 @@ void DebugContext::Vprintf(const char* fmt, va_list ap)
                 }
             }
         }
-        stdoutLock.Unlock();
+        stdoutLock->Unlock();
     }
 }
 
@@ -392,18 +413,18 @@ void _QCC_LogError(QStatus status, const char* filename, int lineno)
 
 void QCC_RegisterOutputCallback(QCC_DbgMsgCallback cb, void* context)
 {
-    dbgControl.Register(cb, context);
+    dbgControl->Register(cb, context);
 }
 
 void QCC_RegisterOutputFile(FILE* file)
 {
-    dbgControl.Register(WriteMsg, reinterpret_cast<void*>(file));
+    dbgControl->Register(WriteMsg, reinterpret_cast<void*>(file));
 }
 
 
 int _QCC_DbgPrintCheck(DbgMsgType type, const char* module)
 {
-    return static_cast<int>(dbgControl.Check(type, module));
+    return static_cast<int>(dbgControl->Check(type, module));
 }
 
 
@@ -424,7 +445,7 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
 
             oss.reserve(strlen(dataStr) + 8 + dataLen * 4 + (((dataLen + 15) / 16) * (40 + strlen(module))));
 
-            GenPrefix(oss, type, module, filename, lineno, dbgControl.PrintThread());
+            GenPrefix(oss, type, module, filename, lineno, dbgControl->PrintThread());
 
             oss.append(dataStr);
             oss.push_back('[');
@@ -472,7 +493,7 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
                 pos += dumpLen;
                 dataLen -= dumpLen;
             }
-            dbgControl.WriteDebugMessage(type, module, oss);
+            dbgControl->WriteDebugMessage(type, module, oss);
         }
     }
 }
@@ -480,9 +501,9 @@ void _QCC_DbgDumpHex(DbgMsgType type, const char* module, const char* filename, 
 void QCC_SetDebugLevel(const char* module, uint32_t level)
 {
     if (strcmp(module, "ALL") == 0) {
-        dbgControl.SetAllLevel(level);
+        dbgControl->SetAllLevel(level);
     } else {
-        dbgControl.AddTagLevelPair(module, level);
+        dbgControl->AddTagLevelPair(module, level);
     }
 }
 
