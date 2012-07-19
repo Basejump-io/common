@@ -222,7 +222,7 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Connect fcntl (sockfd = %u) to O_NONBLOCK: %d - %s", sockfd, errno, strerror(errno)));
             /* better to close and error out than to leave in unexpected state */
-            close(sockfd);
+            qcc::Close(sockfd);
         }
     }
 
@@ -257,7 +257,7 @@ QStatus Connect(SocketFd sockfd, const char* pathName)
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Connect fcntl (sockfd = %u) to O_NONBLOCK: %d - %s", sockfd, errno, strerror(errno)));
             /* better to close and error out than to leave in unexpected state */
-            close(sockfd);
+            qcc::Close(sockfd);
         }
     }
     return status;
@@ -375,7 +375,7 @@ QStatus Accept(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort, Soc
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Accept fcntl (newSockfd = %u) to O_NONBLOCK: %d - %s", newSockfd, errno, strerror(errno)));
             /* better to close and error out than to leave in unexpected state */
-            close(newSockfd);
+            qcc::Close(newSockfd);
         }
     }
     return status;
@@ -409,6 +409,7 @@ QStatus Shutdown(SocketFd sockfd)
 void Close(SocketFd sockfd)
 {
 
+    assert(sockfd);
     close(static_cast<int>(sockfd));
 }
 
