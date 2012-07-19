@@ -53,6 +53,8 @@ static SSL_CTX* sslCtx = NULL;
 static qcc::Mutex ctxMutex;
 
 struct SslSocket::Internal {
+    Internal() : bio(NULL), rootCert(NULL), rootCACert(NULL) { }
+
     BIO* bio;                      /**< SSL socket descriptor for OpenSSL */
     X509* rootCert;                /**< Hard-coded Root Certificate */
     X509* rootCACert;              /**< Hard-coded Root CA Certificate */
