@@ -1,11 +1,12 @@
 /**
  * @file
  *
- * Define a class that abstracts Windows process/threads.
+ * Define a class that abstracts WinRT process/threads.
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ *
+ * Copyright 2011-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -18,7 +19,8 @@
  *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
- ******************************************************************************/
+ *
+ *****************************************************************************/
 
 #include <qcc/platform.h>
 
@@ -26,16 +28,21 @@
 #include <assert.h>
 #include <process.h>
 #include <map>
+#include <Roapi.h>
+#include <ctxtcall.h>
+#include <ppltasks.h>
 
 #include <qcc/String.h>
 #include <qcc/StringUtil.h>
 #include <qcc/Debug.h>
 #include <qcc/Thread.h>
 #include <qcc/Mutex.h>
+#include <qcc/Event.h>
 
 #include <Status.h>
 
 using namespace std;
+using namespace Windows::System::Threading;
 
 /** @internal */
 #define QCC_MODULE "THREAD"
@@ -59,8 +66,21 @@ bool Thread::ThreadListLock::m_destructed = false;
 map<ThreadHandle, Thread*> Thread::threadList;
 
 QStatus Sleep(uint32_t ms) {
-    ::sleep(ms);
+    qcc::Event waiter;
+    waiter.Wait(waiter, ms);
     return ER_OK;
+}
+
+HANDLE GetCurrentThreadWaitableHandle() {
+    HANDLE handle = NULL;
+    DuplicateHandle(GetCurrentProcess(),
+                    GetCurrentThread(),
+                    GetCurrentProcess(),
+                    &handle,
+                    0,
+                    TRUE,
+                    DUPLICATE_SAME_ACCESS);
+    return handle;
 }
 
 Thread* Thread::GetThread()
@@ -132,12 +152,14 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
     state(isExternal ? RUNNING : DEAD),
     isStopping(false),
     function(isExternal ? NULL : func),
-    handle(isExternal ? GetCurrentThread() : 0),
+    handle(NULL),
     exitValue(NULL),
     arg(NULL),
     threadId(isExternal ? GetCurrentThreadId() : 0),
     listener(NULL),
     isExternal(isExternal),
+    noBlockResource(NULL),
+    platformContext(NULL),
     alertCode(0),
     auxListeners(),
     auxListenersLock()
@@ -151,9 +173,20 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
      * External threads are already running so just add them to the thread list.
      */
     if (isExternal) {
+        handle = GetCurrentThreadWaitableHandle();
+        if (NULL == handle) {
+            state = DEAD;
+            isStopping = false;
+            QCC_LogError(ER_OS_ERROR, ("Creating external thread"));
+        }
         threadListLock.Lock();
         threadList[(ThreadHandle)threadId] = this;
         threadListLock.Unlock();
+    } else {
+        platformContext = CreateEventEx(NULL, NULL, CREATE_EVENT_MANUAL_RESET, EVENT_ALL_ACCESS);
+        if (NULL == platformContext) {
+            QCC_DbgHLPrintf(("Thread::Thread() [%s,%x] failed to create callback event", funcName, this));
+        }
     }
     QCC_DbgHLPrintf(("Thread::Thread() [%s,%x]", funcName, this));
 }
@@ -163,12 +196,17 @@ Thread::~Thread(void)
     if (IsRunning()) {
         Stop();
         Join();
-    } else if (!isExternal && handle) {
-        CloseHandle(handle);
-        handle = 0;
-        ++stopped;
     }
-    QCC_DbgHLPrintf(("Thread::~Thread() [%s,%x] started:%d running:%d stopped:%d", GetName(), this, started, running, stopped));
+    if (NULL != handle) {
+        CloseHandle(handle);
+        handle = NULL;
+    }
+    if (NULL != platformContext) {
+        CloseHandle((HANDLE)platformContext);
+        platformContext = NULL;
+    }
+    ++stopped;
+    QCC_DbgHLPrintf(("Thread::~Thread() [%s,%x] started:%d running:%d stopped:%d", funcName, this, started, running, stopped));
 }
 
 
@@ -180,13 +218,11 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     assert(thread->state = STARTED);
     assert(!thread->isExternal);
 
-    if (thread->state != STARTED) {
-        return 0;
-    }
-
     ++started;
 
     /* Add this Thread to list of running threads */
+    thread->threadId = GetCurrentThreadId();
+    thread->handle = GetCurrentThreadWaitableHandle();
     threadListLock.Lock();
     threadList[(ThreadHandle)thread->threadId] = thread;
     thread->state = RUNNING;
@@ -244,11 +280,11 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     threadList.erase((ThreadHandle)threadId);
     threadListLock.Unlock();
 
-    _endthreadex(retVal);
+    /* Signal exiting */
+    SetEvent((HANDLE)thread->platformContext);
+
     return retVal;
 }
-
-static const uint32_t stacksize = 80 * 1024;
 
 QStatus Thread::Start(void* arg, ThreadListener* listener)
 {
@@ -274,17 +310,22 @@ QStatus Thread::Start(void* arg, ThreadListener* listener)
         this->listener = listener;
 
         state = STARTED;
-        handle = reinterpret_cast<HANDLE>(_beginthreadex(NULL, stacksize, RunInternal, this, 0, &threadId));
-        if (handle == 0) {
-            state = DEAD;
-            isStopping = false;
-            status = ER_OS_ERROR;
-            QCC_LogError(status, ("Creating thread"));
-        }
+
+        concurrency::task<void> ([this] () {
+                                     try {
+                                         ThreadPool::RunAsync(ref new WorkItemHandler([this](Windows::Foundation::IAsyncAction ^ operation) {
+                                                                                          RunInternal(this);
+                                                                                      }, Platform::CallbackContext::Any));
+                                     } catch (...) {
+                                         this->state = DEAD;
+                                         this->isStopping = false;
+                                         QCC_LogError(ER_OS_ERROR, ("Creating thread"));
+                                     }
+                                 });
     }
+
     return status;
 }
-
 
 QStatus Thread::Stop(void)
 {
@@ -292,7 +333,7 @@ QStatus Thread::Stop(void)
     if (isExternal) {
         QCC_LogError(ER_EXTERNAL_THREAD, ("Cannot stop an external thread"));
         return ER_EXTERNAL_THREAD;
-    } else if ((state == DEAD) || (state == INITIAL)) {
+    } else if (state == DEAD) {
         QCC_DbgPrintf(("Thread::Stop() thread is dead [%s]", funcName));
         return ER_OK;
     } else {
@@ -323,9 +364,6 @@ QStatus Thread::Alert(uint32_t alertCode)
 
 QStatus Thread::Join(void)
 {
-
-    assert(!isExternal);
-
     QStatus status = ER_OK;
     bool self = (threadId == GetCurrentThreadId());
 
@@ -336,7 +374,6 @@ QStatus Thread::Join(void)
      */
     if (state == DEAD) {
         QCC_DbgPrintf(("Thread::Join() thread is dead [%s]", funcName));
-        isStopping = false;
         return ER_DEAD_THREAD;
     }
     /*
@@ -344,7 +381,7 @@ QStatus Thread::Join(void)
      * to wait until the thread is actually running before we can join it.
      */
     while (state == STARTED) {
-        ::sleep(5);
+        Sleep(5);
     }
 
     QCC_DbgPrintf(("[%s - %x] %s thread %x [%s - %x]",
@@ -352,26 +389,25 @@ QStatus Thread::Join(void)
                    self ? threadId : GetThread()->threadId,
                    self ? "Closing" : "Joining",
                    threadId, funcName, threadId));
-    /*
-     * make local copy of handle so it is not deleted if two threads are in
-     * Join at the same time.
-     */
-    HANDLE goner = handle;
-    if (goner) {
-        DWORD ret;
-        handle = 0;
-        if (self) {
-            ret = WAIT_OBJECT_0;
+
+    DWORD ret;
+    if (self) {
+        ret = WAIT_OBJECT_0;
+    } else {
+        if (!isExternal) {
+            HANDLE handles[2] = { handle, (HANDLE)platformContext };
+            ret = WaitForMultipleObjectsEx(sizeof(handles) / sizeof(HANDLE), handles, FALSE, INFINITE, FALSE);
         } else {
-            ret = WaitForSingleObject(goner, INFINITE);
+            // external thread
+            ret = WaitForSingleObjectEx(handle, INFINITE, FALSE);
         }
-        if (ret != WAIT_OBJECT_0) {
-            status = ER_OS_ERROR;
-            QCC_LogError(status, ("Joining thread: %d", ret));
-        }
-        CloseHandle(goner);
-        ++stopped;
     }
+    if (ret != WAIT_OBJECT_0  && ret != (WAIT_OBJECT_0 + 1)) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Joining thread: %d", ret));
+    }
+    ++stopped;
+
     isStopping = false;
     state = DEAD;
     QCC_DbgPrintf(("%s thread %s", self ? "Closed" : "Joined", funcName));
@@ -398,7 +434,7 @@ void Thread::RemoveAuxListener(ThreadListener* listener)
 ThreadReturn STDCALL Thread::Run(void* arg)
 {
     assert(NULL != function);
-    return (*function)(arg);
+    return (ThreadReturn)(*function)(arg);
 }
 
 }    /* namespace */
