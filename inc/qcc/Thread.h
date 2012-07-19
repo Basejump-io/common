@@ -76,9 +76,6 @@ class ThreadListener {
      * this callback returns. This allows implementations to free the Thread
      * if desired.
      *
-     * Under posix, if the thread has been Kill()'d, only async-signal-safe
-     * functions may be called by this function's implementation.
-     *
      * @param thread   Thread that has exited.
      */
     virtual void ThreadExit(Thread* thread) = 0;
@@ -161,30 +158,13 @@ class Thread {
      * to unblock any I/O. Stopping a thread using this method relies on the implementation of Run()
      * (or threadfunc) to periodically check the state by calling IsStopping().<p>
      *
-     * To stop a thread asynchronously (and unsafely) use Thread::Kill<p>
-     *
      * Subclasses that override this method should call the base class
      * implementation of Stop.
      *
      * @return  ER_OK if request was successful. This does not imply
      *          that Stop will successfully stop the thread.
-     *
-     * @see Thread::Kill
      */
     virtual QStatus Stop(void);
-
-    /**
-     * Abort the thead.
-     *
-     * This method should be avoided since it does not guarantee that the thread's
-     * resources (mutexes, sockets, file descriptors) are released before the
-     * threads exit.
-     *
-     * @return  Indication of whether the thread was killed or not.
-     *
-     * @see Thread::Stop()
-     */
-    virtual QStatus Kill(void);
 
     /**
      * Alert a thread by causing any pending call to Event::Wait() to unblock

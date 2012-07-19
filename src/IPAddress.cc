@@ -946,7 +946,7 @@ QStatus IPAddress::StringToIPv4(qcc::String address, uint8_t addrBuf[], size_t a
     return result;
 }
 
-QStatus IPAddress::SetAddress(const qcc::String& addrString, bool allowHostNames)
+QStatus IPAddress::SetAddress(const qcc::String& addrString, bool allowHostNames, uint32_t timeoutMs)
 {
     QStatus status = ER_PARSE_ERROR;
 
@@ -967,7 +967,7 @@ QStatus IPAddress::SetAddress(const qcc::String& addrString, bool allowHostNames
         status = StringToIPv4(addrString, &addr[IPv6_SIZE - IPv4_SIZE], addrSize);
         if (ER_OK != status && allowHostNames) {
             size_t addrLen;
-            status = ResolveHostName(addrString, addr, IPv6_SIZE, addrLen);
+            status = ResolveHostName(addrString, addr, IPv6_SIZE, addrLen, timeoutMs);
             if (ER_OK == status) {
                 if (addrLen == IPv6_SIZE) {
                     addrSize = IPv6_SIZE;

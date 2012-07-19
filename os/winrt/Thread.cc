@@ -362,23 +362,6 @@ QStatus Thread::Alert(uint32_t alertCode)
     return stopEvent.SetEvent();
 }
 
-QStatus Thread::Kill(void)
-{
-    QStatus status = ER_OK;
-
-    /* Cannot kill external threads */
-    if (isExternal) {
-        status = ER_EXTERNAL_THREAD;
-        QCC_LogError(status, ("Cannot kill an external thread"));
-        return status;
-    }
-
-    status = ER_FAIL;
-    QCC_LogError(status, ("Cannot kill threads"));
-
-    return status;
-}
-
 QStatus Thread::Join(void)
 {
     QStatus status = ER_OK;

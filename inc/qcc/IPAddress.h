@@ -26,6 +26,7 @@
 
 #include <qcc/platform.h>
 #include <qcc/Debug.h>
+#include <qcc/Event.h>
 #include <qcc/String.h>
 #include <assert.h>
 #include <string.h>
@@ -72,9 +73,10 @@ class IPAddress {
      *
      * @param addrString     IP address (V4 or V6) or hostname if allowHostnames == true.
      * @param allowHostnames If true allows addresses to be specified as host names.
+     * @param timeoutMs      Timeout when resolving host names.
      * @return ER_OK if successful.
      */
-    QStatus SetAddress(const qcc::String& addrString, bool allowHostnames = true);
+    QStatus SetAddress(const qcc::String& addrString, bool allowHostnames = true, uint32_t timeoutMs = qcc::Event::WAIT_FOREVER);
 
     /**
      * Consruct IPAddress based on a buffer containing an IPv4 or IPv6 address.

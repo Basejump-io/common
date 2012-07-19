@@ -349,39 +349,6 @@ QStatus Thread::Alert(uint32_t alertCode)
     return stopEvent.SetEvent();
 }
 
-QStatus Thread::Kill(void)
-{
-    QStatus status = ER_OK;
-    QCC_DbgTrace(("Thread::Kill() [%s:%srunning]", funcName, IsRunning() ? " " : " not "));
-
-    /* Cannot kill external threads */
-    if (isExternal) {
-        status = ER_EXTERNAL_THREAD;
-        QCC_LogError(status, ("Cannot kill an external thread"));
-        return status;
-    }
-    QCC_DbgTrace(("Thread::Kill() [%s run: %s]", funcName, IsRunning() ? "true" : "false"));
-    while (state == STARTED) {
-        qcc::Sleep(2);
-    }
-
-    QCC_DbgPrintf(("Killing thread: %s", funcName));
-
-    threadListLock.Lock();
-    while (threadList.find(handle) != threadList.end()) {
-        threadListLock.Unlock();
-        int ret = pthread_kill(handle, SIGUSR1);
-        if (ret != 0) {
-            status = ER_OS_ERROR;
-            QCC_LogError(status, ("Killing thread: %s", strerror(ret)));
-        }
-        qcc::Sleep(500);
-        threadListLock.Lock();
-    }
-    threadListLock.Unlock();
-    return Join();
-}
-
 void Thread::AddAuxListener(ThreadListener* listener)
 {
     auxListenersLock.Lock();
