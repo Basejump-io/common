@@ -96,7 +96,7 @@ QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, co
     return ER_NOT_IMPLEMENTED;
 }
 
-QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSize, size_t& addrLen)
+QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSize, size_t& addrLen, uint32_t timeoutMs)
 {
     // There doesn't appear to be a way to resolve hostnames on WinRT.
     // HostName almost gets there, but it will only show resolution of local addresses.
