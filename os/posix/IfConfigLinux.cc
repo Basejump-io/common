@@ -51,6 +51,7 @@
 
 #include <qcc/Debug.h>
 #include <qcc/String.h>
+#include <qcc/Socket.h>
 
 #include <qcc/IfConfig.h>
 
@@ -396,7 +397,7 @@ static std::list<IfEntry> NetlinkGetInterfaces(void)
     }
 
     delete [] buffer;
-    close(sockFd);
+    qcc::Close(sockFd);
 
     return entries;
 }
@@ -528,7 +529,7 @@ static std::list<AddrEntry> NetlinkGetAddresses(uint32_t family)
     }
 
     delete [] buffer;
-    close(sockFd);
+    qcc::Close(sockFd);
 
     return entries;
 }
