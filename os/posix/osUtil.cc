@@ -31,6 +31,7 @@
 #include <qcc/Debug.h>
 #include <qcc/String.h>
 #include <qcc/Environ.h>
+#include <qcc/Thread.h>
 #include <qcc/Util.h>
 
 #include <Status.h>
@@ -206,4 +207,114 @@ QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, co
 #endif
     }
     return ER_OK;
+}
+
+class ResolverThread : public qcc::Thread, public qcc::ThreadListener {
+  public:
+    ResolverThread(qcc::String& hostname, uint8_t*addr, size_t* addrLen);
+    virtual ~ResolverThread() { }
+    QStatus Get(uint32_t timeoutMs);
+
+  protected:
+    qcc::ThreadReturn STDCALL Run(void* arg);
+    void ThreadExit(Thread* thread);
+
+  private:
+    qcc::String hostname;
+    uint8_t*addr;
+    size_t* addrLen;
+    QStatus status;
+    qcc::Mutex lock;
+    qcc::Event complete;
+    bool threadHasExited;
+};
+
+ResolverThread::ResolverThread(qcc::String& hostname, uint8_t* addr, size_t* addrLen)
+    : hostname(hostname), addr(addr), addrLen(addrLen), threadHasExited(false)
+{
+    status = Start(NULL, this);
+    if (ER_OK != status) {
+        addr = NULL;
+        addrLen = NULL;
+    }
+}
+
+QStatus ResolverThread::Get(uint32_t timeoutMs)
+{
+    if (addr && addrLen) {
+        status = qcc::Event::Wait(complete, timeoutMs);
+        if (ER_OK == status) {
+            Join();
+            status = static_cast<QStatus>(reinterpret_cast<uintptr_t>(GetExitValue()));
+        }
+    }
+
+    lock.Lock(MUTEX_CONTEXT);
+    addr = NULL;
+    addrLen = NULL;
+    bool deleteThis = threadHasExited;
+    QStatus sts = status;
+    lock.Unlock(MUTEX_CONTEXT);
+
+    if (deleteThis) {
+        Join();
+        delete this;
+    }
+    return sts;
+}
+
+void ResolverThread::ThreadExit(Thread*)
+{
+    lock.Lock(MUTEX_CONTEXT);
+    threadHasExited = true;
+    bool deleteThis = !addr && !addrLen;
+    lock.Unlock(MUTEX_CONTEXT);
+
+    if (deleteThis) {
+        Join();
+        delete this;
+    }
+}
+
+void* ResolverThread::Run(void*)
+{
+    QCC_DbgTrace(("ResolverThread::Run()"));
+    QStatus status = ER_OK;
+
+    struct addrinfo* info = NULL;
+    int ret = getaddrinfo(hostname.c_str(), NULL, NULL, &info);
+    if (0 == ret) {
+        lock.Lock(MUTEX_CONTEXT);
+        if (addr && addrLen) {
+            if (info->ai_family == AF_INET6) {
+                struct sockaddr_in6* sa = (struct sockaddr_in6*) info->ai_addr;
+                memcpy(addr, &sa->sin6_addr, qcc::IPAddress::IPv6_SIZE);
+                *addrLen = qcc::IPAddress::IPv6_SIZE;
+            } else if (info->ai_family == AF_INET) {
+                struct sockaddr_in* sa = (struct sockaddr_in*) info->ai_addr;
+                memcpy(&addr[qcc::IPAddress::IPv6_SIZE - qcc::IPAddress::IPv4_SIZE], &sa->sin_addr, qcc::IPAddress::IPv4_SIZE);
+                *addrLen = qcc::IPAddress::IPv4_SIZE;
+            } else {
+                status = ER_FAIL;
+            }
+        }
+        lock.Unlock(MUTEX_CONTEXT);
+        freeaddrinfo(info);
+    } else {
+        status = ER_BAD_HOSTNAME;
+        QCC_LogError(status, ("getaddrinfo - %s", gai_strerror(ret)));
+    }
+
+    QCC_DbgTrace(("ResolverThread::Run() complete"));
+    complete.SetEvent();
+    return (void*) status;
+}
+
+QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSize, size_t& addrLen, uint32_t timeoutMs)
+{
+    QCC_DbgTrace(("%s(hostname=%s,timeoutMs=%u)", __FUNCTION__, hostname.c_str(), timeoutMs));
+    if (qcc::IPAddress::IPv6_SIZE != addrSize) {
+        return ER_BAD_HOSTNAME;
+    }
+    return (new ResolverThread(hostname, addr, &addrLen))->Get(timeoutMs);
 }
