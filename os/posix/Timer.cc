@@ -542,7 +542,7 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                     isController = false;
                 }
 
-                stopEvent.ResetEvent(); // TODO why?
+                stopEvent.ResetEvent();
                 timer->lock.Unlock();
                 hasTimerLock = timer->preventReentrancy;
                 if (hasTimerLock) {
