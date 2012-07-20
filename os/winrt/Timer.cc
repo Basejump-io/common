@@ -123,6 +123,7 @@ Timer::~Timer()
                 // don't bubble OS exceptions out
             }
         }
+        // Execution here is a sequential flush, no need to provide concurrency flags
         alarm->listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
     }
     alarms.clear();
@@ -174,10 +175,18 @@ void Timer::TimerCallback(void* context)
             ReplaceAlarm(alarm, newAlarm, false);
         }
     }
+    // See if I should take the reentrancy lock
+    bool callbackPreventReentrancy = preventReentrancy;
     lock.Unlock();
+    if (callbackPreventReentrancy) {
+        reentrancyLock.Lock();
+    }
     if (alarmFound) {
         alarm->listener->AlarmTriggered(alarm, ER_OK);
         alarm->_latch->Decrement();
+    }
+    if (callbackPreventReentrancy) {
+        reentrancyLock.Unlock();
     }
 }
 
@@ -362,10 +371,18 @@ void Timer::ThreadExit(Thread* thread)
 
 void Timer::EnableReentrancy()
 {
+    lock.Lock();
+    preventReentrancy = false;
+    lock.Unlock();
 }
 
 bool Timer::ThreadHoldsLock() const
 {
+    // Need to get to the "static" timer here
+//	lock.Lock();
+//	bool retVal = preventReentrancy;
+//   lock.Unlock();
+//   return retVal;
     return false;
 }
 
