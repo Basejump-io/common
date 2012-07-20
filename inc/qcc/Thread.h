@@ -330,7 +330,6 @@ class Thread {
     unsigned int threadId;          ///< Thread ID used by windows
     ThreadListener* listener;       ///< Listener notified of thread events (or NULL).
     bool isExternal;                ///< If true, Thread is external (i.e. lifecycle not managed by Thread obj)
-    const void* noBlockResource;    ///< No-block resource for this thread
     void* platformContext;          ///< Context data specific to platform implementation
     uint32_t alertCode;             ///< Context passed from alerter to alertee
 
