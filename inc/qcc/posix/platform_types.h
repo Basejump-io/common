@@ -33,8 +33,8 @@
 namespace qcc {
 typedef int SocketFd;      /**< Socket file descriptor type. */
 }
-#endif
-
+#else
 typedef int qcc_SocketFd; /**< Socket file descriptor type. */
+#endif
 
 #endif
