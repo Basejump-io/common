@@ -123,7 +123,7 @@ Timer::~Timer()
                 // don't bubble OS exceptions out
             }
         }
-        // Execution here is a sequential flush, no need to provide concurrency flags
+        // Execution here is a sequential flush to notify listeners of exit
         alarm->listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
     }
     alarms.clear();
@@ -175,19 +175,22 @@ void Timer::TimerCallback(void* context)
             ReplaceAlarm(alarm, newAlarm, false);
         }
     }
-    // See if I should take the reentrancy lock
-    bool callbackPreventReentrancy = preventReentrancy;
+    // Set the default state for the callback
+    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
+    _timerHasOwnership[timerThreadHandle] = true;
     lock.Unlock();
-    if (callbackPreventReentrancy) {
-        reentrancyLock.Lock();
-    }
+    reentrancyLock.Lock();
     if (alarmFound) {
         alarm->listener->AlarmTriggered(alarm, ER_OK);
         alarm->_latch->Decrement();
     }
-    if (callbackPreventReentrancy) {
+    lock.Lock();
+    if (_timerHasOwnership[timerThreadHandle]) {
         reentrancyLock.Unlock();
     }
+    // Make sure we don't grow the map unbounded
+    _timerHasOwnership.erase(timerThreadHandle);
+    lock.Unlock();
 }
 
 QStatus Timer::Stop()
@@ -371,19 +374,32 @@ void Timer::ThreadExit(Thread* thread)
 
 void Timer::EnableReentrancy()
 {
+    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
     lock.Lock();
-    preventReentrancy = false;
+    if (_timerHasOwnership.find(timerThreadHandle) != _timerHasOwnership.end()) {
+        if (_timerHasOwnership[timerThreadHandle]) {
+            reentrancyLock.Unlock();
+            _timerHasOwnership[timerThreadHandle] = false;
+        }
+    } else {
+        // This is possible for STA marshalling
+        reentrancyLock.Unlock();
+        _timerHasOwnership[timerThreadHandle] = false;
+    }
     lock.Unlock();
 }
 
-bool Timer::ThreadHoldsLock() const
+bool Timer::ThreadHoldsLock()
 {
-    // Need to get to the "static" timer here
-//	lock.Lock();
-//	bool retVal = preventReentrancy;
-//   lock.Unlock();
-//   return retVal;
-    return false;
+    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
+    lock.Lock();
+    bool retVal = false;
+    if (_timerHasOwnership.find(timerThreadHandle) != _timerHasOwnership.end()) {
+        retVal = _timerHasOwnership[timerThreadHandle];
+    }
+    lock.Unlock();
+
+    return retVal;
 }
 
 OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer)
@@ -393,6 +409,15 @@ OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer)
 void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
 {
     _timer->TimerCallback((void*)timer);
+}
+
+void OSTimer::MarshalOwnershipThreadState(void* srcThread, void* destThread)
+{
+    _timer->lock.Lock();
+    if (_timerHasOwnership.find(srcThread) != _timerHasOwnership.end()) {
+        _timerHasOwnership[destThread] = _timerHasOwnership[srcThread];
+    }
+    _timer->lock.Unlock();
 }
 
 OSAlarm::OSAlarm() : _timer(nullptr)

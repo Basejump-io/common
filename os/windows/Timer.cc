@@ -650,7 +650,7 @@ void Timer::EnableReentrancy()
     }
 }
 
-bool Timer::ThreadHoldsLock() const
+bool Timer::ThreadHoldsLock()
 {
     Thread* thread = Thread::GetThread();
     if (nameStr == thread->GetName()) {

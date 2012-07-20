@@ -73,7 +73,7 @@ class AlarmListener {
     virtual void AlarmTriggered(const Alarm& alarm, QStatus reason) = 0;
 };
 
-class _Alarm : OSAlarm {
+class _Alarm : public OSAlarm {
     friend class Timer;
     friend class TimerThread;
 
@@ -158,8 +158,9 @@ class _Alarm : OSAlarm {
  */
 typedef qcc::ManagedObj<_Alarm> Alarm;
 
-class Timer : OSTimer, public ThreadListener {
+class Timer : public OSTimer, public ThreadListener {
     friend class TimerThread;
+    friend class OSTimer;
 
   public:
 
@@ -279,7 +280,7 @@ class Timer : OSTimer, public ThreadListener {
      *
      * @return true if the current thread is a timer thread that holds the reentrancy lock
      */
-    bool ThreadHoldsLock() const;
+    bool ThreadHoldsLock();
 
     /**
      * Get the name of the Timer thread pool

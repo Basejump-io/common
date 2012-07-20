@@ -43,6 +43,9 @@ class OSAlarm {
 };
 
 class OSTimer {
+  public:
+    void MarshalOwnershipThreadState(void* srcThread, void* destThread);
+
   protected:
     OSTimer(qcc::Timer* timer);
 
@@ -50,6 +53,7 @@ class OSTimer {
 
     qcc::Timer* _timer;
     std::map<void*, qcc::Alarm> _timerMap;
+    std::map<void*, bool> _timerHasOwnership;
 };
 
 }
