@@ -41,6 +41,7 @@
 #include <qcc/SocketTypes.h>
 #include <qcc/String.h>
 #include <qcc/StringUtil.h>
+#include <qcc/Util.h>
 
 #include <Status.h>
 
@@ -821,15 +822,15 @@ QStatus IPAddress::StringToIPv4(qcc::String address, uint8_t addrBuf[], size_t a
 
 QStatus IPAddress::SetAddress(const qcc::String& addrString, bool allowHostNames, uint32_t timeoutMs)
 {
-    QStatus status = ER_OK;
+    QStatus status = ER_PARSE_ERROR;
 
     addrSize = 0;
     memset(addr, 0xFF, sizeof(addr));
 
     if (addrString.empty()) {
         // INADDR_ANY
-        addrSize = IPv4_SIZE;
-        memcpy(&addr, &in6addr_any, sizeof(in6addr_any));
+        addrSize = IPv6_SIZE;
+        status = StringToIPv6("::", addr, addrSize);
     } else if (addrString.find_first_of(':') != addrString.npos) {
         // IPV6
         addrSize = IPv6_SIZE;
@@ -848,12 +849,9 @@ QStatus IPAddress::SetAddress(const qcc::String& addrString, bool allowHostNames
                     addrSize = IPv4_SIZE;
                 }
             }
-        } else {
-            status = ER_BAD_HOSTNAME;
         }
-    } else {
-        status = ER_PARSE_ERROR;
     }
+
     return status;
 }
 
