@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -146,14 +146,30 @@ class IoEventMonitor {
 
 };
 
-static IoEventMonitor IoMonitor;
+static IoEventMonitor* IoMonitor = NULL;
+
+static int eventCounter = 0;
+
+Event::Initializer::Initializer()
+{
+    if (0 == eventCounter++) {
+        IoMonitor = new IoEventMonitor;
+    }
+}
+
+Event::Initializer::~Initializer()
+{
+    if (0 == --eventCounter) {
+        delete IoMonitor;
+    }
+}
 
 VOID CALLBACK IoEventCallback(PVOID arg, BOOLEAN TimerOrWaitFired)
 {
     SOCKET sock = (SOCKET)arg;
-    IoMonitor.lock.Lock();
-    std::map<SOCKET, IoEventMonitor::EventList*>::iterator iter = IoMonitor.eventMap.find(sock);
-    if (iter != IoMonitor.eventMap.end()) {
+    IoMonitor->lock.Lock();
+    std::map<SOCKET, IoEventMonitor::EventList*>::iterator iter = IoMonitor->eventMap.find(sock);
+    if (iter != IoMonitor->eventMap.end()) {
         IoEventMonitor::EventList*eventList = iter->second;
         WSANETWORKEVENTS ioEvents;
         int ret = WSAEnumNetworkEvents(sock, eventList->ioEvent, &ioEvents);
@@ -188,7 +204,7 @@ VOID CALLBACK IoEventCallback(PVOID arg, BOOLEAN TimerOrWaitFired)
             }
         }
     }
-    IoMonitor.lock.Unlock();
+    IoMonitor->lock.Unlock();
 }
 
 
@@ -389,7 +405,7 @@ Event::Event(Event& event, EventType eventType, bool genPurpose) :
     if (ioFd > 0) {
         assert((eventType == IO_READ) || (eventType == IO_WRITE));
         ioHandle = CreateEvent(NULL, FALSE, FALSE, NULL);
-        IoMonitor.RegisterEvent(this);
+        IoMonitor->RegisterEvent(this);
     }
     if (genPurpose) {
         handle = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -409,7 +425,7 @@ Event::Event(int ioFd, EventType eventType, bool genPurpose) :
     if (ioFd > 0) {
         assert((eventType == IO_READ) || (eventType == IO_WRITE));
         ioHandle = CreateEvent(NULL, FALSE, FALSE, NULL);
-        IoMonitor.RegisterEvent(this);
+        IoMonitor->RegisterEvent(this);
     }
     if (genPurpose) {
         handle = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -439,7 +455,7 @@ Event::~Event()
 
     /* No longer monitoring I/O for this event */
     if (ioHandle != INVALID_HANDLE_VALUE) {
-        IoMonitor.DeregisterEvent(this);
+        IoMonitor->DeregisterEvent(this);
         CloseHandle(ioHandle);
     }
 

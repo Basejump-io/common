@@ -43,11 +43,15 @@ namespace qcc {
 /** @internal Forward Reference */
 class Source;
 
+
+
 /**
  * Events are used to send signals between threads.
  */
 class Event {
   public:
+
+    class Initializer;
 
     /** Cause Wait to have no timeout */
     static const uint32_t WAIT_FOREVER = static_cast<uint32_t>(-1);
@@ -248,6 +252,12 @@ class Event {
     void DecrementNumThreads() { DecrementAndFetch(&numThreads); }
 
 };
+
+static class Event::Initializer {
+  public:
+    Initializer();
+    ~Initializer();
+} eventInitializer;
 
 }  /* namespace */
 
