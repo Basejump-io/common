@@ -53,10 +53,10 @@
 #endif /* Compiler type */
 
 /** Boolean type for C */
-typedef int32_t QC_BOOL;
-/** Boolean logic true for QC_BOOL type*/
-#define QC_TRUE 1
-/** Boolean logic false for QC_BOOL type*/
-#define QC_FALSE 0
+typedef int32_t QCC_BOOL;
+/** Boolean logic true for QCC_BOOL type*/
+#define QCC_TRUE 1
+/** Boolean logic false for QCC_BOOL type*/
+#define QCC_FALSE 0
 
 #endif // _QCC_PLATFORM_H
