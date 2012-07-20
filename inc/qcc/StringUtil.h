@@ -205,6 +205,51 @@ qcc::String LineBreak(const qcc::String& inStr, size_t maxLen = 64, size_t inden
  */
 qcc::String StringVectorToString(const std::vector<qcc::String>* list, const char* sep = "");
 
+/**
+ * Convert a character digit to its non-ascii value
+ *
+ * @param c            Character to convert.
+
+ * @return non-ascii digit value or 255 if conversion was in error.
+ */
+uint8_t CharToU8(const char c);
+
+/**
+ * Convert non-ascii digit to its character value
+ *
+ * @param d            Value to convert.
+
+ * @return ascii value or '\0' if conversion was in error.
+ */
+char U8ToChar(uint8_t d);
+
+/**
+ * Tests if character value is a base 10 digit
+ *
+ * @param c            Value to test.
+
+ * @return true iff digit is valid base 10.
+ */
+bool IsDecimalDigit(char c);
+
+/**
+ * Tests if character value is a base 8 digit
+ *
+ * @param c            Value to test.
+
+ * @return true iff digit is valid base 8.
+ */
+bool IsOctalDigit(char c);
+
+/**
+ * Tests if character value is a base 16 digit
+ *
+ * @param c            Value to test.
+
+ * @return true iff digit is valid base 16.
+ */
+bool IsHexDigit(char c);
+
 }   /* End namespace */
 
 #endif
