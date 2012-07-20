@@ -29,6 +29,7 @@
 #include <qcc/Config.h>
 #include <qcc/Mutex.h>
 #include <qcc/Debug.h>
+#include <qcc/Thread.h>
 #include <qcc/RendezvousServerRootCertificate.h>
 
 #include <openssl/bn.h>
@@ -49,8 +50,10 @@ using namespace std;
 
 namespace qcc {
 
+static int32_t refCount = 0;
+
 static SSL_CTX* sslCtx = NULL;
-static qcc::Mutex ctxMutex;
+static qcc::Mutex* ctxMutex = NULL;
 
 struct SslSocket::Internal {
     Internal() : bio(NULL), rootCert(NULL), rootCACert(NULL) { }
@@ -68,69 +71,73 @@ SslSocket::SslSocket(String host) :
     sock(-1)
 {
     /* Initialize the global SSL context is this is the first SSL socket */
-    if (!sslCtx) {
+    if (IncrementAndFetch(&refCount) == 1) {
 
-        ctxMutex.Lock();
+        SSL_library_init();
+        SSL_load_error_strings();
+        ERR_load_BIO_strings();
+        OpenSSL_add_all_algorithms();
+        sslCtx = SSL_CTX_new(SSLv23_client_method());
 
-        /* Check sslCtx again now that we have the mutex */
-        if (!sslCtx) {
+        if (sslCtx) {
 
-            SSL_library_init();
-            SSL_load_error_strings();
-            ERR_load_BIO_strings();
-            OpenSSL_add_all_algorithms();
-            sslCtx = SSL_CTX_new(SSLv23_client_method());
+            /* Set up our own trust store */
+            X509_STORE* store = X509_STORE_new();
 
-            if (sslCtx) {
+            /* Replace the certificate verification storage of sslCtx with store */
+            SSL_CTX_set_cert_store(sslCtx, store);
 
-                /* Set up our own trust store */
-                X509_STORE* store = X509_STORE_new();
+            /* Get a reference to the current certificate verification storage */
+            X509_STORE* sslCtxstore = SSL_CTX_get_cert_store(sslCtx);
 
-                /* Replace the certificate verification storage of sslCtx with store */
-                SSL_CTX_set_cert_store(sslCtx, store);
+            /* Convert the PEM-encoded root certificate defined by RendezvousServerRootCertificate in to the X509 format*/
+            QStatus status = ImportPEM();
+            if (status == ER_OK) {
 
-                /* Get a reference to the current certificate verification storage */
-                X509_STORE* sslCtxstore = SSL_CTX_get_cert_store(sslCtx);
+                /* Add the root certificate to the current certificate verification storage */
+                if (X509_STORE_add_cert(sslCtxstore, internal->rootCert) != 1) {
+                    QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): X509_STORE_add_cert: OpenSSL error is \"%s\"",
+                                               ERR_reason_error_string(ERR_get_error())));
+                }
 
-                /* Convert the PEM-encoded root certificate defined by RendezvousServerRootCertificate in to the X509 format*/
-                QStatus status = ImportPEM();
-                if (status == ER_OK) {
-
+                if (internal->rootCACert != NULL) {
                     /* Add the root certificate to the current certificate verification storage */
-                    if (X509_STORE_add_cert(sslCtxstore, internal->rootCert) != 1) {
+                    if (X509_STORE_add_cert(sslCtxstore, internal->rootCACert) != 1) {
                         QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): X509_STORE_add_cert: OpenSSL error is \"%s\"",
                                                    ERR_reason_error_string(ERR_get_error())));
                     }
-
-                    if (internal->rootCACert != NULL) {
-                        /* Add the root certificate to the current certificate verification storage */
-                        if (X509_STORE_add_cert(sslCtxstore, internal->rootCACert) != 1) {
-                            QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): X509_STORE_add_cert: OpenSSL error is \"%s\"",
-                                                       ERR_reason_error_string(ERR_get_error())));
-                        }
-                    }
-
-                    /* Set the default verify paths for the SSL context */
-                    if (SSL_CTX_set_default_verify_paths(sslCtx) != 1) {
-                        QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): SSL_CTX_set_default_verify_paths: OpenSSL error is \"%s\"",
-                                                   ERR_reason_error_string(ERR_get_error())));
-                    }
-
-                } else {
-                    QCC_LogError(status, ("SslSocket::SslSocket(): ImportPEM() failed"));
                 }
-            }
 
-            if (!sslCtx) {
-                QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
+                /* Set the default verify paths for the SSL context */
+                if (SSL_CTX_set_default_verify_paths(sslCtx) != 1) {
+                    QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): SSL_CTX_set_default_verify_paths: OpenSSL error is \"%s\"",
+                                               ERR_reason_error_string(ERR_get_error())));
+                }
+
+            } else {
+                QCC_LogError(status, ("SslSocket::SslSocket(): ImportPEM() failed"));
             }
 
             /* SSL generates SIGPIPE which we don't want */
             signal(SIGPIPE, SIG_IGN);
-        }
 
-        ctxMutex.Unlock();
+            /* The ssl connect API is not thread safe so we need a mutex to serial its use */
+            ctxMutex = new Mutex();
+
+        } else {
+            DecrementAndFetch(&refCount);
+            QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
+        }
+    } else {
+        DecrementAndFetch(&refCount);
+        /*
+         * Handle race where two or more threads are creating ssl sockets simultaneously.
+         */
+        while (refCount && !ctxMutex) {
+            qcc::Sleep(5);
+        }
     }
+
 }
 
 SslSocket::~SslSocket() {
@@ -142,13 +149,13 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
 {
     QStatus status = ER_OK;
 
-    ctxMutex.Lock();
-
     /* Sanity check */
     if (!sslCtx) {
         QCC_LogError(ER_SSL_INIT, ("SslSocket::Connect(): SSL failed to initialize"));
         return ER_SSL_INIT;
     }
+
+    ctxMutex->Lock();
 
     /* Create the descriptor for this SSL socket */
     SSL* ssl;
@@ -193,7 +200,7 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
         internal->bio = NULL;
     }
 
-    ctxMutex.Unlock();
+    ctxMutex->Unlock();
 
     /* Log any errors */
     if (ER_OK != status) {
