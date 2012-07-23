@@ -58,6 +58,8 @@ class TimerThread : public Thread {
         currentAlarm(NULL)
     { }
 
+    virtual ~TimerThread() { }
+
     bool hasTimerLock;
 
     QStatus Start(void* arg, ThreadListener* listener);
