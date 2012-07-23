@@ -382,9 +382,7 @@ void Timer::EnableReentrancy()
             _timerHasOwnership[timerThreadHandle] = false;
         }
     } else {
-        // This is possible for STA marshalling
-        reentrancyLock.Unlock();
-        _timerHasOwnership[timerThreadHandle] = false;
+        QCC_DbgPrintf(("Invalid call to Timer::EnableReentrancy from thread %s; only allowed from %s", Thread::GetThreadName(), nameStr.c_str()));
     }
     lock.Unlock();
 }
@@ -406,18 +404,36 @@ OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer)
 {
 }
 
-void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
+void OSTimer::AllocThreadState()
 {
-    _timer->TimerCallback((void*)timer);
+    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
+    _timer->lock.Lock();
+    _timerHasOwnership[timerThreadHandle] = true;
+    _timer->lock.Unlock();
 }
 
-void OSTimer::MarshalOwnershipThreadState(void* srcThread, void* destThread)
+void OSTimer::DeleteThreadState()
+{
+    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
+    _timer->lock.Lock();
+    if (_timerHasOwnership.find(timerThreadHandle) != _timerHasOwnership.end()) {
+        _timerHasOwnership.erase(timerThreadHandle);
+    }
+    _timer->lock.Unlock();
+}
+
+void OSTimer::MarshalThreadState(void* srcThread, void* destThread)
 {
     _timer->lock.Lock();
     if (_timerHasOwnership.find(srcThread) != _timerHasOwnership.end()) {
         _timerHasOwnership[destThread] = _timerHasOwnership[srcThread];
     }
     _timer->lock.Unlock();
+}
+
+void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
+{
+    _timer->TimerCallback((void*)timer);
 }
 
 OSAlarm::OSAlarm() : _timer(nullptr)
