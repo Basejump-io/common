@@ -32,6 +32,11 @@
 
 QStatus qcc::Crypto_GetRandomBytes(uint8_t* data, size_t len)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     QStatus status = ER_OK;
     BIGNUM* rand = BN_new();
     if (BN_rand(rand, len * 8, -1, 0)) {

@@ -1033,6 +1033,18 @@ class Crypto_ASN1 {
  */
 QStatus Crypto_GetRandomBytes(uint8_t* data, size_t len);
 
+/**
+ * Some crypto libraries (e.g. openssl) are not thread safe so the wrappers must obtain a mutual
+ * exclusion lock before making calls into the crypto library. To obtain the lock declare an
+ * instance of this class before calling any crypto library APIs
+ */
+class Crypto_ScopedLock {
+  public:
+    Crypto_ScopedLock();
+    ~Crypto_ScopedLock();
+};
+
+
 }
 
 #endif

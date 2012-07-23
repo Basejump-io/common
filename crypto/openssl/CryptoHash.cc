@@ -58,6 +58,11 @@ class Crypto_Hash::Context {
 
 QStatus Crypto_Hash::Init(Algorithm alg, const uint8_t* hmacKey, size_t keyLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     QStatus status = ER_OK;
 
     if (ctx) {
@@ -112,6 +117,11 @@ QStatus Crypto_Hash::Init(Algorithm alg, const uint8_t* hmacKey, size_t keyLen)
 
 Crypto_Hash::~Crypto_Hash(void)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (ctx) {
         if (initialized) {
             if (MAC) {
@@ -126,6 +136,11 @@ Crypto_Hash::~Crypto_Hash(void)
 
 QStatus Crypto_Hash::Update(const uint8_t* buf, size_t bufSize)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     QStatus status = ER_OK;
 
     if (!buf) {
@@ -152,6 +167,11 @@ QStatus Crypto_Hash::Update(const qcc::String& str)
 
 QStatus Crypto_Hash::GetDigest(uint8_t* digest, bool keepAlive)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     QStatus status = ER_OK;
 
     if (!digest) {
