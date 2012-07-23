@@ -41,17 +41,25 @@ else:
     # gTest code to not compile as expected at this time
     gtest_env.Replace(CPPPATH = [gtest_env.Dir('$GTEST_DIR'), gtest_env.Dir('$GTEST_DIR/include')])    
     if(env['OS_CONF'] == 'android'):
-        # Determine Android NDK version
-        if os.path.exists(env.subst('$ANDROID_NDK/toolchains')):
-            ndkVersion = 5
-        else:
-            print 'common unit test build requires NDK v5 or newer'
         # Android include paths
-        if ndkVersion >= 5:
+	if (env.subst('$ANDROID_NDK_VERSION') == '8b'):
+            gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
+                                      #Using GNU STL instead of STLPORT
+                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include',
+                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include/backward',
+                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/libs/armeabi/include'])
+	elif (env.subst('$ANDROID_NDK_VERSION') == '5' or 
+	    env.subst('$ANDROID_NDK_VERSION') == '6' or
+	    env.subst('$ANDROID_NDK_VERSION') == '7' or
+	    env.subst('$ANDROID_NDK_VERSION') == '8'):
             gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
                                       #Using GNU STL instead of STLPORT
                                       '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include',
+                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include/backward',
                                       '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/libs/armeabi/include'])
+        else:
+            print 'common unit test build requires NDK v5 or newer'
+
     gtest_obj = gtest_env.StaticObject(target = 'gtest-all', source = ['$GTEST_DIR/src/gtest-all.cc'])
     gtest_env.StaticLibrary(target = 'gtest', source = gtest_obj)
     
@@ -77,19 +85,28 @@ else:
         unittest_env.Append(CXXFLAGS = ['/EHsc'])
 
     if(env['OS_CONF'] == 'android'):
-        # Determine Android NDK version
-        if os.path.exists(env.subst('$ANDROID_NDK/toolchains')):
-            ndkVersion = 5
-        else:
-            print 'Cannot determine Android NDK version'
         # Android include paths
-        if ndkVersion >= 5:
+	if (env.subst('$ANDROID_NDK_VERSION') == '8b'):
+            unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
+                                #Using GNU STL instead of STLPORT
+                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include',
+                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include/backward',
+                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/libs/armeabi/include',
+                                '$ANDROID_SRC/external/bluetooth/bluez/include',
+                                '$ANDROID_SRC/external/openssl/include'])
+	elif (env.subst('$ANDROID_NDK_VERSION') == '5' or 
+	    env.subst('$ANDROID_NDK_VERSION') == '6' or
+	    env.subst('$ANDROID_NDK_VERSION') == '7' or
+	    env.subst('$ANDROID_NDK_VERSION') == '8'):
             unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
                                 #Using GNU STL instead of STLPORT
                                 '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include',
+                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include/backward',
                                 '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/libs/armeabi/include',
                                 '$ANDROID_SRC/external/bluetooth/bluez/include',
                                 '$ANDROID_SRC/external/openssl/include'])
+        else:
+            print 'common unit test build requires NDK v5 or newer'
 
 
         

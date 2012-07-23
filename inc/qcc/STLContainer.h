@@ -25,7 +25,10 @@
 #ifndef _STLCONTAINER_H
 #define _STLCONTAINER_H
 
-#if defined(QCC_OS_DARWIN)
+#if defined(QCC_OS_ANDROID)
+#include <ext/hash_map>
+#include <ext/hash_set>
+#elif defined(QCC_OS_DARWIN)
 #include <tr1/unordered_map>
 #include <tr1/unordered_set>
 #else
@@ -33,14 +36,24 @@
 #include <unordered_set>
 #endif
 
-#if (defined _MSC_VER && _MSC_VER == 1500) || defined(QCC_OS_DARWIN)
+#if defined(QCC_OS_ANDROID)
+/*
+ * For android use hash_map and hash_set since the STL list does not compile with gcc 4.6
+ * with the gnu++0x flag which is required for unordered_map and unordered_set.
+ */
+#define unordered_map hash_map
+#define unordered_multimap hash_multimap
+#define unordered_set hash_set
+#define STL_NAMESPACE_PREFIX  __gnu_cxx
 
-#define STL_NAMESPACE_PREFIX std::tr1
+#elif (defined _MSC_VER && _MSC_VER == 1500) || defined(QCC_OS_DARWIN)
+
 /*
  * For MSVC2008 unordered_map, unordered_multimap, unordered_set, and hash
  * are found in the tr1 libraries while in new version of MSVC and in GNU
  * the libraries are all found in std namespace.
  */
+#define STL_NAMESPACE_PREFIX std::tr1
 
 #else
 
