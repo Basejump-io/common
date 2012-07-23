@@ -53,7 +53,8 @@ elif env['OS'] == 'darwin':
 elif env['OS'] == 'android':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc', 'ssl'])
     if (env.subst('$ANDROID_NDK_VERSION') == '7' or 
-        env.subst('$ANDROID_NDK_VERSION') == '8'):
+        env.subst('$ANDROID_NDK_VERSION') == '8' or 
+        env.subst('$ANDROID_NDK_VERSION') == '8b'):
         env.AppendUnique(LIBS = ['gnustl_static'])
 elif env['OS'] == 'android_donut':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log'])
