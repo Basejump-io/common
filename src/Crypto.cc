@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@
 #include <qcc/platform.h>
 #include <qcc/Debug.h>
 #include <qcc/Crypto.h>
+#include <qcc/Mutex.h>
+#include <qcc/Thread.h>
 #include <qcc/Util.h>
 
 #include <Status.h>
@@ -35,6 +37,28 @@ using namespace qcc;
 #define QCC_MODULE "CRYPTO"
 
 namespace qcc {
+
+static Mutex* mutex = NULL;
+static int32_t refCount = 0;
+
+Crypto_ScopedLock::Crypto_ScopedLock()
+{
+    if (IncrementAndFetch(&refCount) == 1) {
+        mutex = new Mutex();
+    } else {
+        DecrementAndFetch(&refCount);
+        while (!mutex) {
+            qcc::Sleep(1);
+        }
+    }
+    mutex->Lock();
+}
+
+Crypto_ScopedLock::~Crypto_ScopedLock()
+{
+    assert(mutex);
+    mutex->Unlock();
+}
 
 QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, const qcc::String& seed, uint8_t* out, size_t outLen)
 {

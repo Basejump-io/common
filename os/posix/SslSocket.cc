@@ -29,7 +29,7 @@
 #include <qcc/Config.h>
 #include <qcc/Mutex.h>
 #include <qcc/Debug.h>
-#include <qcc/Thread.h>
+#include <qcc/Crypto.h>
 #include <qcc/RendezvousServerRootCertificate.h>
 
 #include <openssl/bn.h>
@@ -53,7 +53,6 @@ namespace qcc {
 static int32_t refCount = 0;
 
 static SSL_CTX* sslCtx = NULL;
-static qcc::Mutex* ctxMutex = NULL;
 
 struct SslSocket::Internal {
     Internal() : bio(NULL), rootCert(NULL), rootCACert(NULL) { }
@@ -70,8 +69,13 @@ SslSocket::SslSocket(String host) :
     Host(host),
     sock(-1)
 {
+    /*
+     * Protect open ssl
+     */
+    Crypto_ScopedLock lock;
+
     /* Initialize the global SSL context is this is the first SSL socket */
-    if (IncrementAndFetch(&refCount) == 1) {
+    if (!sslCtx) {
 
         SSL_library_init();
         SSL_load_error_strings();
@@ -121,23 +125,11 @@ SslSocket::SslSocket(String host) :
             /* SSL generates SIGPIPE which we don't want */
             signal(SIGPIPE, SIG_IGN);
 
-            /* The ssl connect API is not thread safe so we need a mutex to serial its use */
-            ctxMutex = new Mutex();
-
         } else {
             DecrementAndFetch(&refCount);
             QCC_LogError(ER_SSL_INIT, ("SslSocket::SslSocket(): OpenSSL error is \"%s\"", ERR_reason_error_string(ERR_get_error())));
         }
-    } else {
-        DecrementAndFetch(&refCount);
-        /*
-         * Handle race where two or more threads are creating ssl sockets simultaneously.
-         */
-        while (refCount && !ctxMutex) {
-            qcc::Sleep(5);
-        }
     }
-
 }
 
 SslSocket::~SslSocket() {
@@ -147,6 +139,11 @@ SslSocket::~SslSocket() {
 
 QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     QStatus status = ER_OK;
 
     /* Sanity check */
@@ -154,8 +151,6 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
         QCC_LogError(ER_SSL_INIT, ("SslSocket::Connect(): SSL failed to initialize"));
         return ER_SSL_INIT;
     }
-
-    ctxMutex->Lock();
 
     /* Create the descriptor for this SSL socket */
     SSL* ssl;
@@ -199,8 +194,6 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
         BIO_free_all(internal->bio);
         internal->bio = NULL;
     }
-
-    ctxMutex->Unlock();
 
     /* Log any errors */
     if (ER_OK != status) {
@@ -277,6 +270,11 @@ QStatus SslSocket::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
 
 QStatus SslSocket::ImportPEM()
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     /* Initialize the appropriate root certificate to be used for HTTPS connection */
     QStatus status = InitializeServerRootCertificate(Host);
 

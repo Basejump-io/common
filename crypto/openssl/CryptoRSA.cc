@@ -113,6 +113,11 @@ bool Crypto_RSA::RSA_Init()
 
 void Crypto_RSA::Generate(uint32_t keyLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     BIGNUM* bn = BN_new();
     key = RSA_new();
     if (bn && key) {
@@ -127,6 +132,11 @@ void Crypto_RSA::Generate(uint32_t keyLen)
 
 QStatus Crypto_RSA::MakeSelfCertificate(const qcc::String& commonName, const qcc::String& app)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     QStatus status = ER_OK;
     int serial = 0;
     X509* x509 = X509_new();
@@ -178,6 +188,11 @@ QStatus Crypto_RSA::MakeSelfCertificate(const qcc::String& commonName, const qcc
 
 QStatus Crypto_RSA::ImportPEM(const qcc::String& pem)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
 #ifndef NDEBUG
     ERR_load_crypto_strings();
 #endif
@@ -202,6 +217,11 @@ QStatus Crypto_RSA::ImportPEM(const qcc::String& pem)
 
 QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, const qcc::String& passphrase)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (passphrase.empty()) {
         return ImportPKCS8(pkcs8, NULL);
     } else {
@@ -212,6 +232,11 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, const qcc::String& pas
 
 QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, PassphraseListener* listener)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (key) {
         RSA_free((RSA*)key);
         key = NULL;
@@ -244,6 +269,11 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, PassphraseListener* li
 
 QStatus Crypto_RSA::ImportPrivateKey(const qcc::KeyBlob& keyBlob, const qcc::String& passphrase)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (keyBlob.GetType() == KeyBlob::PRIVATE) {
         qcc::String pkcs8((const char*)keyBlob.GetData(), keyBlob.GetSize());
         return ImportPKCS8(pkcs8, passphrase);
@@ -254,6 +284,11 @@ QStatus Crypto_RSA::ImportPrivateKey(const qcc::KeyBlob& keyBlob, const qcc::Str
 
 QStatus Crypto_RSA::ImportPrivateKey(const qcc::KeyBlob& keyBlob, PassphraseListener* listener)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (keyBlob.GetType() == KeyBlob::PRIVATE) {
         qcc::String pkcs8((const char*)keyBlob.GetData(), keyBlob.GetSize());
         return ImportPKCS8(pkcs8, listener);
@@ -274,6 +309,11 @@ QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, const qcc::String& p
 
 QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, PassphraseListener* listener)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (!key) {
         return ER_CRYPTO_KEY_UNUSABLE;
     }
@@ -314,6 +354,11 @@ QStatus Crypto_RSA::ExportPrivateKey(qcc::KeyBlob& keyBlob, PassphraseListener* 
 
 qcc::String Crypto_RSA::CertToString()
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     BIO* bio = BIO_new(BIO_s_mem());
     qcc::String str;
     if (cert && X509_print(bio, (X509*)cert)) {
@@ -331,6 +376,11 @@ qcc::String Crypto_RSA::CertToString()
 
 QStatus Crypto_RSA::ExportPEM(qcc::String& pem)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     QStatus status = ER_CRYPTO_ERROR;
     BIO* bio = BIO_new(BIO_s_mem());
     if (cert) {
@@ -363,6 +413,11 @@ size_t Crypto_RSA::GetSize()
 
 QStatus Crypto_RSA::Sign(const uint8_t* data, size_t len, uint8_t* signature, size_t& sigLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (!data) {
         return ER_BAD_ARG_1;
     }
@@ -389,6 +444,11 @@ QStatus Crypto_RSA::Sign(const uint8_t* data, size_t len, uint8_t* signature, si
 
 QStatus Crypto_RSA::Verify(const uint8_t* data, size_t len, const uint8_t* signature, size_t sigLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (!data) {
         return ER_BAD_ARG_1;
     }
@@ -413,6 +473,11 @@ QStatus Crypto_RSA::Verify(const uint8_t* data, size_t len, const uint8_t* signa
 
 QStatus Crypto_RSA::PublicEncrypt(const uint8_t* inData, size_t inLen, uint8_t* outData, size_t& outLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (!key) {
         return ER_CRYPTO_KEY_UNUSABLE;
     }
@@ -430,6 +495,11 @@ QStatus Crypto_RSA::PublicEncrypt(const uint8_t* inData, size_t inLen, uint8_t* 
 
 QStatus Crypto_RSA::PrivateDecrypt(const uint8_t* inData, size_t inLen, uint8_t* outData, size_t& outLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (!key) {
         return ER_CRYPTO_KEY_UNUSABLE;
     }
@@ -450,6 +520,11 @@ QStatus Crypto_RSA::PrivateDecrypt(const uint8_t* inData, size_t inLen, uint8_t*
 
 QStatus Crypto_RSA::SignDigest(const uint8_t* digest, size_t digLen, uint8_t* signature, size_t& sigLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (!key) {
         return ER_CRYPTO_KEY_UNUSABLE;
     }
@@ -469,6 +544,11 @@ QStatus Crypto_RSA::SignDigest(const uint8_t* digest, size_t digLen, uint8_t* si
 
 QStatus Crypto_RSA::VerifyDigest(const uint8_t* digest, size_t digLen, const uint8_t* signature, size_t sigLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     QStatus status = ER_OK;
     if (!key) {
         return ER_CRYPTO_KEY_UNUSABLE;
@@ -487,6 +567,11 @@ QStatus Crypto_RSA::VerifyDigest(const uint8_t* digest, size_t digLen, const uin
 
 Crypto_RSA::Crypto_RSA() : size(0), cert(NULL), key(NULL), certContext(NULL)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
 #ifndef NDEBUG
     ERR_load_crypto_strings();
 #endif
@@ -494,6 +579,11 @@ Crypto_RSA::Crypto_RSA() : size(0), cert(NULL), key(NULL), certContext(NULL)
 
 Crypto_RSA::~Crypto_RSA()
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if (key) {
         RSA_free((RSA*)key);
     }

@@ -58,6 +58,11 @@ struct Crypto_AES::KeyState {
 
 Crypto_AES::Crypto_AES(const KeyBlob& key, Mode mode) : mode(mode), keyState(new KeyState())
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+
     if ((mode == ECB_ENCRYPT) || (mode == CCM)) {
         AES_set_encrypt_key((unsigned char*)key.GetData(), key.GetSize() * 8, &keyState->key);
     } else {
@@ -72,6 +77,10 @@ Crypto_AES::~Crypto_AES()
 
 QStatus Crypto_AES::Encrypt(const Block* in, Block* out, uint32_t numBlocks)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
     if (!in || !out) {
         return in ? ER_BAD_ARG_1 : ER_BAD_ARG_2;
     }
@@ -91,6 +100,10 @@ QStatus Crypto_AES::Encrypt(const Block* in, Block* out, uint32_t numBlocks)
 
 QStatus Crypto_AES::Encrypt(const void* in, size_t len, Block* out, uint32_t numBlocks)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
     QStatus status;
 
     if (!in || !out) {
@@ -122,6 +135,10 @@ QStatus Crypto_AES::Encrypt(const void* in, size_t len, Block* out, uint32_t num
 
 QStatus Crypto_AES::Decrypt(const Block* in, Block* out, uint32_t numBlocks)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
     if (!in || !out) {
         return in ? ER_BAD_ARG_1 : ER_BAD_ARG_2;
     }
@@ -141,6 +158,10 @@ QStatus Crypto_AES::Decrypt(const Block* in, Block* out, uint32_t numBlocks)
 
 QStatus Crypto_AES::Decrypt(const Block* in, uint32_t numBlocks, void* out, size_t len)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
     QStatus status;
 
     if (!in || !out) {
@@ -277,6 +298,10 @@ static inline uint8_t LengthOctetsFor(size_t len)
 QStatus Crypto_AES::Encrypt_CCM(const void* in, void* out, size_t& len, const KeyBlob& nonce, const void* addData, size_t addLen, uint8_t authLen)
 {
     /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
+    /*
      * Check we are initialized for CCM
      */
     if (mode != CCM) {
@@ -327,6 +352,10 @@ QStatus Crypto_AES::Encrypt_CCM(const void* in, void* out, size_t& len, const Ke
 
 QStatus Crypto_AES::Decrypt_CCM(const void* in, void* out, size_t& len, const KeyBlob& nonce, const void* addData, size_t addLen, uint8_t authLen)
 {
+    /*
+     * Protect the open ssl APIs.
+     */
+    Crypto_ScopedLock lock;
     /*
      * Check we are initialized for CCM
      */
