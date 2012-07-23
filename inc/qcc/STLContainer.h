@@ -27,10 +27,33 @@
 
 
 
+
+
+#if defined(QCC_OS_ANDROID)
+
+#include <hash_map>
+#include <hash_set>
+/*
+ * For android use hash_map and hash_set since the STL list does not compile with gcc 4.6
+ * with the gnu++0x flag which is required for unordered_map and unordered_set.
+ */
+using __gnu_cxx::hash_map;
+using __gnu_cxx::hash_multimap;
+using __gnu_cxx::hash_set;
+using __gnu_cxx::hash;
+
+#define unordered_map hash_map
+#define unordered_multimap hash_multimap
+#define unordered_set hash_set
+#define STL_NAMESPACE_PREFIX __gnu_cxx
+
+#else
 #include <unordered_map>
 #include <unordered_set>
+#define STL_NAMESPACE_PREFIX std
 
 #if defined _MSC_VER && _MSC_VER == 1500
+
 /*
  * For MSVC2008 unordered_map, unordered_multimap, unordered_set, and hash
  * are found in the tr1 libraries while in new version of MSVC and in GNU
@@ -40,11 +63,16 @@ using std::tr1::unordered_map;
 using std::tr1::unordered_multimap;
 using std::tr1::unordered_set;
 using std::tr1::hash;
+
 #else
+
 using std::unordered_map;
 using std::unordered_multimap;
 using std::unordered_set;
 using std::hash;
+
+#endif
+
 #endif
 
 #endif
