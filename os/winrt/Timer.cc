@@ -425,7 +425,8 @@ void OSTimer::DeleteThreadState()
 void OSTimer::MarshalThreadState(void* srcThread, void* destThread)
 {
     _timer->lock.Lock();
-    if (_timerHasOwnership.find(srcThread) != _timerHasOwnership.end()) {
+    if (_timerHasOwnership.find(srcThread) != _timerHasOwnership.end() &&
+        _timerHasOwnership.find(destThread) != _timerHasOwnership.end()) {
         _timerHasOwnership[destThread] = _timerHasOwnership[srcThread];
     }
     _timer->lock.Unlock();
