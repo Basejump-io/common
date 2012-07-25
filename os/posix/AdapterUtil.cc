@@ -51,6 +51,7 @@ using namespace qcc;
 #define QCC_MODULE "NETWORK"
 
 qcc::AdapterUtil* qcc::AdapterUtil::singleton = NULL;
+qcc::Mutex qcc::AdapterUtil::singletonLock;
 
 AdapterUtil::~AdapterUtil(void) {
 }
