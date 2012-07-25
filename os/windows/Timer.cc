@@ -68,8 +68,6 @@ class TimerThread : public Thread {
 
     int GetIndex() const { return index; }
 
-    virtual ~TimerThread() { }
-
   protected:
     virtual ThreadReturn STDCALL Run(void* arg);
 
