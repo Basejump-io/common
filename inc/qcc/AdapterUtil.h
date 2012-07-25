@@ -51,7 +51,7 @@ class AdapterUtil {
 
   private:
     static AdapterUtil* singleton;         ///< Singleton reference.
-    static Mutex        singletonLock;     ///< Singleton creation mutex
+    static Mutex singletonLock;            ///< Singleton creation mutex
 
     std::vector<qcc::NetInfo> interfaces;  ///< List of network interface data.
 
