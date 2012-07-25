@@ -43,11 +43,6 @@ class OSAlarm {
 };
 
 class OSTimer {
-  public:
-    void AllocThreadState();
-    void DeleteThreadState();
-    void MarshalThreadState(void* srcThread, void* destThread);
-
   protected:
     OSTimer(qcc::Timer* timer);
 

@@ -158,9 +158,11 @@ QStatus Timer::Start()
 
 void Timer::TimerCallback(void* context)
 {
-    lock.Lock();
+    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
     bool alarmFound = false;
     qcc::Alarm alarm;
+    reentrancyLock.Lock();
+    lock.Lock();
     if (_timerMap.find(context) != _timerMap.end()) {
         alarmFound = true;
         alarm = _timerMap[context]; // ThreadPoolTimer -> alarm
@@ -175,22 +177,24 @@ void Timer::TimerCallback(void* context)
             ReplaceAlarm(alarm, newAlarm, false);
         }
     }
-    // Set the default state for the callback
-    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
-    _timerHasOwnership[timerThreadHandle] = true;
+    // Only track state for valid alarms
+    if (alarmFound) {
+        _timerHasOwnership[timerThreadHandle] = true;
+    }
     lock.Unlock();
-    reentrancyLock.Lock();
     if (alarmFound) {
         alarm->listener->AlarmTriggered(alarm, ER_OK);
         alarm->_latch->Decrement();
     }
-    lock.Lock();
-    if (_timerHasOwnership[timerThreadHandle]) {
-        reentrancyLock.Unlock();
+    if (alarmFound) {
+        lock.Lock();
+        if (_timerHasOwnership[timerThreadHandle]) {
+            reentrancyLock.Unlock();
+        }
+        // Make sure we don't grow the map unbounded
+        _timerHasOwnership.erase(timerThreadHandle);
+        lock.Unlock();
     }
-    // Make sure we don't grow the map unbounded
-    _timerHasOwnership.erase(timerThreadHandle);
-    lock.Unlock();
 }
 
 QStatus Timer::Stop()
@@ -402,34 +406,6 @@ bool Timer::ThreadHoldsLock()
 
 OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer)
 {
-}
-
-void OSTimer::AllocThreadState()
-{
-    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
-    _timer->lock.Lock();
-    _timerHasOwnership[timerThreadHandle] = true;
-    _timer->lock.Unlock();
-}
-
-void OSTimer::DeleteThreadState()
-{
-    void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
-    _timer->lock.Lock();
-    if (_timerHasOwnership.find(timerThreadHandle) != _timerHasOwnership.end()) {
-        _timerHasOwnership.erase(timerThreadHandle);
-    }
-    _timer->lock.Unlock();
-}
-
-void OSTimer::MarshalThreadState(void* srcThread, void* destThread)
-{
-    _timer->lock.Lock();
-    if (_timerHasOwnership.find(srcThread) != _timerHasOwnership.end() &&
-        _timerHasOwnership.find(destThread) != _timerHasOwnership.end()) {
-        _timerHasOwnership[destThread] = _timerHasOwnership[srcThread];
-    }
-    _timer->lock.Unlock();
 }
 
 void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
