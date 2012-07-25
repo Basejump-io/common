@@ -39,6 +39,7 @@ using namespace std;
 namespace qcc {
 
 AdapterUtil* AdapterUtil::singleton = NULL;
+qcc::Mutex qcc::AdapterUtil::singletonLock;
 
 AdapterUtil::~AdapterUtil(void) {
 }
