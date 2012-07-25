@@ -191,7 +191,7 @@ ThreadInternalReturn STDCALL Thread::RunInternal(void* threadArg)
     Thread* thread(reinterpret_cast<Thread*>(threadArg));
 
     assert(thread != NULL);
-    assert(thread->state = STARTED);
+    assert(thread->state == STARTED);
     assert(!thread->isExternal);
 
     if (thread->state != STARTED) {
