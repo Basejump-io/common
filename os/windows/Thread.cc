@@ -353,13 +353,6 @@ QStatus Thread::Join(void)
         isStopping = false;
         return ER_DEAD_THREAD;
     }
-    /*
-     * There is a race condition where the underlying OS thread has not yet started to run. We need
-     * to wait until the thread is actually running before we can join it.
-     */
-    while (state == STARTED) {
-        ::sleep(5);
-    }
 
     QCC_DbgPrintf(("[%s - %x] %s thread %x [%s - %x]",
                    self ? funcName : GetThread()->funcName,
