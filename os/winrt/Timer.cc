@@ -161,10 +161,10 @@ void Timer::TimerCallback(void* context)
     void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
     bool alarmFound = false;
     qcc::Alarm alarm;
-    reentrancyLock.Lock();
     lock.Lock();
     if (_timerMap.find(context) != _timerMap.end()) {
         alarmFound = true;
+        _timerHasOwnership[timerThreadHandle] = true;
         alarm = _timerMap[context]; // ThreadPoolTimer -> alarm
         alarm->_latch->Increment();
         // Ensure a single alarm can only be once in the map
@@ -177,16 +177,11 @@ void Timer::TimerCallback(void* context)
             ReplaceAlarm(alarm, newAlarm, false);
         }
     }
-    // Only track state for valid alarms
-    if (alarmFound) {
-        _timerHasOwnership[timerThreadHandle] = true;
-    }
     lock.Unlock();
     if (alarmFound) {
+        reentrancyLock.Lock();
         alarm->listener->AlarmTriggered(alarm, ER_OK);
         alarm->_latch->Decrement();
-    }
-    if (alarmFound) {
         lock.Lock();
         if (_timerHasOwnership[timerThreadHandle]) {
             reentrancyLock.Unlock();
