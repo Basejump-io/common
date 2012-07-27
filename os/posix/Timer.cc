@@ -487,7 +487,7 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                                 tt = timer->timerThreads[i];
                                 QCC_DbgPrintf(("TimerThread::Run(): Found idle worker at index %d", i));
                                 break;
-                            } else if (timer->timerThreads[i]->state == TimerThread::STOPPED) {
+                            } else if (timer->timerThreads[i]->state == TimerThread::STOPPED && !timer->timerThreads[i]->IsRunning()) {
                                 tt = timer->timerThreads[i];
                                 QCC_DbgPrintf(("TimerThread::Run(): Found stopped worker at index %d", i));
                             }
