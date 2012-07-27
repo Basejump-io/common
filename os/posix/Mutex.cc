@@ -64,8 +64,6 @@ void Mutex::Init()
     file = NULL;
     line = -1;
 
-    assert(mutex.__data.__kind == 1);
-
 cleanup:
     // Don't need the attribute once it has been assigned to a mutex.
     pthread_mutexattr_destroy(&attr);
@@ -76,7 +74,7 @@ Mutex::~Mutex()
     if (!isInitialized) {
         return;
     }
-    assert(mutex.__data.__kind == 1);
+
     int ret;
     ret = pthread_mutex_destroy(&mutex);
     if (ret != 0) {
@@ -92,7 +90,6 @@ QStatus Mutex::Lock()
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
-    assert(mutex.__data.__kind == 1);
 
     int ret = pthread_mutex_lock(&mutex);
     if (ret != 0) {
@@ -113,7 +110,7 @@ QStatus Mutex::Lock(const char* file, uint32_t line)
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
-    assert(mutex.__data.__kind == 1);
+
     QStatus status;
     if (TryLock()) {
         status = ER_OK;
@@ -138,7 +135,6 @@ QStatus Mutex::Unlock()
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
-    assert(mutex.__data.__kind == 1);
 
     int ret = pthread_mutex_unlock(&mutex);
     if (ret != 0) {
