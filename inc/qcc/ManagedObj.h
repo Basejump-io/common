@@ -373,6 +373,20 @@ class ManagedObj {
      */
     const T* operator->() const { return object; }
 
+    /**
+     * Type conversion between managed objects of related types.
+     */
+    template <class T2> T2 cast() {
+        T2* tmp;
+#if defined(QCC_OS_GROUP_WINDOWS) || defined(QCC_OS_GROUP_WINRT)
+        decltype(&(*(*tmp))) naked(static_cast<decltype(& ((*(*tmp))))>(object));
+#else
+        typeof(&(*(*tmp)))naked(static_cast<typeof(& ((*(*tmp))))>(object));
+#endif
+        T2 result(naked);
+        return result;
+    }
+
     /** Increment the ref count */
     void IncRef()
     {
