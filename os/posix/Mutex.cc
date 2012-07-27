@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 
 #include <qcc/Thread.h>
 #include <qcc/Mutex.h>
+#include <qcc/Debug.h>
 
 #include <Status.h>
 
@@ -60,6 +61,10 @@ void Mutex::Init()
     }
 
     isInitialized = true;
+    file = NULL;
+    line = -1;
+
+    assert(mutex.__data.__kind == 1);
 
 cleanup:
     // Don't need the attribute once it has been assigned to a mutex.
@@ -71,6 +76,7 @@ Mutex::~Mutex()
     if (!isInitialized) {
         return;
     }
+    assert(mutex.__data.__kind == 1);
     int ret;
     ret = pthread_mutex_destroy(&mutex);
     if (ret != 0) {
@@ -86,6 +92,7 @@ QStatus Mutex::Lock()
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
+    assert(mutex.__data.__kind == 1);
 
     int ret = pthread_mutex_lock(&mutex);
     if (ret != 0) {
@@ -106,18 +113,21 @@ QStatus Mutex::Lock(const char* file, uint32_t line)
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
+    assert(mutex.__data.__kind == 1);
     QStatus status;
     if (TryLock()) {
         status = ER_OK;
     } else {
-        //Thread::GetThread()->lockTrace.Waiting(this, file, line);
         status = Lock();
-        QCC_DbgPrintf(("Lock Acquired %s:%d", file, line));
+        if (status == ER_OK) {
+            QCC_DbgPrintf(("Lock Acquired %s:%d", file, line));
+        } else {
+            QCC_LogError(status, ("Mutex::Lock %s:%d failed", file, line));
+        }
     }
     if (status == ER_OK) {
-        //Thread::GetThread()->lockTrace.Acquired(this, file, line);
-    } else {
-        QCC_LogError(status, ("Mutex::Lock %s:%d failed", file, line));
+        this->file = reinterpret_cast<const char*>(file);
+        this->line = line;
     }
     return status;
 #endif
@@ -128,6 +138,7 @@ QStatus Mutex::Unlock()
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
+    assert(mutex.__data.__kind == 1);
 
     int ret = pthread_mutex_unlock(&mutex);
     if (ret != 0) {
@@ -137,6 +148,8 @@ QStatus Mutex::Unlock()
         assert(false);
         return ER_OS_ERROR;
     }
+    this->file = NULL;
+    this->line = -1;
     return ER_OK;
 }
 
@@ -148,8 +161,16 @@ QStatus Mutex::Unlock(const char* file, uint32_t line)
     if (!isInitialized) {
         return ER_INIT_FAILED;
     }
-    //Thread::GetThread()->lockTrace.Releasing(this, file, line);
-    return Unlock();
+    int ret = pthread_mutex_unlock(&mutex);
+    if (ret != 0) {
+        fflush(stdout);
+        printf("***** Mutex unlock failure: %s:%d %d - %s\n", file, line, ret, strerror(ret));
+        assert(false);
+        return ER_OS_ERROR;
+    }
+    this->file = NULL;
+    this->line = -1;
+    return ER_OK;
 #endif
 }
 

@@ -133,9 +133,6 @@ void Thread::CleanExternalThreads()
 }
 
 Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
-#ifndef NDEBUG
-    lockTrace(this),
-#endif
     stopEvent(),
     state(isExternal ? RUNNING : INITIAL),
     isStopping(false),

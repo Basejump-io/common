@@ -32,10 +32,6 @@
 #include <set>
 #include <map>
 
-#ifndef NDEBUG
-#include <qcc/LockTrace.h>
-#endif
-
 #if defined(QCC_OS_GROUP_POSIX)
 #include <qcc/posix/Thread.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
@@ -271,25 +267,6 @@ class Thread {
      * @param listener     Aux ThreadListener to add.
      */
     void RemoveAuxListener(ThreadListener* listener);
-
-#ifndef NDEBUG
-    /**
-     * Support for debugging deadlocks
-     */
-    qcc::LockTrace lockTrace;
-
-    static void DumpLocks()
-    {
-        threadListLock->Lock();
-        std::map<ThreadHandle, Thread*>::iterator iter = threadList->begin();
-        while (iter != threadList->end()) {
-            iter->second->lockTrace.Dump();
-            ++iter;
-        }
-        threadListLock->Unlock();
-    }
-#endif
-
 
   protected:
 

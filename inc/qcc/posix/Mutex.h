@@ -100,6 +100,8 @@ class Mutex {
     pthread_mutex_t mutex;  ///< The Linux mutex implementation uses pthread mutex's.
     bool isInitialized;     ///< true iff mutex was successfully initialized.
     void Init();            ///< Initialize underlying OS mutex
+    char* file;
+    uint32_t line;
 };
 
 } /* namespace */
