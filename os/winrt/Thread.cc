@@ -28,7 +28,6 @@
 #include <assert.h>
 #include <process.h>
 #include <map>
-#include <Roapi.h>
 #include <ctxtcall.h>
 #include <ppltasks.h>
 
@@ -160,9 +159,6 @@ void Thread::CleanExternalThreads()
 }
 
 Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
-#ifndef NDEBUG
-    lockTrace(this),
-#endif
     state(isExternal ? RUNNING : DEAD),
     isStopping(false),
     function(isExternal ? NULL : func),
