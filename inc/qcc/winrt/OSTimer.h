@@ -47,9 +47,11 @@ class OSTimer {
     OSTimer(qcc::Timer* timer);
 
     void TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer);
+    void TimerCleanupCallback(Windows::System::Threading::ThreadPoolTimer ^ timer);
 
     qcc::Timer* _timer;
     std::map<void*, qcc::Alarm> _timerMap;
+    std::map<void*, qcc::Alarm> _timerCancelMap;
     std::map<void*, bool> _timerHasOwnership;
 };
 

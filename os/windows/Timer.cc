@@ -375,6 +375,10 @@ void Timer::TimerCallback(void* context)
 {
 }
 
+void Timer::TimerCleanupCallback(void* context)
+{
+}
+
 ThreadReturn STDCALL TimerThread::Run(void* arg)
 {
     QCC_DbgPrintf(("TimerThread::Run()"));

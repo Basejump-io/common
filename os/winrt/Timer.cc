@@ -114,6 +114,7 @@ Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool prev
 Timer::~Timer()
 {
     lock.Lock();
+    // Make sure all live timers are notified of exit
     for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
         const Alarm& alarm = *it;
         if (nullptr != alarm->_timer) {
@@ -129,6 +130,8 @@ Timer::~Timer()
     alarms.clear();
     _timerMap.clear();
     lock.Unlock();
+    // Ensure all timers have exited
+    Join();
 }
 
 QStatus Timer::Start()
@@ -145,6 +148,7 @@ QStatus Timer::Start()
                                                                                                  }), ts);
                 a->_timer = tpt;
                 _timerMap[(void*)tpt] = a;
+                _timerCancelMap[(void*)tpt] = a;
             } catch (...) {
                 status = ER_FAIL;
                 break;
@@ -161,6 +165,7 @@ void Timer::TimerCallback(void* context)
     void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
     bool alarmFound = false;
     qcc::Alarm alarm;
+    reentrancyLock.Lock();
     lock.Lock();
     if (_timerMap.find(context) != _timerMap.end()) {
         alarmFound = true;
@@ -179,7 +184,6 @@ void Timer::TimerCallback(void* context)
     }
     lock.Unlock();
     if (alarmFound) {
-        reentrancyLock.Lock();
         alarm->listener->AlarmTriggered(alarm, ER_OK);
         alarm->_latch->Decrement();
         lock.Lock();
@@ -189,7 +193,18 @@ void Timer::TimerCallback(void* context)
         // Make sure we don't grow the map unbounded
         _timerHasOwnership.erase(timerThreadHandle);
         lock.Unlock();
+    }   else {
+        reentrancyLock.Unlock();
     }
+}
+
+void Timer::TimerCleanupCallback(void* context)
+{
+    lock.Lock();
+    if (_timerCancelMap.find(context) != _timerCancelMap.end()) {
+        _timerCancelMap.erase(context);
+    }
+    lock.Unlock();
 }
 
 QStatus Timer::Stop()
@@ -216,7 +231,7 @@ QStatus Timer::Join()
     qcc::Event evt;
     while (true) {
         lock.Lock();
-        size_t timerCount = alarms.size();
+        size_t timerCount = _timerCancelMap.size();
         lock.Unlock();
         if (0 == timerCount) {
             // Spin until the list is empty
@@ -235,10 +250,15 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
             Windows::Foundation::TimeSpan ts = { alarm->computedTimeMillis * HUNDRED_NANOSECONDS_PER_MILLISECOND };
             ThreadPoolTimer ^ tpt = ThreadPoolTimer::CreateTimer(ref new TimerElapsedHandler([&] (ThreadPoolTimer ^ timer) {
                                                                                                  OSTimer::TimerCallback(timer);
-                                                                                             }), ts);
+                                                                                             }),
+                                                                 ts,
+                                                                 ref new TimerDestroyedHandler([&](ThreadPoolTimer ^ timer) {
+                                                                                                   OSTimer::TimerCleanupCallback(timer);
+                                                                                               }));
             Alarm& a = (Alarm)alarm;
             a->_timer = tpt;
             _timerMap[(void*)tpt] = a;
+            _timerCancelMap[(void*)tpt] = a;
             alarms.insert(a);
         } catch (...) {
             status = ER_FAIL;
@@ -406,6 +426,11 @@ OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer)
 void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
 {
     _timer->TimerCallback((void*)timer);
+}
+
+void OSTimer::TimerCleanupCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
+{
+    _timer->TimerCleanupCallback((void*)timer);
 }
 
 OSAlarm::OSAlarm() : _timer(nullptr)

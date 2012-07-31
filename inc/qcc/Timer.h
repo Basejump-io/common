@@ -302,6 +302,12 @@ class Timer : public OSTimer, public ThreadListener {
      */
     void TimerCallback(void* context);
 
+    /**
+     * Callback used for asyncronous implementations of timer
+     * For internal use only.
+     */
+    void TimerCleanupCallback(void* context);
+
   protected:
 
     Mutex lock;
