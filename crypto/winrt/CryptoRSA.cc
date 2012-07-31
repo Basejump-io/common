@@ -29,6 +29,7 @@
 #include <qcc/Util.h>
 #include <qcc/StringUtil.h>
 #include <Status.h>
+#include <qcc/BigNum.h>
 
 //#include <bcrypt.h>  // for blob definitions
 typedef struct _BCRYPT_KEY_DATA_BLOB_HEADER {
@@ -36,6 +37,18 @@ typedef struct _BCRYPT_KEY_DATA_BLOB_HEADER {
     ULONG dwVersion;
     ULONG cbKeyData;
 } BCRYPT_KEY_DATA_BLOB_HEADER, *PBCRYPT_KEY_DATA_BLOB_HEADER;
+
+typedef struct _BCRYPT_RSAKEY_BLOB {
+    ULONG Magic;
+    ULONG BitLength;
+    ULONG cbPublicExp;
+    ULONG cbModulus;
+    ULONG cbPrime1;
+    ULONG cbPrime2;
+} BCRYPT_RSAKEY_BLOB;
+
+#define BCRYPT_RSAPUBLIC_MAGIC      0x31415352  // RSA1
+#define BCRYPT_RSAPRIVATE_MAGIC     0x32415352  // RSA2
 
 using namespace std;
 using namespace qcc;
@@ -61,6 +74,7 @@ static const qcc::String OID_CN              = "2.5.4.3";
 static const qcc::String OID_ORG             = "2.5.4.10";
 
 // OIDs defined in the Windows header files that are not defined for Metro.
+static const qcc::String OID_PKCS1           = "1.2.840.113549.1.1";
 static const qcc::String OID_RSA_RSA         = "1.2.840.113549.1.1.1";
 static const qcc::String OID_RSA_SHA1RSA     = "1.2.840.113549.1.1.5";
 
@@ -95,7 +109,7 @@ bool Crypto_RSA::RSA_Init()
     // Open the algorithm provider for the specified asymmetric algorithm.
     certContext->asymAlgProv = AsymmetricKeyAlgorithmProvider::OpenAlgorithm(AsymmetricAlgorithmNames::RsaPkcs1);
 
-    // TODO: this key should be related to the other key pair
+    // This key should be related to the other key pair
     certContext->asymAlgProvSigning = AsymmetricKeyAlgorithmProvider::OpenAlgorithm(AsymmetricAlgorithmNames::RsaSignPkcs1Sha1);
 
     return true;
@@ -342,10 +356,11 @@ QStatus Crypto_RSA::ImportPEM(const qcc::String& pem)
         return status;
     }
     // format the public key for output
-    Platform::ArrayReference<uint8> X509PublicKeyArray((uint8*)PublicKey.data(), PublicKey.size());
+    Platform::Array<uint8> ^ X509PublicKeyArray = ref new Platform::Array<uint8>((uint8*)PublicKey.data(), PublicKey.size());
     IBuffer ^ X509PublicKey = CryptographicBuffer::CreateFromByteArray(X509PublicKeyArray);
 
     certContext->keyPair = certContext->asymAlgProv->ImportPublicKey(X509PublicKey, CryptographicPublicKeyBlobType::Pkcs1RsaPublicKey);
+    certContext->keyPairSigning = certContext->asymAlgProvSigning->ImportPublicKey(X509PublicKey, CryptographicPublicKeyBlobType::Pkcs1RsaPublicKey);
 
     // successfully imported, so update the stashed cert.
     certContext->derCertificate = der;
@@ -538,9 +553,16 @@ static QStatus DecryptPriv(CryptographicKey ^ kdKey, qcc::String& ivec, const ui
     uint32_t version;
 
     qcc::String n;  // modulus
-    qcc::String e;  // exponent
+    qcc::String e;  // Public exponent
+    qcc::String d;  // Private exponent
     qcc::String p;  // prime1
     qcc::String q;  // prime2
+    qcc::String exp1;  // d mod (p-1)
+    qcc::String exp2;  // d mod (q-1
+    qcc::String coef;  // prime2
+    qcc::String PKCS8PrivateKey;
+    qcc::String PrivateKey;
+
     AsymmetricKeyAlgorithmProvider ^ objAlgProv;
 
     // Decrypt the blob
@@ -568,13 +590,23 @@ static QStatus DecryptPriv(CryptographicKey ^ kdKey, qcc::String& ivec, const ui
             memcpy(buf, blob, bufLength);
             decryptedBlob = blobBuf;
         }
+        PrivateKey.assign((char*)buf, bufLength);
+
 
         // Check if the key is legacy or pkcs#8 encapsulated
-        if (legacy) {
-            // See RFC 3447 for documentation on this formatting
-            status = Crypto_ASN1::Decode(buf, bufLength, "(ill?ll*)", &version, &n, &e, NULL, &p, &q);
+        // See RFC 3447 for documentation on this formatting
+        status = Crypto_ASN1::Decode(buf, bufLength, "(illllllll)", &version, &n, &e, &d, &p, &q, &exp1, &exp2, &coef);
+        if (status == ER_OK) {
+            legacy = true;
+            status = Crypto_ASN1::Encode(PKCS8PrivateKey,
+                                         "(i(on)R)",
+                                         version,
+                                         &OID_RSA_RSA,
+                                         &PrivateKey);
+            // copy the key into a new buffer
+            Platform::ArrayReference<uint8> privateKeyArray((uint8*)PKCS8PrivateKey.data(), PKCS8PrivateKey.size());
         } else {
-            // NOTE: we are almost always going to get this on WinRT...so far.
+            // This might be a PKCS#8 encoded key, try to decode it.
             qcc::String oid;
             status = Crypto_ASN1::Decode(buf, bufLength, "(i(on)x*)", &version, &oid, &pk); // this ignores the rest of the key info.
             if (status == ER_OK) {
@@ -884,9 +916,80 @@ QStatus Crypto_RSA::ExportPEM(qcc::String& pem)
 {
     QStatus status = ER_OK;
     if (certContext) {
-        pem = "-----BEGIN CERTIFICATE-----\n";
-        status = Crypto_ASN1::EncodeBase64(certContext->derCertificate, pem);
-        pem.append("-----END CERTIFICATE-----\n");
+
+
+
+        if (certContext->derCertificate.size() > 0) {
+            pem = "-----BEGIN CERTIFICATE-----\n";
+            status = Crypto_ASN1::EncodeBase64(certContext->derCertificate, pem);
+            pem.append("-----END CERTIFICATE-----\n");
+        } else {
+            // copied from makeselfsignedcert
+
+            // generate a unique serial number for each cert.
+            uint8_t serial[8] = { 0x01 };
+            qcc::String SerialNumber((char*)serial, sizeof(serial));
+
+            // get the time now and one year from now
+            qcc::String timeNow;
+            qcc::String timeOneYearLater;
+            FormatTime(timeNow, timeOneYearLater);
+
+            // format the public key for output
+            IBuffer ^ X509PublicKey = certContext->keyPair->ExportPublicKey(CryptographicPublicKeyBlobType::X509SubjectPublicKeyInfo);
+            Platform::Array<uint8>^ X509PublicKeyArray;
+            CryptographicBuffer::CopyToByteArray(X509PublicKey, &X509PublicKeyArray);
+            qcc::String PublicKey((char*)X509PublicKeyArray->Data, X509PublicKeyArray->Length); // this is already in ASN.1 format
+
+            qcc::String emptyCommonName("AllJoynON");
+            qcc::String emptyApp("AllJoyn CN");
+            qcc::String Certificate;
+            status = Crypto_ASN1::Encode(Certificate,
+                                         "(l(on)({(ou)}{(ou)})(tt)({(ou)}{(ou)})R)",
+                                         &SerialNumber,
+                                         &OID_RSA_SHA1RSA,
+                                         &OID_CN, &emptyCommonName, &OID_ORG, &emptyApp,
+                                         &timeNow, &timeOneYearLater,
+                                         &OID_CN, &emptyCommonName, &OID_ORG, &emptyApp,
+                                         &PublicKey);
+
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed encode the certificate string"));
+                return status;
+            }
+
+            // Now sign the certificate data
+            Platform::ArrayReference<uint8> CertificateArray((uint8*)Certificate.data(), Certificate.size());
+            IBuffer ^ CertificateBuffer = CryptographicBuffer::CreateFromByteArray(CertificateArray);
+
+            IBuffer ^ SignatureBuffer = CryptographicEngine::Sign(certContext->keyPairSigning, CertificateBuffer);
+            Platform::Array<uint8>^ SignatureArray;
+            CryptographicBuffer::CopyToByteArray(SignatureBuffer, &SignatureArray);
+            qcc::String Signature((char*)SignatureArray->Data, SignatureArray->Length);
+
+            // concat the certificate, algorithm, and signature.
+            qcc::String SelfSignedCertificate;
+            status = Crypto_ASN1::Encode(SelfSignedCertificate,
+                                         "(R(on)b)",
+                                         &Certificate,
+                                         &OID_RSA_SHA1RSA,
+                                         &Signature,
+                                         SignatureArray->Length * 8);  //bytes to bits.
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed encode the certificate and its signature"));
+                return status;
+            }
+
+            certContext->derCertificate = SelfSignedCertificate;
+
+            pem = "-----BEGIN CERTIFICATE-----\n";
+            status = Crypto_ASN1::EncodeBase64(certContext->derCertificate, pem);
+            pem.append("-----END CERTIFICATE-----\n");
+
+
+
+
+        }
     } else {
         QCC_LogError(status, ("No cert to export"));
     }
@@ -896,7 +999,7 @@ QStatus Crypto_RSA::ExportPEM(qcc::String& pem)
 size_t Crypto_RSA::GetSize()
 {
     if (!size && certContext->keyPair) {
-        size = certContext->keyPair->KeySize;
+        size = certContext->keyPair->KeySize / 8;
     }
     return size;
 }
@@ -921,18 +1024,64 @@ QStatus Crypto_RSA::SignDigest(const uint8_t* digest, size_t digLen, uint8_t* si
         return ER_CRYPTO_KEY_UNUSABLE;
     }
 
-    Platform::ArrayReference<uint8> inBuf((uint8*)digest, digLen);
-    IBuffer ^ result = CryptographicEngine::Sign(certContext->keyPairSigning, CryptographicBuffer::CreateFromByteArray(inBuf));
+    // Just encrypt the hash value instead of CryptographicEngine::Sign, which adds a digest envelope around hash.
+    // This is to match how our other platforms work currently.
 
-    Platform::Array<uint8>^ signedArray;
-    CryptographicBuffer::CopyToByteArray(result, &signedArray);
+    // retrieve the private key as a BCrypt blob from the current context
+    IBuffer ^ privateAsBCrypt = certContext->keyPairSigning->Export(CryptographicPrivateKeyBlobType::BCryptPrivateKey);
+    Platform::Array<uint8> ^ BCryptArray;
+    CryptographicBuffer::CopyToByteArray(privateAsBCrypt, &BCryptArray);
+    size_t signatureLength = certContext->keyPairSigning->KeySize / 8;
+    uint8_t* buf = new uint8_t[BCryptArray->Length];
+    memcpy(buf, BCryptArray->Data, BCryptArray->Length);
 
-    memcpy(signature, signedArray->Data, signedArray->Length);
+    BCRYPT_RSAKEY_BLOB* pBlob = (BCRYPT_RSAKEY_BLOB*)buf;
 
-    sigLen = signedArray->Length;
+    //check that this is the expected type of key
+    if (pBlob->Magic != BCRYPT_RSAPRIVATE_MAGIC) {
+        delete [] buf;
+        return ER_AUTH_FAIL;
+    }
+
+    // retrieve the members of the blob and make the BigNums
+    BigNum publicExponent;
+    BigNum p;
+    BigNum q;
+    BigNum n;
+    BigNum phi;
+    BigNum privateExponent;
+    BigNum bnSignature;
+
+    // get the primes from the private key info.
+    publicExponent.set_bytes(buf + sizeof(BCRYPT_RSAKEY_BLOB), pBlob->cbPublicExp);
+    p.set_bytes(buf + sizeof(BCRYPT_RSAKEY_BLOB) + pBlob->cbPublicExp + pBlob->cbModulus, pBlob->cbPrime1);
+    q.set_bytes(buf + sizeof(BCRYPT_RSAKEY_BLOB) + pBlob->cbPublicExp + pBlob->cbModulus + pBlob->cbPrime1, pBlob->cbPrime2);
+    n = p * q;
+    phi = (p - 1) * (q - 1);
+    privateExponent = publicExponent.mod_inv(phi);
+
+    // Pad the message according to PKCS#1 1.5, EMSA-PKCS1-v1_5-ENCODE
+    uint8_t* padBuffer = new uint8_t[signatureLength];
+    memset(padBuffer, 0xFF, signatureLength);
+    padBuffer[0] = 0;
+    padBuffer[1] = 1;
+    padBuffer[(signatureLength - digLen) - 1] = 0;
+    memcpy(padBuffer + (signatureLength - digLen), digest, digLen);
+
+    bnSignature.set_bytes(padBuffer, signatureLength);
+
+    // encrypt the buffer using the private key, and store into parameter signature.
+    BigNum encryptedSignature = bnSignature.mod_exp(privateExponent, n);
+    encryptedSignature.get_bytes(signature, signatureLength, false);
+
+    sigLen = encryptedSignature.byte_len();
+
+    delete [] buf;
+    delete [] padBuffer;
 
     return status;
 }
+
 
 QStatus Crypto_RSA::VerifyDigest(const uint8_t* digest, size_t digLen, const uint8_t* signature, size_t sigLen)
 {
@@ -954,19 +1103,50 @@ QStatus Crypto_RSA::VerifyDigest(const uint8_t* digest, size_t digLen, const uin
         return ER_CRYPTO_KEY_UNUSABLE;
     }
 
-    // create a signing key from the public key stored in the current context.
-    IBuffer ^ blobOfPublicKey = certContext->keyPair->ExportPublicKey();
-    CryptographicKey ^ keyPublic = certContext->asymAlgProvSigning->ImportPublicKey(blobOfPublicKey);
+    // retrieve the public key as a BCrypt blob from the current context
+    IBuffer ^ publicAsBCrypt = certContext->keyPairSigning->ExportPublicKey(CryptographicPublicKeyBlobType::BCryptPublicKey);
+    Platform::Array<uint8> ^ BCryptArray;
+    CryptographicBuffer::CopyToByteArray(publicAsBCrypt, &BCryptArray);
+    size_t signatureLength = certContext->keyPairSigning->KeySize / 8;
+    uint8_t* buf = new uint8_t[BCryptArray->Length];
+    memcpy(buf, BCryptArray->Data, BCryptArray->Length);
 
-    Platform::ArrayReference<uint8> inDigest((uint8*)digest, digLen);
-    Platform::ArrayReference<uint8> inSig((uint8*)signature, sigLen);
+    BCRYPT_RSAKEY_BLOB* pBlob = (BCRYPT_RSAKEY_BLOB*)buf;
 
-    bool verified = CryptographicEngine::VerifySignature(keyPublic,
-                                                         CryptographicBuffer::CreateFromByteArray(inDigest),
-                                                         CryptographicBuffer::CreateFromByteArray(inSig));
-    if (verified != true) {
+    //check that this is the expected type of key
+    if (pBlob->Magic != BCRYPT_RSAPUBLIC_MAGIC) {
+        delete [] buf;
+        return ER_AUTH_FAIL;
+    }
+
+    // retrieve the members of the blob and make the BigNums
+    BigNum modulus;
+    BigNum publicExponent;
+    BigNum bnSignature;
+
+    modulus.set_bytes(buf + sizeof(BCRYPT_RSAKEY_BLOB) + pBlob->cbPublicExp, pBlob->cbModulus);
+    publicExponent.set_bytes(buf + sizeof(BCRYPT_RSAKEY_BLOB), pBlob->cbPublicExp);
+
+    bnSignature.set_bytes(signature, signatureLength);
+
+    // Decrypt the buffer using the public key.
+    BigNum decryptedSignature = bnSignature.mod_exp(publicExponent, modulus);
+
+    // convert the decypted data into a useful buffer.
+    uint8_t* decryptedbuff2 = new uint8_t[signatureLength];
+    decryptedSignature.get_bytes(decryptedbuff2, signatureLength, false);
+
+    // pDigest will point to the digest inside the decrypted buffer
+    uint8_t* pDigest = decryptedbuff2 + signatureLength - (digLen + 1);
+
+    // if the supplied digest and the decrypted digest differ, return an error.
+    if (0 != memcmp(digest, pDigest, digLen)) {
         status = ER_AUTH_FAIL;
     }
+
+    delete [] buf;
+    delete [] decryptedbuff2;
+
     return status;
 }
 
