@@ -61,6 +61,8 @@ class ManagedObj {
 
   public:
 
+    typedef T OBJECT_TYPE;
+
     /** Copy constructor */
     ManagedObj<T>(const ManagedObj<T>&copyMe)
     {
@@ -377,12 +379,8 @@ class ManagedObj {
      * Type conversion between managed objects of related types.
      */
     template <class T2> T2 cast() {
-        T2* tmp;
-#if defined(QCC_OS_GROUP_WINDOWS) || defined(QCC_OS_GROUP_WINRT)
-        decltype(&(*(*tmp))) naked(static_cast<decltype(& ((*(*tmp))))>(object));
-#else
-        typeof(&(*(*tmp)))naked(static_cast<typeof(& ((*(*tmp))))>(object));
-#endif
+        typename T2::OBJECT_TYPE naked = static_cast<typename T2::OBJECT_TYPE>(object);
+
         T2 result(naked);
         return result;
     }
