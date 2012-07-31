@@ -61,8 +61,8 @@ class ManagedObj {
 
   public:
 
-    /** The underlying type */
-    typedef T OBJECT_TYPE;
+    /** The underlying type that is being managed */
+    typedef T ManagedType;
 
     /** Copy constructor */
     ManagedObj<T>(const ManagedObj<T>&copyMe)
@@ -380,10 +380,7 @@ class ManagedObj {
      * Type conversion between managed objects of related types.
      */
     template <class T2> T2 cast() {
-        typename T2::OBJECT_TYPE naked = static_cast<typename T2::OBJECT_TYPE>(object);
-
-        T2 result(naked);
-        return result;
+        return T2(static_cast<T2::ManagedType*>(object));
     }
 
     /** Increment the ref count */
