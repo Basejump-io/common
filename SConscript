@@ -20,10 +20,17 @@ from os.path import basename
 #default crypto for most platforms is openssl
 env['CRYPTO'] = 'openssl'
 
-if(not(env.has_key('BULLSEYE_BIN'))):
-    print('BULLSEYE_BIN not specified')
-else:
-    env.PrependENVPath('PATH', env.get('BULLSEYE_BIN'))
+# Bullseye code coverage for 'debug' builds.
+if env['VARIANT'] == 'debug':
+    if(not(env.has_key('BULLSEYE_BIN'))):
+        print('BULLSEYE_BIN not specified')
+    else:
+        env.PrependENVPath('PATH', env.get('BULLSEYE_BIN'))
+        if (not(os.environ.has_key('COVFILE'))):
+            print('Error: COVFILE environment variable must be set')
+            Exit()
+        else:
+            env.PrependENVPath('COVFILE', os.environ['COVFILE'])
 
 # Platform specifics for common
 if env['OS_GROUP'] == 'windows':
