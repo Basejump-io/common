@@ -444,7 +444,7 @@ size_t String::find_last_not_of(const char* set, size_t pos) const
 
 String String::substr(size_t pos, size_t n) const
 {
-    if (pos <= size()) {
+    if ((pos <= size()) && n) {
         return String(context->c_str + pos, MIN(n, size() - pos));
     } else {
         return String();
