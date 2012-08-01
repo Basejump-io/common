@@ -232,6 +232,7 @@ TEST(StringTest, substr) {
     ASSERT_TRUE(s2 == "abcd1234");
     ASSERT_TRUE(s2.substr(4, 1) == "1");
     ASSERT_TRUE(s2.substr(1000, 1) == "");
+    ASSERT_TRUE(s2.substr(0, 0) == "");
     ASSERT_EQ(0, s.compare(1, 2, s2, 1, 2));
 }
 
