@@ -196,20 +196,22 @@ QStatus Crypto_RSA::ImportPEM(const qcc::String& pem)
     return status;
 }
 
-static qcc::String GetLine(const char* tag, qcc::String& str)
+// Looks at the first line of str.  If it begins with tag then the remainder is copied to rest, and
+// the line is removed from str.  Returns true if the tag is matched and the line is removed.
+static bool GetLine(const char* tag, qcc::String& str, qcc::String& rest)
 {
-    String line;
     size_t start = str.find(tag);
     if (start == 0) {
-        size_t end = str.find('\n');
+        size_t end = str.find_first_of("\r\n");
         size_t l = strlen(tag);
-        line = str.substr(l, end - l);
+        rest = str.substr(l, end - l);
         str.erase(0, end + 1);
-        if (!str.empty() && str[0] == '\r') {
+        if (!str.empty() && str[0] == '\n') {
             str.erase(0, 1);
         }
+        return true;
     }
-    return line;
+    return false;
 }
 
 // Wrapper class for various key derivation functions
@@ -484,12 +486,13 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, const qcc::String& pas
         cert = NULL;
     }
     // Check for SSLeay legacy style encoding
-    if (!GetLine("-----BEGIN RSA PRIVATE KEY-----", str).empty()) {
+    qcc::String unused;
+    if (GetLine("-----BEGIN RSA PRIVATE KEY-----", str, unused)) {
+        qcc::String type;
         qcc::String alg;
         qcc::String seed;
-        if (GetLine("Proc-Type:", str).find("ENCRYPTED") != String::npos) {
-            alg = GetLine("DEK-Info: ", str);
-            if (alg.empty()) {
+        if (GetLine("Proc-Type:", str, type) && (type.find("ENCRYPTED") != String::npos)) {
+            if (!GetLine("DEK-Info: ", str, alg) || alg.empty()) {
                 return status;
             }
             size_t pos = alg.find(",");
@@ -510,7 +513,7 @@ QStatus Crypto_RSA::ImportPKCS8(const qcc::String& pkcs8, const qcc::String& pas
         ivec = HexStringToByteString(seed);
         kdKey = pbkd.DeriveLegacy(alg, passphrase, ivec);
         legacy = true;
-    } else if (!GetLine("-----BEGIN ENCRYPTED PRIVATE KEY-----", str).empty()) {
+    } else if (GetLine("-----BEGIN ENCRYPTED PRIVATE KEY-----", str, unused)) {
         size_t endOfKey = str.find("-----END ENCRYPTED PRIVATE KEY-----");
         if (endOfKey == String::npos) {
             return status;
