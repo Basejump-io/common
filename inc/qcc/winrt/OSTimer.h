@@ -51,7 +51,7 @@ class OSTimer {
 
     qcc::Timer* _timer;
     std::map<void*, qcc::Alarm> _timerMap;
-    std::map<void*, qcc::Alarm> _timerCancelMap;
+    qcc::_CountDownLatch _timersCountdownLatch;
     std::map<void*, bool> _timerHasOwnership;
 };
 

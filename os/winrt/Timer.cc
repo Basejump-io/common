@@ -148,7 +148,7 @@ QStatus Timer::Start()
                                                                                                  }), ts);
                 a->_timer = tpt;
                 _timerMap[(void*)tpt] = a;
-                _timerCancelMap[(void*)tpt] = a;
+                _timersCountdownLatch.Increment();
             } catch (...) {
                 status = ER_FAIL;
                 break;
@@ -200,11 +200,7 @@ void Timer::TimerCallback(void* context)
 
 void Timer::TimerCleanupCallback(void* context)
 {
-    lock.Lock();
-    if (_timerCancelMap.find(context) != _timerCancelMap.end()) {
-        _timerCancelMap.erase(context);
-    }
-    lock.Unlock();
+    _timersCountdownLatch.Decrement();
 }
 
 QStatus Timer::Stop()
@@ -227,18 +223,7 @@ QStatus Timer::Stop()
 
 QStatus Timer::Join()
 {
-    QStatus status = ER_OK;
-    qcc::Event evt;
-    while (true) {
-        lock.Lock();
-        size_t timerCount = _timerCancelMap.size();
-        lock.Unlock();
-        if (0 == timerCount) {
-            // Spin until the list is empty
-            qcc::Event::Wait(evt, 5);
-        }
-    }
-    return status;
+    return _timersCountdownLatch.Wait();
 }
 
 QStatus Timer::AddAlarm(const Alarm& alarm)
@@ -258,7 +243,7 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
             Alarm& a = (Alarm)alarm;
             a->_timer = tpt;
             _timerMap[(void*)tpt] = a;
-            _timerCancelMap[(void*)tpt] = a;
+            _timersCountdownLatch.Increment();
             alarms.insert(a);
         } catch (...) {
             status = ER_FAIL;
