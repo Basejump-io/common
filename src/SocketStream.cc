@@ -89,7 +89,9 @@ SocketStream SocketStream::operator=(const SocketStream& other)
     }
     isConnected = other.isConnected;
     sock = CopySock(other.sock);
+    delete sourceEvent;
     sourceEvent = new Event(sock, Event::IO_READ, false);
+    delete sinkEvent;
     sinkEvent = new Event(*sourceEvent, Event::IO_WRITE, false);
     isDetached = other.isDetached;
     return *this;
