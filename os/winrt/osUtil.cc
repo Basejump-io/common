@@ -32,8 +32,13 @@
 #include <qcc/String.h>
 #include <qcc/Crypto.h>
 #include <qcc/Debug.h>
+#include <qcc/winrt/utility.h>
+#include "ppltasks.h"
 
-
+using namespace Windows::Foundation;
+using namespace Windows::Foundation::Collections;
+using namespace Windows::Networking;
+using namespace Windows::Networking::Sockets;
 
 #define QCC_MODULE  "UTIL"
 
@@ -100,5 +105,18 @@ QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSi
 {
     // There doesn't appear to be a way to resolve hostnames on WinRT.
     // HostName almost gets there, but it will only show resolution of local addresses.
-    return ER_NOT_IMPLEMENTED;
+
+    IAsyncOperation<Collections::IVectorView<EndpointPair ^> ^> ^ op = DatagramSocket::GetEndpointPairsAsync(ref new HostName(MultibyteToPlatformString(hostname.c_str())), L"0");
+    concurrency::task<Collections::IVectorView<EndpointPair ^>^> dnsTask(op);
+    dnsTask.wait();
+    Collections::IVectorView<EndpointPair ^> ^ entries = dnsTask.get();
+    if (entries->Size > 0) {
+        Platform::String ^ remoteIp = entries->GetAt(0)->RemoteHostName->RawName;
+        qcc::String mbIp = PlatformToMultibyteString(remoteIp);
+        IPAddress tmpIpAddr(mbIp);
+        tmpIpAddr.RenderIPBinary(addr, addrSize);
+        addrLen = tmpIpAddr.Size();
+        return ER_OK;
+    }
+    return ER_BAD_HOSTNAME;
 }
