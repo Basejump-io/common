@@ -111,7 +111,16 @@ uint32_t SocketWrapper::IsValidAddress(Platform::String ^ hostName)
             result = ER_OUT_OF_MEMORY;
             break;
         }
-        if (_socketAddrFamily == AddressFamily::QCC_AF_INET) {
+        Windows::Networking::HostName ^ hostname = ref new Windows::Networking::HostName(hostName);
+        if (nullptr == hostname) {
+            result = ER_OUT_OF_MEMORY;
+            break;
+        }
+        if ((_ssl == true) && (hostname->Type == Windows::Networking::HostNameType::DomainName)) {
+            // SSL requires a string hostname to verify the server certificate is valid
+            result = ER_OK;
+            break;
+        } else if (_socketAddrFamily == AddressFamily::QCC_AF_INET) {
             uint8_t addrBuf[4];
             result = (::QStatus)qcc::IPAddress::StringToIPv4(strHostName, addrBuf, sizeof(addrBuf));
             break;
