@@ -223,7 +223,15 @@ QStatus Timer::Stop()
 
 QStatus Timer::Join()
 {
-    return _timersCountdownLatch.Wait();
+    QStatus status = ER_OK;
+    lock.Lock();
+    while (_timersCountdownLatch.Current() != 0) {
+        lock.Unlock();
+        status = _timersCountdownLatch.Wait();
+        lock.Lock();
+    }
+    lock.Unlock();
+    return status;
 }
 
 QStatus Timer::AddAlarm(const Alarm& alarm)
