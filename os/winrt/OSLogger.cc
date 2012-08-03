@@ -34,6 +34,7 @@
 #include <ppltasks.h>
 
 #define LOG_FILE_NAME L"alljoyn.log"
+#define LOG_MAX_BACKLOG 1000
 
 std::list<qcc::String> debugQueue;
 qcc::Mutex debugMutex;
@@ -74,6 +75,10 @@ static void _WinRTFileLogCB()
                                                             delete (*ranStream);
                                                             (*ranStream) = nullptr;
                                                         }
+                                                        if (nullptr != buf && nullptr != (*buf)) {
+                                                            delete (*buf);
+                                                            (*buf) = nullptr;
+                                                        }
                                                         debugMutex.Lock();
                                                         debugQueue.pop_front();
                                                         size_t queueLength = debugQueue.size();
@@ -88,28 +93,42 @@ static void _WinRTFileLogCB()
             delete (*ranStream);
             (*ranStream) = nullptr;
         }
+        if (nullptr != buf && nullptr != (*buf)) {
+            delete (*buf);
+            (*buf) = nullptr;
+        }
         debugMutex.Lock();
         debugQueue.pop_front();
-        size_t queueLength = debugQueue.size();
-        debugMutex.Unlock();
-        if (queueLength != 0) {
+        if (debugQueue.size() != 0) {
             _WinRTFileLogCB();
         }
+        debugMutex.Unlock();
     }
 }
 
 static void WinRTFileLogCB(DbgMsgType type, const char* module, const char* msg, void* context)
 {
     debugMutex.Lock();
-    debugQueue.push_back(msg);
-    size_t queueLength = debugQueue.size();
+    if (debugQueue.size() < LOG_MAX_BACKLOG) {
+        debugQueue.push_back(msg);
+        if (debugQueue.size() == 1) {
+            _WinRTFileLogCB();
+        }
+    }
     debugMutex.Unlock();
-    if (queueLength == 1) {
-        _WinRTFileLogCB();
+}
+
+static void WinRTTraceLogCB(DbgMsgType type, const char* module, const char* msg, void* context)
+{
+    wchar_t* wmsg = MultibyteToWideString(msg);
+    if (NULL != wmsg) {
+        OutputDebugStringW(wmsg);
+        delete [] wmsg;
+        wmsg = NULL;
     }
 }
 
 QCC_DbgMsgCallback QCC_GetOSLogger(bool useOSLog)
 {
-    return WinRTFileLogCB;
+    return useOSLog ? WinRTTraceLogCB : WinRTFileLogCB;
 }
