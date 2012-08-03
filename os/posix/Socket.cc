@@ -63,7 +63,7 @@ static void DisableSigPipe(SocketFd socket)
 #endif
 
 QStatus MakeSockAddr(const char* path,
-                            struct sockaddr_storage* addrBuf, socklen_t& addrSize)
+                     struct sockaddr_storage* addrBuf, socklen_t& addrSize)
 {
     size_t pathLen = strlen(path);
     struct sockaddr_un sa;
@@ -92,7 +92,7 @@ QStatus MakeSockAddr(const char* path,
 
 
 QStatus MakeSockAddr(const IPAddress& addr, uint16_t port,
-                            struct sockaddr_storage* addrBuf, socklen_t& addrSize)
+                     struct sockaddr_storage* addrBuf, socklen_t& addrSize)
 {
     if (addr.IsIPv4()) {
         struct sockaddr_in sa;
@@ -120,7 +120,7 @@ QStatus MakeSockAddr(const IPAddress& addr, uint16_t port,
 
 
 QStatus GetSockAddr(const sockaddr_storage* addrBuf, socklen_t addrSize,
-                           IPAddress& addr, uint16_t& port)
+                    IPAddress& addr, uint16_t& port)
 {
     QStatus status = ER_OK;
     char hostname[NI_MAXHOST];
