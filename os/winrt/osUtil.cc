@@ -103,9 +103,6 @@ QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, co
 
 QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSize, size_t& addrLen, uint32_t timeoutMs)
 {
-    // There doesn't appear to be a way to resolve hostnames on WinRT.
-    // HostName almost gets there, but it will only show resolution of local addresses.
-
     IAsyncOperation<Collections::IVectorView<EndpointPair ^> ^> ^ op = DatagramSocket::GetEndpointPairsAsync(ref new HostName(MultibyteToPlatformString(hostname.c_str())), L"0");
     concurrency::task<Collections::IVectorView<EndpointPair ^>^> dnsTask(op);
     dnsTask.wait();
