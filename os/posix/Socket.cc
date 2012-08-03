@@ -41,7 +41,6 @@
 #endif
 
 #include <qcc/IPAddress.h>
-#include <qcc/ScatterGatherList.h>
 #include <qcc/Util.h>
 #include <qcc/Thread.h>
 
@@ -63,7 +62,7 @@ static void DisableSigPipe(SocketFd socket)
 }
 #endif
 
-static QStatus MakeSockAddr(const char* path,
+QStatus MakeSockAddr(const char* path,
                             struct sockaddr_storage* addrBuf, socklen_t& addrSize)
 {
     size_t pathLen = strlen(path);
@@ -92,7 +91,7 @@ static QStatus MakeSockAddr(const char* path,
 }
 
 
-static QStatus MakeSockAddr(const IPAddress& addr, uint16_t port,
+QStatus MakeSockAddr(const IPAddress& addr, uint16_t port,
                             struct sockaddr_storage* addrBuf, socklen_t& addrSize)
 {
     if (addr.IsIPv4()) {
@@ -120,7 +119,7 @@ static QStatus MakeSockAddr(const IPAddress& addr, uint16_t port,
 }
 
 
-static QStatus GetSockAddr(const sockaddr_storage* addrBuf, socklen_t addrSize,
+QStatus GetSockAddr(const sockaddr_storage* addrBuf, socklen_t addrSize,
                            IPAddress& addr, uint16_t& port)
 {
     QStatus status = ER_OK;
@@ -522,72 +521,6 @@ QStatus SendTo(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
 }
 
 
-static QStatus SendSGCommon(SocketFd sockfd, struct sockaddr_storage* addr, socklen_t addrLen,
-                            const ScatterGatherList& sg, size_t& sent)
-{
-    QStatus status = ER_OK;
-    ssize_t ret;
-    struct msghdr msg;
-    size_t index;
-    struct iovec* iov;
-    ScatterGatherList::const_iterator iter;
-    QCC_DbgTrace(("SendSGCommon(sockfd = %d, *addr, addrLen, sg[%u:%u/%u], sent = <>)",
-                  sockfd, sg.Size(), sg.DataSize(), sg.MaxDataSize()));
-
-    iov = new struct iovec[sg.Size()];
-    for (index = 0, iter = sg.Begin(); iter != sg.End(); ++index, ++iter) {
-        iov[index].iov_base = iter->buf;
-        iov[index].iov_len = iter->len;
-        QCC_DbgLocalData(iov[index].iov_base, iov[index].iov_len);
-    }
-
-    msg.msg_name = addr;
-    msg.msg_namelen = addrLen;
-    msg.msg_iov = iov;
-    msg.msg_iovlen = sg.Size();
-    msg.msg_control = NULL;
-    msg.msg_controllen = 0;
-    msg.msg_flags = 0;
-
-    ret = sendmsg(static_cast<int>(sockfd), &msg, MSG_NOSIGNAL);
-    if (ret == -1) {
-        status = ER_OS_ERROR;
-        QCC_LogError(status, ("SendSGCommon (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
-    } else {
-        sent = static_cast<size_t>(ret);
-    }
-    delete[] iov;
-    return status;
-}
-
-QStatus SendSG(SocketFd sockfd, const ScatterGatherList& sg, size_t& sent)
-{
-    QCC_DbgTrace(("SendSG(sockfd = %d, sg[%u:%u/%u], sent = <>)",
-                  sockfd, sg.Size(), sg.DataSize(), sg.MaxDataSize()));
-
-    return SendSGCommon(sockfd, NULL, 0, sg, sent);
-}
-
-QStatus SendToSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t remotePort,
-                 const ScatterGatherList& sg, size_t& sent)
-{
-    struct sockaddr_storage addr;
-    socklen_t addrLen = sizeof(addr);
-
-    QCC_DbgTrace(("SendToSG(sockfd = %d, remoteAddr = %s, remotePort = %u, sg[%u:%u/%u], sent = <>)",
-                  sockfd, remoteAddr.ToString().c_str(), remotePort,
-                  sg.Size(), sg.DataSize(), sg.MaxDataSize()));
-
-    QStatus status = MakeSockAddr(remoteAddr, remotePort, &addr, addrLen);
-    if (status != ER_OK) {
-        return status;
-    }
-
-    return SendSGCommon(sockfd, &addr, addrLen, sg, sent);
-}
-
-
-
 QStatus Recv(SocketFd sockfd, void* buf, size_t len, size_t& received)
 {
     QStatus status = ER_OK;
@@ -643,83 +576,6 @@ QStatus RecvFrom(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
     return status;
 }
 
-
-static QStatus RecvSGCommon(SocketFd sockfd, struct sockaddr_storage* addr, socklen_t* addrLen,
-                            ScatterGatherList& sg, size_t& received)
-{
-    QStatus status = ER_OK;
-    ssize_t ret;
-    struct msghdr msg;
-    size_t index;
-    struct iovec* iov;
-    ScatterGatherList::const_iterator iter;
-    QCC_DbgTrace(("RecvSGCommon(sockfd = &d, addr, addrLen, sg = <>, received = <>)",
-                  sockfd));
-
-    iov = new struct iovec[sg.Size()];
-    for (index = 0, iter = sg.Begin(); iter != sg.End(); ++index, ++iter) {
-        iov[index].iov_base = iter->buf;
-        iov[index].iov_len = iter->len;
-    }
-
-    msg.msg_name = addr;
-    msg.msg_namelen = *addrLen;
-    msg.msg_iov = iov;
-    msg.msg_iovlen = sg.Size();
-    msg.msg_control = NULL;
-    msg.msg_controllen = 0;
-    msg.msg_flags = 0;
-
-    ret = recvmsg(static_cast<int>(sockfd), &msg, 0);
-    if (ret == -1) {
-        status = ER_OS_ERROR;
-        QCC_DbgHLPrintf(("RecvSGCommon (sockfd = %u): %d - %s", sockfd, errno, strerror(errno)));
-    } else {
-        received = static_cast<size_t>(ret);
-        sg.SetDataSize(static_cast<size_t>(ret));
-        *addrLen = msg.msg_namelen;
-    }
-    delete[] iov;
-
-#if !defined(NDEBUG)
-    if (1) {
-        size_t rxcnt = received;
-        QCC_DbgPrintf(("Received %u bytes", received));
-        for (iter = sg.Begin(); rxcnt > 0 && iter != sg.End(); ++iter) {
-            QCC_DbgRemoteData(iter->buf, std::min(rxcnt, iter->len));
-            rxcnt -= std::min(rxcnt, iter->len);
-        }
-    }
-#endif
-
-    return status;
-}
-
-
-QStatus RecvSG(SocketFd sockfd, ScatterGatherList& sg, size_t& received)
-{
-    socklen_t addrLen = 0;
-    QCC_DbgTrace(("RecvSG(sockfd = %d, sg = <>, received = <>)", sockfd));
-
-    return RecvSGCommon(sockfd, NULL, &addrLen, sg, received);
-}
-
-
-QStatus RecvFromSG(SocketFd sockfd, IPAddress& remoteAddr, uint16_t& remotePort,
-                   ScatterGatherList& sg, size_t& received)
-{
-    QStatus status;
-    struct sockaddr_storage addr;
-    socklen_t addrLen = sizeof(addr);
-
-    status = RecvSGCommon(sockfd, &addr, &addrLen, sg, received);
-    if (ER_OK == status) {
-        GetSockAddr(&addr, addrLen, remoteAddr, remotePort);
-        QCC_DbgTrace(("RecvFromSG(sockfd = %d, remoteAddr = %s, remotePort = %u, sg = <>, sent = <>)",
-                      sockfd, remoteAddr.ToString().c_str(), remotePort));
-    }
-    return status;
-}
 
 QStatus RecvWithFds(SocketFd sockfd, void* buf, size_t len, size_t& received, SocketFd* fdList, size_t maxFds, size_t& recvdFds)
 {
