@@ -52,6 +52,8 @@ void GetTimeNow(Timespec* ts);
 /** Timespec */
 struct Timespec {
 
+    static const Timespec Zero;
+
     uint32_t seconds;       /**< Number of seconds since EPOCH */
     uint16_t mseconds;      /**< Milliseconds in EPOCH */
 
@@ -97,6 +99,10 @@ struct Timespec {
 
     bool operator==(const Timespec& other) const {
         return (seconds == other.seconds) && (mseconds == other.mseconds);
+    }
+
+    bool operator!=(const Timespec& other) const {
+        return !(*this == other);
     }
 
     uint64_t GetAbsoluteMillis() const { return ((uint64_t)seconds * 1000) + (uint64_t)mseconds; }

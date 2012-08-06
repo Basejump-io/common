@@ -32,6 +32,7 @@
 
 #include <qcc/time.h>
 
+const qcc::Timespec qcc::Timespec::Zero;
 
 uint32_t qcc::GetTimestamp(void)
 {

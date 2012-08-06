@@ -31,7 +31,7 @@
 
 #include <qcc/time.h>
 
-
+const qcc::Timespec qcc::Timespec::Zero;
 
 using namespace qcc;
 
