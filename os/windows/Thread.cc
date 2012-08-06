@@ -171,13 +171,15 @@ Thread::Thread(qcc::String name, Thread::ThreadFunction func, bool isExternal) :
 
 Thread::~Thread(void)
 {
-    if (IsRunning()) {
-        Stop();
-        Join();
-    } else if (!isExternal && handle) {
-        CloseHandle(handle);
-        handle = 0;
-        ++stopped;
+    if (!isExternal) {
+        if (IsRunning()) {
+            Stop();
+            Join();
+        } else if (handle) {
+            CloseHandle(handle);
+            handle = 0;
+            ++stopped;
+        }
     }
     QCC_DbgHLPrintf(("Thread::~Thread() [%s,%x] started:%d running:%d stopped:%d", GetName(), this, started, running, stopped));
 }
