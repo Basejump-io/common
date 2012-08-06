@@ -26,6 +26,19 @@
 
 namespace qcc {
 
+/** Windows uses SOCKET_ERROR to signify errors */
+#define SOCKET_ERROR -1
+
+/**
+ * CL definition of IOVec matches the Visual Studio definition of
+ * WSABUF for direct casting.
+ */
+struct IOVec {
+    ULONG len;          ///< Length of the buffer.
+    char FAR* buf;      ///< Pointer to a buffer to be included in a
+                        //   scatter-gather list.
+};
+
 /**
  * Enumeration of address families.
  */

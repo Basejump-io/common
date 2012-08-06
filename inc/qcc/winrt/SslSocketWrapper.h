@@ -45,6 +45,7 @@ ref class SslSocketWrapper sealed {
     property uint32_t LastError;
 
   private:
+    friend class SslSocket;
     SocketWrapper ^ _sw;
 };
 

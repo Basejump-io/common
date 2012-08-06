@@ -31,6 +31,8 @@
 #include <qcc/posix/unicode.h>
 #elif defined(QCC_OS_GROUP_WINDOWS)
 #include <qcc/windows/unicode.h>
+#elif defined(QCC_OS_GROUP_WINRT)
+#include <qcc/winrt/unicode.h>
 #else
 #error No OS GROUP defined.
 #endif

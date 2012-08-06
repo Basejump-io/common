@@ -89,7 +89,7 @@ QStatus SslSocket::Connect(const qcc::String hostName, uint16_t port)
         }
         status = (QStatus)(int)internal->socket->Connect(strRemoteAddr, port);
         if (ER_OK == status) {
-            sock = (SocketFd) reinterpret_cast<void*>(internal->socket);
+            sock = (SocketFd) reinterpret_cast<void*>(internal->socket->_sw);
             sourceEvent = new qcc::Event(sock, qcc::Event::IO_READ, false);
             sinkEvent = new qcc::Event(sock, qcc::Event::IO_WRITE, false);
         }

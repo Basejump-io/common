@@ -106,7 +106,9 @@ typedef enum _OSType {
     DARWIN_OS,
 
     /*Linux*/
-    LINUX_OS
+    LINUX_OS,
+
+    WINRT_OS,
 
 } OSType;
 

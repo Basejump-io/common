@@ -84,6 +84,11 @@ qcc::String qcc::GetHomeDir()
     return Environ::GetAppEnviron()->Find("APPLICATIONDATA");
 }
 
+qcc::OSType qcc::GetSystemOSType(void)
+{
+    return qcc::WINRT_OS;
+}
+
 QStatus qcc::GetDirListing(const char* path, DirListing& listing)
 {
     return ER_NOT_IMPLEMENTED;
