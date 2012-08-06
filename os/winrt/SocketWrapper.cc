@@ -23,6 +23,7 @@
 #include <qcc/atomic.h>
 #include <qcc/IPAddress.h>
 #include <qcc/Debug.h>
+#include <qcc/StringUtil.h>
 
 #include <qcc/winrt/utility.h>
 #include <qcc/winrt/SocketsWrapper.h>
@@ -1777,7 +1778,7 @@ uint32_t SocketWrapper::GetLocalAddress(Platform::WriteOnlyArray<Platform::Strin
             result = (::QStatus)LastError;
             break;
         }
-        if ((GetBindingState() & BindingState::Bind) == 0) {
+        if ((GetBindingState() & BindingState::Bind) == 0 && (GetBindingState() & BindingState::Connect) == 0) {
             result = ER_FAIL;
             break;
         }
@@ -1789,8 +1790,15 @@ uint32_t SocketWrapper::GetLocalAddress(Platform::WriteOnlyArray<Platform::Strin
             result = ER_BAD_ARG_2;
             break;
         }
-        addr[0] = _lastBindHostname;
-        port[0] = _lastBindPort;
+        if ((GetBindingState() & BindingState::Bind) == 0  &&
+            (GetBindingState() & BindingState::Connect) != 0 &&
+            _socketType == SocketType::QCC_SOCK_STREAM) {
+            addr[0] = _tcpSocket->Information->LocalAddress->CanonicalName;
+            port[0] = StringToI32(PlatformToMultibyteString(_tcpSocket->Information->LocalPort));
+        } else {
+            addr[0] = _lastBindHostname;
+            port[0] = _lastBindPort;
+        }
         result = ER_OK;
         break;
     }
