@@ -116,8 +116,12 @@ QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSi
         Platform::String ^ remoteIp = entries->GetAt(0)->RemoteHostName->RawName;
         qcc::String mbIp = PlatformToMultibyteString(remoteIp);
         IPAddress tmpIpAddr(mbIp);
-        tmpIpAddr.RenderIPBinary(addr, addrSize);
         addrLen = tmpIpAddr.Size();
+        if (addrLen == qcc::IPAddress::IPv4_SIZE) {
+            tmpIpAddr.RenderIPv4Binary(&addr[qcc::IPAddress::IPv6_SIZE - qcc::IPAddress::IPv4_SIZE], addrSize);
+        } else {
+            tmpIpAddr.RenderIPv6Binary(addr, addrSize);
+        }
         return ER_OK;
     }
     return ER_BAD_HOSTNAME;
