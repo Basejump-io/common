@@ -26,16 +26,29 @@ TEST(StringUtilTest, hex_string_to_byte_array_conversion_off_by_one) {
     // The substring, "fe", of even length
     String substring_of_fee = fee.substr(0, (fee.length() - 1));
 
-    uint8_t* bytes_corresponding_to_string = (uint8_t*) malloc(
-        sizeof(uint8_t) * fee.length() / 2);
-    uint8_t* bytes_corresponding_to_substring = (uint8_t*) malloc(
-        sizeof(uint8_t) * substring_of_fee.length() / 2);
+    uint8_t* bytes_corresponding_to_string = new uint8_t [fee.length() / 2];
+    uint8_t* bytes_corresponding_to_substring = new uint8_t [substring_of_fee.length() / 2];
 
-    // Intentionally ignoring the return values,
-    // as we are not checking for them in this particular scenario.
-    HexStringToBytes(fee, bytes_corresponding_to_string, fee.length() / 2);
-    HexStringToBytes(substring_of_fee, bytes_corresponding_to_substring,
-                     substring_of_fee.length() / 2);
+    size_t desired_number_of_bytes_to_be_copied = fee.length() / 2;
+    size_t actual_number_of_bytes_copied = HexStringToBytes(fee,
+                                                            bytes_corresponding_to_string,
+                                                            desired_number_of_bytes_to_be_copied);
+
+    EXPECT_EQ(desired_number_of_bytes_to_be_copied,
+              actual_number_of_bytes_copied) <<
+    "The function HexStringToBytes was unable to copy the entire string \"" <<
+    fee.c_str() << "\" to a byte array.";
+
+    desired_number_of_bytes_to_be_copied = substring_of_fee.length() / 2;
+    actual_number_of_bytes_copied = HexStringToBytes(substring_of_fee,
+                                                     bytes_corresponding_to_substring,
+                                                     desired_number_of_bytes_to_be_copied);
+
+    EXPECT_EQ(desired_number_of_bytes_to_be_copied,
+              actual_number_of_bytes_copied) <<
+    "The function HexStringToBytes was unable to copy the entire string \"" <<
+    substring_of_fee.c_str() << "\" to a byte array.";
+
     // Compare the byte arrays
     for (uint8_t i = 0; i < fee.length() / 2; i++) {
         EXPECT_EQ(bytes_corresponding_to_string[i],
@@ -47,27 +60,29 @@ TEST(StringUtilTest, hex_string_to_byte_array_conversion_off_by_one) {
     }
 
     // Clean up
-    free(bytes_corresponding_to_string);
-    free(bytes_corresponding_to_substring);
+    delete [] bytes_corresponding_to_string;
+    bytes_corresponding_to_string = NULL;
+    delete [] bytes_corresponding_to_substring;
+    bytes_corresponding_to_substring = NULL;
 }
-TEST(StringUtilTest, hex_string_to_byte_array_conversion) {
-    uint8_t size_of_byte_array = 0;
 
-    uint8_t desired_number_of_bytes_to_be_copied = 0;
-    uint8_t actual_number_of_bytes_copied = 0;
+TEST(StringUtilTest, hex_string_to_byte_array_conversion) {
+    size_t size_of_byte_array = 0;
+    size_t desired_number_of_bytes_to_be_copied = 0;
+    size_t actual_number_of_bytes_copied = 0;
 
     bool prefer_lower_case = true;
 
+    // String of even length - and thus should get converted completely.
     String ate_bad_f00d = String("8badf00d");
     size_of_byte_array = ate_bad_f00d.length() / 2;
-    uint8_t* bytes_corresponding_to_string = (uint8_t*) malloc(
-        sizeof(uint8_t) * size_of_byte_array);
+    uint8_t* bytes_corresponding_to_string = new uint8_t [size_of_byte_array];
+
     // copy the entire string into the byte array
     desired_number_of_bytes_to_be_copied = size_of_byte_array;
-    actual_number_of_bytes_copied = HexStringToBytes(
-        ate_bad_f00d,
-        bytes_corresponding_to_string,
-        desired_number_of_bytes_to_be_copied);
+    actual_number_of_bytes_copied = HexStringToBytes(ate_bad_f00d,
+                                                     bytes_corresponding_to_string,
+                                                     desired_number_of_bytes_to_be_copied);
 
     EXPECT_EQ(desired_number_of_bytes_to_be_copied,
               actual_number_of_bytes_copied) <<
@@ -79,10 +94,9 @@ TEST(StringUtilTest, hex_string_to_byte_array_conversion) {
     if (desired_number_of_bytes_to_be_copied == actual_number_of_bytes_copied) {
         size_of_byte_array = actual_number_of_bytes_copied;
 
-        String converted_string = BytesToHexString(
-            bytes_corresponding_to_string,
-            size_of_byte_array,
-            prefer_lower_case);
+        String converted_string = BytesToHexString(bytes_corresponding_to_string,
+                                                   size_of_byte_array,
+                                                   prefer_lower_case);
 
         EXPECT_STREQ(ate_bad_f00d.c_str(), converted_string.c_str()) <<
         "The string \"" << ate_bad_f00d.c_str() <<
@@ -91,14 +105,14 @@ TEST(StringUtilTest, hex_string_to_byte_array_conversion) {
     }
 
     // Clean up
-    free(bytes_corresponding_to_string);
+    delete [] bytes_corresponding_to_string;
+    bytes_corresponding_to_string = NULL;
 }
 
 TEST(StringUtilTest, hex_string_to_byte_array_conversion_with_delimiter) {
-    uint8_t size_of_byte_array = 0;
-
-    uint8_t desired_number_of_bytes_to_be_copied = 0;
-    uint8_t actual_number_of_bytes_copied = 0;
+    size_t size_of_byte_array = 0;
+    size_t desired_number_of_bytes_to_be_copied = 0;
+    size_t actual_number_of_bytes_copied = 0;
 
     bool prefer_lower_case = true;
 
@@ -107,8 +121,7 @@ TEST(StringUtilTest, hex_string_to_byte_array_conversion_with_delimiter) {
     char separator = ',';
     // A non-exact upper-bound value for the size of byte array
     size_of_byte_array = bad_cafe.length() / 2;
-    uint8_t* bytes_corresponding_to_string = (uint8_t*) malloc(
-        sizeof(uint8_t) * size_of_byte_array);
+    uint8_t* bytes_corresponding_to_string = new uint8_t [size_of_byte_array];
     // Force the function to copy both 0xBA (valid) and OxD: (invalid)
     desired_number_of_bytes_to_be_copied = 2;
     actual_number_of_bytes_copied = HexStringToBytes(bad_cafe,
@@ -116,11 +129,15 @@ TEST(StringUtilTest, hex_string_to_byte_array_conversion_with_delimiter) {
                                                      desired_number_of_bytes_to_be_copied,
                                                      separator);
 
-    EXPECT_NE(actual_number_of_bytes_copied,
-              desired_number_of_bytes_to_be_copied) <<
+    EXPECT_NE(desired_number_of_bytes_to_be_copied,
+              actual_number_of_bytes_copied) <<
     "Tried to force the HexStringToBytes function to process "
     "the non-hex-digit character \':\' of String \"" <<
     bad_cafe.c_str() << "\" and expected it to be skipped.";
+
+    EXPECT_EQ((unsigned int) 1, actual_number_of_bytes_copied) <<
+    "The function did not copy the expected number of bytes (= " << 1 <<
+    ") from the string \"" << bad_cafe.c_str() << "\".";
 
     // If it copied one byte as expected,
     // Perform the reverse conversion and verify
@@ -128,11 +145,9 @@ TEST(StringUtilTest, hex_string_to_byte_array_conversion_with_delimiter) {
         size_of_byte_array = actual_number_of_bytes_copied;
         prefer_lower_case = false;
 
-        String converted_string = BytesToHexString(
-            bytes_corresponding_to_string,
-            size_of_byte_array,
-            prefer_lower_case,
-            separator);
+        String converted_string = BytesToHexString(bytes_corresponding_to_string,
+                                                   size_of_byte_array,
+                                                   prefer_lower_case, separator);
 
         String expected_string = bad_cafe.substr(0, 2);
 
@@ -143,16 +158,20 @@ TEST(StringUtilTest, hex_string_to_byte_array_conversion_with_delimiter) {
     }
 
     // Clean up
-    free(bytes_corresponding_to_string);
+    delete [] bytes_corresponding_to_string;
+    bytes_corresponding_to_string = NULL;
 }
 
-TEST(StringUtilTest, u8_hex_character_conversion_border_case) {
-    // use a character outside the hex-digit characters
-    EXPECT_EQ(255, CharToU8(':'));
-    // use a number beyond the hex digits
+TEST(StringUtilTest, u8_to_hex_character_conversion_border_case) {
+    // use a decimal number beyond the hex digits
     // Answer to the Ultimate Question of Life, The Universe, and Everything
     EXPECT_EQ('\0', U8ToChar(42));
 
+}
+
+TEST(StringUtilTest, hex_character_to_u8_conversion_border_case) {
+    // use a character outside the hex-digit characters
+    EXPECT_EQ(255, CharToU8(':'));
 }
 
 TEST(StringUtilTest, u8_hex_character_conversion_stress) {
@@ -165,20 +184,46 @@ TEST(StringUtilTest, u8_hex_character_conversion_stress) {
     }
 }
 
-TEST(StringUtilTest, int_to_string_conversion_stress) {
+TEST(StringUtilTest, uint32_to_string_conversion_stress) {
+    uint32_t some_u32 = 0;
+
     uint16_t number_of_iterations = 1000;
 
     for (uint16_t i = 0; i < number_of_iterations; i++) {
-        uint32_t some_u32 = Rand32();
+        some_u32 = Rand32();
         EXPECT_EQ(some_u32, StringToU32(U32ToString(some_u32)));
+    }
+}
 
-        int32_t some_i32 = (int32_t) some_u32;
+TEST(StringUtilTest, int32_to_string_conversion_stress) {
+    int32_t some_i32 = 0;
+
+    uint16_t number_of_iterations = 1000;
+
+    for (uint16_t i = 0; i < number_of_iterations; i++) {
+        some_i32 = (int32_t) Rand32();
         EXPECT_EQ(some_i32, StringToI32(I32ToString(some_i32)));
+    }
+}
 
-        uint64_t some_u64 = Rand64();
+TEST(StringUtilTest, uint64_to_string_conversion_stress) {
+    uint64_t some_u64 = 0;
+
+    uint16_t number_of_iterations = 1000;
+
+    for (uint16_t i = 0; i < number_of_iterations; i++) {
+        some_u64 = Rand64();
         EXPECT_EQ(some_u64, StringToU64(U64ToString(some_u64)));
+    }
+}
 
-        int64_t some_i64 = (int64_t) some_u64;
+TEST(StringUtilTest, int64_to_string_conversion_stress) {
+    int64_t some_i64 = 0;
+
+    uint16_t number_of_iterations = 1000;
+
+    for (uint16_t i = 0; i < number_of_iterations; i++) {
+        some_i64 = (int64_t) Rand64();
         EXPECT_EQ(some_i64, StringToI64(I64ToString(some_i64)));
     }
 }
