@@ -28,6 +28,7 @@
 
 #include <qcc/AdapterUtil.h>
 #include <qcc/NetInfo.h>
+#include <qcc/IfConfig.h>
 
 using namespace std;
 
@@ -44,7 +45,26 @@ AdapterUtil::~AdapterUtil(void) {
 
 QStatus AdapterUtil::ForceUpdate()
 {
-    return ER_NOT_IMPLEMENTED;
+    std::vector<qcc::IfConfigEntry> entries;
+    IfConfig(entries);
+    for (std::vector<IfConfigEntry>::const_iterator it = entries.begin(); it != entries.end(); ++it) {
+
+        if (((it->m_flags & qcc::IfConfigEntry::UP) == 0) ||
+            ((it->m_flags & qcc::IfConfigEntry::LOOPBACK) != 0)) {
+            continue;
+        }
+        NetInfo netInfo;
+        netInfo.name = it->m_name;
+        netInfo.addr = IPAddress(it->m_addr);
+        netInfo.mtu = it->m_mtu;
+        netInfo.isVPN = false;
+
+        QCC_DbgPrintf(("Interface: name=%s  addr=%s  MTU=%u",
+                       netInfo.name.c_str(), netInfo.addr.ToString().c_str(), netInfo.mtu));
+
+        interfaces.push_back(netInfo);
+    }
+    return ER_OK;
 }
 
 

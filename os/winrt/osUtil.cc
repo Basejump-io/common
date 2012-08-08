@@ -108,21 +108,25 @@ QStatus qcc::ExecAs(const char* user, const char* exec, const ExecArgs& args, co
 
 QStatus qcc::ResolveHostName(qcc::String hostname, uint8_t addr[], size_t addrSize, size_t& addrLen, uint32_t timeoutMs)
 {
-    IAsyncOperation<Collections::IVectorView<EndpointPair ^> ^> ^ op = DatagramSocket::GetEndpointPairsAsync(ref new HostName(MultibyteToPlatformString(hostname.c_str())), L"0");
-    concurrency::task<Collections::IVectorView<EndpointPair ^>^> dnsTask(op);
-    dnsTask.wait();
-    Collections::IVectorView<EndpointPair ^> ^ entries = dnsTask.get();
-    if (entries->Size > 0) {
-        Platform::String ^ remoteIp = entries->GetAt(0)->RemoteHostName->RawName;
-        qcc::String mbIp = PlatformToMultibyteString(remoteIp);
-        IPAddress tmpIpAddr(mbIp);
-        addrLen = tmpIpAddr.Size();
-        if (addrLen == qcc::IPAddress::IPv4_SIZE) {
-            tmpIpAddr.RenderIPv4Binary(&addr[qcc::IPAddress::IPv6_SIZE - qcc::IPAddress::IPv4_SIZE], addrSize);
-        } else {
-            tmpIpAddr.RenderIPv6Binary(addr, addrSize);
+    try {
+        IAsyncOperation<Collections::IVectorView<EndpointPair ^> ^> ^ op = DatagramSocket::GetEndpointPairsAsync(ref new HostName(MultibyteToPlatformString(hostname.c_str())), L"0");
+        concurrency::task<Collections::IVectorView<EndpointPair ^>^> dnsTask(op);
+        dnsTask.wait();
+        Collections::IVectorView<EndpointPair ^> ^ entries = dnsTask.get();
+        if (entries->Size > 0) {
+            Platform::String ^ remoteIp = entries->GetAt(0)->RemoteHostName->RawName;
+            qcc::String mbIp = PlatformToMultibyteString(remoteIp);
+            IPAddress tmpIpAddr(mbIp);
+            addrLen = tmpIpAddr.Size();
+            if (addrLen == qcc::IPAddress::IPv4_SIZE) {
+                tmpIpAddr.RenderIPv4Binary(&addr[qcc::IPAddress::IPv6_SIZE - qcc::IPAddress::IPv4_SIZE], addrSize);
+            } else {
+                tmpIpAddr.RenderIPv6Binary(addr, addrSize);
+            }
+            return ER_OK;
         }
-        return ER_OK;
+    } catch (Platform::Exception ^ e) {
+        auto m = e->Message;
     }
     return ER_BAD_HOSTNAME;
 }
