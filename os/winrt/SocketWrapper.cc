@@ -862,8 +862,8 @@ void SocketWrapper::TCPSocketConnectCompleted(IAsyncAction ^ target, AsyncStatus
                 break;
             }
             _dataReader->InputStreamOptions = InputStreamOptions::Partial;
-            QueueTraffic();
             SetBindingState(BindingState::Connect);
+            QueueTraffic();
             break;
         } catch (Platform::COMException ^ ex) {
             SetLastError(COMExceptionToQStatus(ex->HResult), true);
