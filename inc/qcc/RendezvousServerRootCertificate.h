@@ -60,6 +60,40 @@ static const char RendezvousTestServerRootCertificate[] = {
     "-----END CERTIFICATE-----"
 };
 
+static const char RendezvousStageServerRootCertificate[] = {
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIFTDCCBDSgAwIBAgIQB4vio3UvantYOivK060ZQDANBgkqhkiG9w0BAQUFADCB\n"
+    "tTELMAkGA1UEBhMCVVMxFzAVBgNVBAoTDlZlcmlTaWduLCBJbmMuMR8wHQYDVQQL\n"
+    "ExZWZXJpU2lnbiBUcnVzdCBOZXR3b3JrMTswOQYDVQQLEzJUZXJtcyBvZiB1c2Ug\n"
+    "YXQgaHR0cHM6Ly93d3cudmVyaXNpZ24uY29tL3JwYSAoYykxMDEvMC0GA1UEAxMm\n"
+    "VmVyaVNpZ24gQ2xhc3MgMyBTZWN1cmUgU2VydmVyIENBIC0gRzMwHhcNMTIwNDMw\n"
+    "MDAwMDAwWhcNMTMwNTAxMjM1OTU5WjCBhDELMAkGA1UEBhMCVVMxEzARBgNVBAgT\n"
+    "CkNhbGlmb3JuaWExEjAQBgNVBAcUCVNhbiBEaWVnbzEeMBwGA1UEChQVUVVBTENP\n"
+    "TU0gSW5jb3Jwb3JhdGVkMQ0wCwYDVQQLFARDT1JQMR0wGwYDVQQDFBRyZHZzLXN0\n"
+    "Zy5hbGxqb3luLm9yZzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANSV\n"
+    "xS3TM7dgakw2YsHEdx9T78YpozuzcZ6HUfytjSey20ii7BaavxBbBapRU046/Us1\n"
+    "r+ODf7XWz4Cn7kuUPByLxZlqKATlGAg+J4eAOgP3eXbfPPMEcw3HiGdBuSJ4C3bQ\n"
+    "jxokKz7XyY4jk39lhO/N4/rMqrdmFmSU421Ypw7QdPuOozCUTbsuYUBphzEO2i4S\n"
+    "tvB0X2ZYueTArAIvxruH8dJBLIUg3gXzeIddKGFAgTLhwC46EKIIGZyw4OgQ75TF\n"
+    "7+7jcTWvjVC6oh/e4LTiKFlTuGaBZ0nJ00ywmFXMsaUaVets83ksuLyOzv6V1j+q\n"
+    "IyXw5ChCWKcytMxR1pMCAwEAAaOCAYUwggGBMB8GA1UdEQQYMBaCFHJkdnMtc3Rn\n"
+    "LmFsbGpveW4ub3JnMAkGA1UdEwQCMAAwDgYDVR0PAQH/BAQDAgWgMEUGA1UdHwQ+\n"
+    "MDwwOqA4oDaGNGh0dHA6Ly9TVlJTZWN1cmUtRzMtY3JsLnZlcmlzaWduLmNvbS9T\n"
+    "VlJTZWN1cmVHMy5jcmwwRAYDVR0gBD0wOzA5BgtghkgBhvhFAQcXAzAqMCgGCCsG\n"
+    "AQUFBwIBFhxodHRwczovL3d3dy52ZXJpc2lnbi5jb20vY3BzMB0GA1UdJQQWMBQG\n"
+    "CCsGAQUFBwMBBggrBgEFBQcDAjAfBgNVHSMEGDAWgBQNRFwWU0TBgn4dIKsl9AFj\n"
+    "2L55pTB2BggrBgEFBQcBAQRqMGgwJAYIKwYBBQUHMAGGGGh0dHA6Ly9vY3NwLnZl\n"
+    "cmlzaWduLmNvbTBABggrBgEFBQcwAoY0aHR0cDovL1NWUlNlY3VyZS1HMy1haWEu\n"
+    "dmVyaXNpZ24uY29tL1NWUlNlY3VyZUczLmNlcjANBgkqhkiG9w0BAQUFAAOCAQEA\n"
+    "erROdpT8c2ETQI2vD1Vqnu4I1S3bIxHMBxYrepknmxpo0sd8/2+IjfzV5Hw2RrbZ\n"
+    "AW8jQF9yAUWU5iOwRILdCHtGxdXrJBpvzKICd8dkaPnvJIOESheqM06yrx18swkX\n"
+    "H+4JvS5nOwEzQt2qpwBkUmtGjG/9ACHDZ/ORQyNw/ygyR7ZhBANNAu19C4M72+dI\n"
+    "rf6kTZ3PXC5AaaiBKV/XAAZmbT1SkDMVIr0p6zWNcjWwWQOxxIQ+m7Qr5PYiDx6/\n"
+    "Yk9x7onFy2Qx3l8SeSOXAN14kHDcEG+5BhkWDse1/LVk+eDmFDNmnsgtCFLNVG5z\n"
+    "D97Ydn9rPYTEABQUlWTUsg==\n"
+    "-----END CERTIFICATE-----"
+};
+
 static const char RendezvousDeploymentServerRootCertificate[] = {
     "-----BEGIN CERTIFICATE-----\n"
     "MIIF7DCCBNSgAwIBAgIQbsx6pacDIAm4zrz06VLUkTANBgkqhkiG9w0BAQUFADCB\n"
@@ -137,6 +171,9 @@ static QStatus InitializeServerRootCertificate(String Server)
         RendezvousServerCACertificate = RendezvousDeploymentServerCACertificate;
     } else if (Server == String("rdvs.alljoyn.org")) {
         RendezvousServerRootCertificate = RendezvousDeploymentServerRootCertificate;
+        RendezvousServerCACertificate = RendezvousDeploymentServerCACertificate;
+    } else if (Server == String("rdvs-stg.alljoyn.org")) {
+        RendezvousServerRootCertificate = RendezvousStageServerRootCertificate;
         RendezvousServerCACertificate = RendezvousDeploymentServerCACertificate;
     } else {
         status = ER_RENDEZVOUS_SERVER_ROOT_CERTIFICATE_UNINITIALIZED;
