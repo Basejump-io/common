@@ -45,6 +45,7 @@ AdapterUtil::~AdapterUtil(void) {
 
 QStatus AdapterUtil::ForceUpdate()
 {
+    interfaces.clear();
     std::vector<qcc::IfConfigEntry> entries;
     IfConfig(entries);
     for (std::vector<IfConfigEntry>::const_iterator it = entries.begin(); it != entries.end(); ++it) {
