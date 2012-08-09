@@ -61,6 +61,7 @@ class ManagedObj {
 
   public:
 
+    /** The underlying type */
     typedef T OBJECT_TYPE;
 
     /** Copy constructor */
