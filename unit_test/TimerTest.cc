@@ -33,11 +33,15 @@ static bool testNextAlarm(const Timespec& expectedTime, void* context)
     bool ret = false;
     triggeredAlarmsLock.Lock();
     uint32_t startTime = GetTimestamp();
+
+    // wait up to 20 seconds for an alarm to go off
     while (triggeredAlarms.empty() && (GetTimestamp() < (startTime + 20000))) {
         triggeredAlarmsLock.Unlock();
         qcc::Sleep(5);
         triggeredAlarmsLock.Lock();
     }
+
+    // wait up to 20 seconds!
     if (!triggeredAlarms.empty()) {
         pair<QStatus, Alarm> p = triggeredAlarms.front();
         triggeredAlarms.pop_front();
@@ -47,8 +51,8 @@ static bool testNextAlarm(const Timespec& expectedTime, void* context)
         uint64_t expectedTimeMs = expectedTime.GetAbsoluteMillis();
         ret = (p.first == ER_OK) && (context == p.second->GetContext()) && (alarmTime >= expectedTimeMs) && (alarmTime < (expectedTimeMs + jitter));
         if (!ret) {
-            printf("Failed Triggered Alarm: status=%s, a.alarmTime=%lu, a.context=%p, expectedTimeMs=%lu\n",
-                   QCC_StatusText(p.first), alarmTime, p.second->GetContext(), expectedTimeMs);
+            printf("Failed Triggered Alarm: status=%s, \na.alarmTime=\t%lu\nexpectedTimeMs=\t%lu\ndiff=\t\t%lu\n",
+                   QCC_StatusText(p.first), alarmTime, expectedTimeMs, (expectedTimeMs-alarmTime));
         }
     }
     triggeredAlarmsLock.Unlock();
@@ -70,21 +74,21 @@ class MyAlarmListener : public AlarmListener {
   private:
     const uint32_t delay;
 };
-//TODO this tests multiple things break this test into parts.
-TEST(TimerTest, timer) {
+
+
+TEST(TimerTest, SingleThreaded) {
     Timer t1;
     Timespec ts;
     QStatus status = t1.Start();
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
 
-    MyAlarmListener alarmListener1(1);
-    MyAlarmListener alarmListener10(10000);
+    MyAlarmListener alarmListener(1);
+    AlarmListener* al = &alarmListener;
 
     /* Simple relative alarm */
     void* context = (void*) 0x12345678;
     uint32_t timeout = 1000;
     uint32_t zero = 0;
-    AlarmListener* al = &alarmListener1;
     Alarm a1(timeout, al, context, zero);
     status = t1.AddAlarm(a1);
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
@@ -111,13 +115,30 @@ TEST(TimerTest, timer) {
     status = t1.Start();
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
 
+    status = t1.Stop();
+    ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
+    status = t1.Join();
+    ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
+}
+
+
+
+TEST(TimerTest, TestMultiThreaded) {
+    Timespec ts;
+    GetTimeNow(&ts);
+    QStatus status;
+    MyAlarmListener alarmListener(5000);
+    AlarmListener* al = &alarmListener;
+
     /* Test concurrency */
     Timer t2("testTimer", true, 3);
     status = t2.Start();
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
 
+
     uint32_t one = 1;
-    al = &alarmListener10;
+    GetTimeNow(&ts);
+
     Alarm a3(one, al);
     status = t2.AddAlarm(a3);
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
@@ -127,6 +148,7 @@ TEST(TimerTest, timer) {
     Alarm a5(one, al);
     status = t2.AddAlarm(a5);
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
+
     Alarm a6(one, al);
     status = t2.AddAlarm(a6);
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
@@ -137,21 +159,28 @@ TEST(TimerTest, timer) {
     status = t2.AddAlarm(a8);
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
 
-    GetTimeNow(&ts);
-    ASSERT_TRUE(testNextAlarm(ts + 1, 0));
-    ASSERT_TRUE(testNextAlarm(ts + 1, 0));
-    ASSERT_TRUE(testNextAlarm(ts + 1, 0));
-    ASSERT_TRUE(testNextAlarm(ts + 10001, 0));
-    ASSERT_TRUE(testNextAlarm(ts + 10001, 0));
-    ASSERT_TRUE(testNextAlarm(ts + 10001, 0));
 
-    /* Test ReplaceTimer */
+    ASSERT_TRUE(testNextAlarm(ts + 1, 0));
+    ASSERT_TRUE(testNextAlarm(ts + 1, 0));
+    ASSERT_TRUE(testNextAlarm(ts + 1, 0));
+
+    ASSERT_TRUE(testNextAlarm(ts + 5001, 0));
+    ASSERT_TRUE(testNextAlarm(ts + 5001, 0));
+    ASSERT_TRUE(testNextAlarm(ts + 5001, 0));
+}
+
+TEST(TimerTest, TestReplaceTimer) {
+    Timespec ts;
+    GetTimeNow(&ts);
+    MyAlarmListener alarmListener(1);
+    AlarmListener* al = &alarmListener;
+    QStatus status;
     Timer t3("testTimer");
     status = t3.Start();
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
 
-    al = &alarmListener1;
-    timeout = 2000;
+
+    uint32_t timeout = 2000;
     Alarm ar1(timeout, al);
     timeout = 5000;
     Alarm ar2(timeout, al);
