@@ -53,7 +53,7 @@ SslSocket::SslSocket(String host) :
     Host(host),
     sock(-1)
 {
-    /* Convert the PEM-encoded root certificate defined by RendezvousServerRootCertificate into the X509 format*/
+    /* Convert the PEM-encoded root certificate defined by ServerRootCertificate into the X509 format*/
     QStatus status = ImportPEM();
     if (status == ER_OK) {
         /// Add the certificate to the current certificate storage
@@ -173,17 +173,17 @@ QStatus SslSocket::ImportPEM()
     }
 
     status = ER_CRYPTO_ERROR;
-    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(RendezvousServerRootCertificate).c_str()));
+    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(ServerRootCertificate).c_str()));
 
-    status = internal->rootCert.ImportPEM(qcc::String(RendezvousServerRootCertificate));
+    status = internal->rootCert.ImportPEM(qcc::String(ServerRootCertificate));
     if (status != ER_OK) {
-        QCC_LogError(status, ("SslSocket::ImportPEM(): RendezvousServerRootCertificate invalid %s", QCC_StatusText(status)));
+        QCC_LogError(status, ("SslSocket::ImportPEM(): ServerRootCertificate invalid %s", QCC_StatusText(status)));
     }
 
     // load the CA certificate as well, to enable verification
-    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(RendezvousServerCACertificate).c_str()));
+    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(ServerCACertificate).c_str()));
 
-    status = internal->rootCert.ImportPEM(qcc::String(RendezvousServerCACertificate));
+    status = internal->rootCert.ImportPEM(qcc::String(ServerCACertificate));
     if (status != ER_OK) {
         QCC_LogError(status, ("SslSocket::ImportPEM(): RendezvousServerCACertificate invalid %s", QCC_StatusText(status)));
     }

@@ -295,8 +295,8 @@ QStatus SslSocket::ImportPEM()
 
     // load the CA certificate as well, to enable verification
     bio = BIO_new(BIO_s_mem());
-    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(RendezvousServerCACertificate).c_str()));
-    BIO_write(bio, RendezvousServerCACertificate, String(RendezvousServerCACertificate).size());
+    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(ServerCACertificate).c_str()));
+    BIO_write(bio, ServerCACertificate, String(ServerCACertificate).size());
     internal->rootCACert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     BIO_free(bio);
 
