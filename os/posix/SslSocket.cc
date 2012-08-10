@@ -94,7 +94,7 @@ SslSocket::SslSocket(String host) :
             /* Get a reference to the current certificate verification storage */
             X509_STORE* sslCtxstore = SSL_CTX_get_cert_store(sslCtx);
 
-            /* Convert the PEM-encoded root certificate defined by RendezvousServerRootCertificate in to the X509 format*/
+            /* Convert the PEM-encoded root certificate defined by ServerRootCertificate in to the X509 format*/
             QStatus status = ImportPEM();
             if (status == ER_OK) {
 
@@ -285,8 +285,8 @@ QStatus SslSocket::ImportPEM()
     ERR_load_crypto_strings();
     status = ER_CRYPTO_ERROR;
     BIO* bio = BIO_new(BIO_s_mem());
-    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(RendezvousServerRootCertificate).c_str()));
-    BIO_write(bio, RendezvousServerRootCertificate, String(RendezvousServerRootCertificate).size());
+    QCC_DbgPrintf(("SslSocket::ImportPEM(): Server = %s Certificate = %s", Host.c_str(), String(ServerRootCertificate).c_str()));
+    BIO_write(bio, ServerRootCertificate, String(ServerRootCertificate).size());
     internal->rootCert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     BIO_free(bio);
     if (internal->rootCert) {

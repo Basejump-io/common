@@ -28,8 +28,8 @@
 
 namespace qcc {
 
-static const char* RendezvousServerRootCertificate;
-static const char* RendezvousServerCACertificate;
+static const char* ServerRootCertificate;
+static const char* ServerCACertificate;
 
 static const char RendezvousTestServerRootCertificate[] = {
     "-----BEGIN CERTIFICATE-----\n"
@@ -131,7 +131,13 @@ static const char RendezvousDeploymentServerRootCertificate[] = {
     "-----END CERTIFICATE-----"
 };
 
-static const char RendezvousDeploymentServerCACertificate[] = {
+/*
+ * That certificate is the intermediate cert (G3 issued by G5) that was used to verify
+ * the cert issued to the rendezvous server and signed with G3. And this cert would be
+ * the same for production, test and stage environments because the certs of all these
+ * three servers are signed with the same G3 cert.
+ */
+static const char RendezvousServerCACertificate[] = {
     "-----BEGIN CERTIFICATE-----\n"
     "MIIE0zCCA7ugAwIBAgIQGNrRniZ96LtKIVjNzGs7SjANBgkqhkiG9w0BAQUFADCB\n"
     "yjELMAkGA1UEBhMCVVMxFzAVBgNVBAoTDlZlcmlTaWduLCBJbmMuMR8wHQYDVQQL\n"
@@ -167,14 +173,14 @@ static QStatus InitializeServerRootCertificate(String Server)
     QStatus status = ER_OK;
 
     if (Server == String("rdvs-test.qualcomm.com")) {
-        RendezvousServerRootCertificate = RendezvousTestServerRootCertificate;
-        RendezvousServerCACertificate = RendezvousDeploymentServerCACertificate;
+        ServerRootCertificate = RendezvousTestServerRootCertificate;
+        ServerCACertificate = RendezvousServerCACertificate;
     } else if (Server == String("rdvs.alljoyn.org")) {
-        RendezvousServerRootCertificate = RendezvousDeploymentServerRootCertificate;
-        RendezvousServerCACertificate = RendezvousDeploymentServerCACertificate;
+        ServerRootCertificate = RendezvousDeploymentServerRootCertificate;
+        ServerCACertificate = RendezvousServerCACertificate;
     } else if (Server == String("rdvs-stg.alljoyn.org")) {
-        RendezvousServerRootCertificate = RendezvousStageServerRootCertificate;
-        RendezvousServerCACertificate = RendezvousDeploymentServerCACertificate;
+        ServerRootCertificate = RendezvousStageServerRootCertificate;
+        ServerCACertificate = RendezvousServerCACertificate;
     } else {
         status = ER_RENDEZVOUS_SERVER_ROOT_CERTIFICATE_UNINITIALIZED;
     }
