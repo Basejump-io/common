@@ -147,7 +147,7 @@ ref class SocketWrapper sealed {
     bool _blocking;
     int _backlog;
     Windows::Networking::Sockets::StreamSocketListener ^ _tcpSocketListener;
-    Windows::Networking::Sockets::DatagramSocket ^ _udpReceiverSocket;
+    Windows::Networking::Sockets::DatagramSocket ^ _udpSocket;
     Windows::Networking::Sockets::StreamSocket ^ _tcpSocket;
     std::list<Windows::Networking::Sockets::StreamSocket ^> _tcpBacklog;
     std::list<UDPMessage ^> _udpBacklog;

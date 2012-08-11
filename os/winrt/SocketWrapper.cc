@@ -48,7 +48,7 @@ static SocketWrapperEvents _socketEvents;
 
 SocketWrapper::SocketWrapper() : _initialized(false), _blocking(true), _lastBindHostname(nullptr), _backlog(1),
     _lastBindPort(0), _tcpSocketListener(nullptr), _callbackCount(0), _bindingState(BindingState::None), _ssl(false),
-    _udpReceiverSocket(nullptr), _tcpSocket(nullptr), _dataReader(nullptr), _lastConnectHostname(nullptr), _lastConnectPort(0),
+    _udpSocket(nullptr), _tcpSocket(nullptr), _dataReader(nullptr), _lastConnectHostname(nullptr), _lastConnectPort(0),
     _events((int) Events::Write), _eventMask((int) Events::All)
 {
     LastError = ER_OK;
@@ -234,9 +234,9 @@ void SocketWrapper::Cleanup()
             delete _tcpSocketListener;
             _tcpSocketListener = nullptr;
         }
-        if (nullptr != _udpReceiverSocket) {
-            delete _udpReceiverSocket;
-            _udpReceiverSocket = nullptr;
+        if (nullptr != _udpSocket) {
+            delete _udpSocket;
+            _udpSocket = nullptr;
         }
         if (nullptr != _dataReader) {
             delete _dataReader;
@@ -435,7 +435,7 @@ uint32_t SocketWrapper::Bind(Platform::String ^ bindName, int localPort)
 
         case SocketType::QCC_SOCK_DGRAM:
         {
-            if (nullptr == _udpReceiverSocket ||
+            if (nullptr == _udpSocket ||
                 _lastBindHostname != bindName ||
                 _lastBindPort != localPort) {
                 result = (::QStatus)IsValidAddress(bindName);
@@ -446,9 +446,9 @@ uint32_t SocketWrapper::Bind(Platform::String ^ bindName, int localPort)
                 _lastBindPort = localPort;
                 try{
                     Platform::String ^ name = SanitizeAddress(bindName);
-                    if (nullptr == _udpReceiverSocket) {
-                        _udpReceiverSocket = ref new DatagramSocket();
-                        if (nullptr == _udpReceiverSocket) {
+                    if (nullptr == _udpSocket) {
+                        _udpSocket = ref new DatagramSocket();
+                        if (nullptr == _udpSocket) {
                             result = ER_OUT_OF_MEMORY;
                             break;
                         }
@@ -460,7 +460,7 @@ uint32_t SocketWrapper::Bind(Platform::String ^ bindName, int localPort)
                             result = ER_OUT_OF_MEMORY;
                             break;
                         }
-                        _udpReceiverSocket->MessageReceived::add(handler);
+                        _udpSocket->MessageReceived::add(handler);
                     }
                     if (nullptr != name) {
                         Windows::Networking::HostName ^ hostname = ref new Windows::Networking::HostName(name);
@@ -468,7 +468,7 @@ uint32_t SocketWrapper::Bind(Platform::String ^ bindName, int localPort)
                             result = ER_OUT_OF_MEMORY;
                             break;
                         }
-                        IAsyncAction ^ op = _udpReceiverSocket->BindEndpointAsync(hostname, localPort != 0 ? localPort.ToString() : "");
+                        IAsyncAction ^ op = _udpSocket->BindEndpointAsync(hostname, localPort != 0 ? localPort.ToString() : "");
                         if (nullptr == op) {
                             result = ER_OUT_OF_MEMORY;
                             break;
@@ -476,7 +476,7 @@ uint32_t SocketWrapper::Bind(Platform::String ^ bindName, int localPort)
                         concurrency::task<void> bindTask(op);
                         bindTask.wait();
                     } else {
-                        IAsyncAction ^ op = _udpReceiverSocket->BindServiceNameAsync(localPort != 0 ? localPort.ToString() : "");
+                        IAsyncAction ^ op = _udpSocket->BindServiceNameAsync(localPort != 0 ? localPort.ToString() : "");
                         if (nullptr == op) {
                             result = ER_OUT_OF_MEMORY;
                             break;
@@ -484,7 +484,7 @@ uint32_t SocketWrapper::Bind(Platform::String ^ bindName, int localPort)
                         concurrency::task<void> bindTask(op);
                         bindTask.wait();
                     }
-                    _lastBindPort = _wtoi(_udpReceiverSocket->Information->LocalPort->Data());
+                    _lastBindPort = _wtoi(_udpSocket->Information->LocalPort->Data());
                     SetBindingState(BindingState::Bind);
                     result = ER_OK;
                     break;
@@ -1127,10 +1127,14 @@ uint32_t SocketWrapper::SendTo(Platform::String ^ remoteAddr, int remotePort,
                 result = ER_FAIL;
                 break;
             }
-            sender = ref new DatagramSocket();
-            if (nullptr == sender) {
-                result = ER_OUT_OF_MEMORY;
-                break;
+            if (_udpSocket != nullptr) {
+                sender = _udpSocket;
+            } else {
+                sender = ref new DatagramSocket();
+                if (nullptr == sender) {
+                    result = ER_OUT_OF_MEMORY;
+                    break;
+                }
             }
             IOutputStream ^ writeStream = nullptr;
             try {
@@ -1907,7 +1911,7 @@ uint32_t SocketWrapper::JoinMulticastGroup(Platform::String ^ host)
             break;
         }
         try {
-            _udpReceiverSocket->JoinMulticastGroup(hostName);
+            _udpSocket->JoinMulticastGroup(hostName);
             result = ER_OK;
             break;
         } catch (Platform::COMException ^ ex) {
