@@ -134,7 +134,15 @@ inline Timespec operator+(const Timespec& ts, uint32_t ms)
 
 inline int64_t operator-(const Timespec& ts1, const Timespec& ts2)
 {
-    return ((int64_t)ts1.seconds - (int64_t)ts2.seconds) * 1000 + (int64_t)ts1.mseconds - (int64_t)ts2.mseconds;
+    int64_t t1 = (int64_t) ts1.seconds;
+    t1 *= 1000;
+    t1 += ts1.mseconds;
+
+    int64_t t2 = (int64_t) ts2.seconds;
+    t2 *= 1000;
+    t2 += ts2.mseconds;
+
+    return t1 - t2;
 }
 
 /**
