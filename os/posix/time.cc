@@ -25,11 +25,17 @@
 #include <time.h>
 #include <stdio.h>
 
-#if defined(QCC_OS_DARWIN)
-#include <sys/time.h>
-#endif
-
 #include <qcc/time.h>
+
+#if defined(QCC_OS_DARWIN)
+
+#include <sys/time.h>
+#include <mach/mach_time.h>
+
+#define NANO_CONVERSION (+1.0E-9)
+#define GIGA_CONVERSION UINT64_C(1000000000)
+
+#endif
 
 const qcc::Timespec qcc::Timespec::Zero;
 
@@ -37,12 +43,10 @@ using namespace qcc;
 
 static void platform_gettime(struct timespec* ts)
 {
-
 #if defined(QCC_OS_DARWIN)
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    ts->tv_sec = tv.tv_sec;
-    ts->tv_nsec = tv.tv_usec * 1000;
+    uint64_t time = mach_absolute_time();
+    ts->tv_sec = time * NANO_CONVERSION;
+    ts->tv_nsec = time - (ts->tv_sec * GIGA_CONVERSION);
 #else
     clock_gettime(CLOCK_MONOTONIC, ts);
 #endif
