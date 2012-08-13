@@ -346,7 +346,7 @@ class MyAlarmListener : public AlarmListener {
 
 static QStatus testTimer()
 {
-    Timer t1;
+    Timer t1("t1");
     Timespec ts;
     QStatus status = t1.Start();
     TEST_ASSERT(status == ER_OK);

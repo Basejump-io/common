@@ -77,7 +77,7 @@ class MyAlarmListener : public AlarmListener {
 
 
 TEST(TimerTest, SingleThreaded) {
-    Timer t1;
+    Timer t1("testTimer");
     Timespec ts;
     QStatus status = t1.Start();
     ASSERT_EQ(ER_OK, status) << "Status: " << QCC_StatusText(status);
