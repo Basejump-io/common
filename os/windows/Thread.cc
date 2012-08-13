@@ -350,7 +350,7 @@ QStatus Thread::Join(void)
     if (state == DEAD) {
         QCC_DbgPrintf(("Thread::Join() thread is dead [%s]", funcName));
         isStopping = false;
-        return ER_DEAD_THREAD;
+        return ER_OK;
     }
 
     QCC_DbgPrintf(("[%s - %x] %s thread %x [%s - %x]",
