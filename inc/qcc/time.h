@@ -54,7 +54,7 @@ struct Timespec {
 
     static const Timespec Zero;
 
-    uint32_t seconds;       /**< Number of seconds since EPOCH */
+    uint64_t seconds;       /**< Number of seconds since EPOCH */
     uint16_t mseconds;      /**< Milliseconds in EPOCH */
 
     Timespec() : seconds(0), mseconds(0) { }
@@ -68,18 +68,18 @@ struct Timespec {
      */
     Timespec(uint64_t millis, TimeBase base = TIME_ABSOLUTE) {
         if (base == TIME_ABSOLUTE) {
-            seconds = (uint32_t)(millis / 1000);
+            seconds = millis / 1000;
             mseconds = (uint16_t)(millis % 1000);
         } else {
             GetTimeNow(this);
-            seconds += (uint32_t)((mseconds + millis) / 1000);
+            seconds += (millis + mseconds) / 1000;
             mseconds = (uint16_t)((mseconds + millis) % 1000);
         }
     }
 
     Timespec& operator+=(const Timespec& other) {
         seconds += other.seconds + (mseconds + other.mseconds) / 1000;
-        mseconds = (uint16_t)((mseconds + other.mseconds) % 1000);
+        mseconds = ((mseconds + other.mseconds) % 1000);
         return *this;
     }
 
@@ -105,7 +105,7 @@ struct Timespec {
         return !(*this == other);
     }
 
-    uint64_t GetAbsoluteMillis() const { return ((uint64_t)seconds * 1000) + (uint64_t)mseconds; }
+    uint64_t GetAbsoluteMillis() const { return (seconds * 1000) + (uint64_t)mseconds; }
 
 };
 
