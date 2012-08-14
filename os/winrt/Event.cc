@@ -232,7 +232,7 @@ QStatus Event::Wait(Event& evt, uint32_t maxWaitMs)
         }
     }
 
-    QStatus status;
+    QStatus status = ER_OK;
 
     evt.IncrementNumThreads();
     DWORD ret = WaitForMultipleObjectsEx(numHandles, handles, FALSE, maxWaitMs, FALSE);
