@@ -172,7 +172,7 @@ class Timer : public OSTimer, public ThreadListener {
      * @param concurency         Dispatch up to this number of alarms concurently (using multiple threads).
      * @param prevenReentrancy   Prevent re-entrant call of AlarmTriggered.
      */
-    Timer(const char* name = "timer", bool expireOnExit = false, uint32_t concurency = 1, bool preventReentrancy = false);
+    Timer(const char* name, bool expireOnExit = false, uint32_t concurency = 1, bool preventReentrancy = false);
 
     /**
      * Destructor.
