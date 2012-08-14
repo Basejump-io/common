@@ -1797,8 +1797,8 @@ uint32_t SocketWrapper::GetLocalAddress(Platform::WriteOnlyArray<Platform::Strin
         if ((GetBindingState() & BindingState::Bind) == 0  &&
             (GetBindingState() & BindingState::Connect) != 0 &&
             _socketType == SocketType::QCC_SOCK_STREAM) {
-            addr[0] = _tcpSocket->Information->LocalAddress->CanonicalName;
-            port[0] = StringToI32(PlatformToMultibyteString(_tcpSocket->Information->LocalPort));
+            addr[0] = _lastConnectHostname;
+            port[0] = _lastConnectPort;
         } else {
             addr[0] = _lastBindHostname;
             port[0] = _lastBindPort;
