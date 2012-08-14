@@ -304,6 +304,24 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
                 maxWaitMs = evt->timestamp - now;
             }
         }
+
+        if ((evt->eventType == IO_READ) || (evt->eventType == IO_WRITE)) {
+            qcc::winrt::SocketWrapper ^ socket = reinterpret_cast<qcc::winrt::SocketWrapper ^>((void*)evt->GetFD());
+            int events = socket->GetEvents();
+            bool isSet = false;
+            if (evt->eventType == IO_READ && (events & (int)qcc::winrt::Events::Read) != 0) {
+                isSet = true;
+            }
+            if (evt->eventType == IO_WRITE && (events & (int)qcc::winrt::Events::Write) != 0) {
+                isSet = true;
+            }
+            if ((events & (int)qcc::winrt::Events::Exception) != 0) {
+                isSet = true;
+            }
+            if (isSet) {
+                ::SetEvent(evt->GetHandle());
+            }
+        }
     }
     /* Restore thread counts if we are not going to block */
     if (numHandles >= MAX_HANDLES) {
