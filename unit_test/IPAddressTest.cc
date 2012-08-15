@@ -26,7 +26,7 @@ using namespace qcc;
 //       the above mentioned file at some point.
 
 TEST(IPAddressTest, ipv4_to_string) {
-    uint8_t localhost[] = {127, 0, 0, 1};
+    uint8_t localhost[] = { 127, 0, 0, 1 };
     String expected_string_representation = String("127.0.0.1");
     String actual_string_representation = IPAddress::IPv4ToString(localhost);
 
@@ -50,12 +50,12 @@ TEST(IPAddressTest, string_to_ipv4) {
                                              IPAddress::IPv4_SIZE);
     EXPECT_EQ(ER_OK, status) <<
     "The function StringToIPv4 was unable to convert the string \"" <<
-    localhost.c_str() <<"\" to a byte array.";
+    localhost.c_str() << "\" to a byte array.";
 
-    if(ER_OK == status) {
-        uint8_t expected_address_buffer[] = {127, 0, 0, 1};
+    if (ER_OK == status) {
+        uint8_t expected_address_buffer[] = { 127, 0, 0, 1 };
 
-        for(size_t i = 0; i < IPAddress::IPv4_SIZE; i++) {
+        for (size_t i = 0; i < IPAddress::IPv4_SIZE; i++) {
             EXPECT_EQ(expected_address_buffer[i], address_buffer[i]) <<
             "At index " << i << ", the octet value " <<
             (unsigned int) address_buffer[i] << ", of the byte array "
@@ -85,9 +85,9 @@ TEST(IPAddressTest, string_to_ipv4_other_bases_viz_octal_hex) {
                                      IPAddress::IPv4_SIZE);
     EXPECT_EQ(ER_OK, status) <<
     "The function StringToIPv4 was unable to convert the string \"" <<
-    google_public_dns_server_in_octal.c_str() <<"\" to a byte array.";
+    google_public_dns_server_in_octal.c_str() << "\" to a byte array.";
 
-    if(ER_OK == status) {
+    if (ER_OK == status) {
         // Convert the address_buffer back to a string and compare
         String converted_string = IPAddress::IPv4ToString(address_buffer);
 
@@ -112,9 +112,9 @@ TEST(IPAddressTest, string_to_ipv4_other_bases_viz_octal_hex) {
                                      IPAddress::IPv4_SIZE);
     EXPECT_EQ(ER_OK, status) <<
     "The function StringToIPv4 was unable to convert the string \"" <<
-    open_dns_server_in_hex.c_str() <<"\" to a byte array.";
+    open_dns_server_in_hex.c_str() << "\" to a byte array.";
 
-    if(ER_OK == status) {
+    if (ER_OK == status) {
         // Convert the address_buffer back to a string and compare
         String converted_string = IPAddress::IPv4ToString(address_buffer);
 
