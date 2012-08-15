@@ -311,7 +311,7 @@ inline int64_t AccumulateDigits(char digits[], int32_t startIndex, int32_t lastI
     return -1;
 }
 
-QStatus IPAddress::StringToIPv6(qcc::String address, uint8_t addrBuf[], size_t addrBufSize)
+QStatus IPAddress::StringToIPv6(const qcc::String& address, uint8_t addrBuf[], size_t addrBufSize)
 {
     QStatus result = ER_OK;
 
@@ -690,7 +690,7 @@ QStatus IPAddress::StringToIPv6(qcc::String address, uint8_t addrBuf[], size_t a
 // 1.1.1, two octets, last is 16 bit,
 // 1.1, one octet, second is 24 bits
 // 1, value is 32 bits
-QStatus IPAddress::StringToIPv4(qcc::String address, uint8_t addrBuf[], size_t addrBufSize)
+QStatus IPAddress::StringToIPv4(const qcc::String& address, uint8_t addrBuf[], size_t addrBufSize)
 {
     QStatus result = ER_OK;
 
