@@ -359,7 +359,7 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
         }
     }
 
-    QStatus status;
+    QStatus status = ER_OK;
     if (somethingSet || (WAIT_TIMEOUT == ret)) {
         status = signaledEvents.empty() ? ER_TIMEOUT : ER_OK;
     } else {
