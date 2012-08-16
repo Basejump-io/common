@@ -28,7 +28,6 @@
 #include <qcc/winrt/utility.h>
 #include <qcc/winrt/SocketsWrapper.h>
 #include <qcc/winrt/SocketWrapper.h>
-#include <qcc/winrt/SocketWrapperEvents.h>
 
 #define DEFAULT_READ_SIZE_BYTES 16384
 
@@ -44,7 +43,6 @@ namespace winrt {
 
 static uint8_t _anyAddrIPV4[4] = { 0 };
 static uint8_t _anyAddrIPV6[16] = { 0 };
-static SocketWrapperEvents _socketEvents;
 
 SocketWrapper::SocketWrapper() : _initialized(false), _blocking(true), _lastBindHostname(nullptr), _backlog(1),
     _lastBindPort(0), _tcpSocketListener(nullptr), _callbackCount(0), _bindingState(BindingState::None), _ssl(false),
@@ -1982,7 +1980,7 @@ void SocketWrapper::SetEventMask(int mask)
     if ((previousMask & currentEvents) !=
         (currentMask & currentEvents)) {
         if (_initialized) {
-            _socketEvents.QueueSocketEventsChanged(this, currentEvents & currentMask);
+            ExecuteSocketEventsChanged(currentEvents);
         }
     }
     _mutex.Unlock();
@@ -2015,7 +2013,7 @@ void SocketWrapper::SetEvent(Events e)
     if ((currentMask & previousEvents) !=
         (currentMask & currentEvents)) {
         if (_initialized) {
-            _socketEvents.QueueSocketEventsChanged(this, currentEvents & currentMask);
+            ExecuteSocketEventsChanged(currentEvents);
         }
     }
     _mutex.Unlock();

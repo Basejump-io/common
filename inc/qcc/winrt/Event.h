@@ -230,18 +230,6 @@ class Event {
     Event& operator=(const Event& evt) { return *this; }
 
     /**
-     * Helper method used to calculate mask for WSAEventSelect
-     * @param evt   Event being waited on.
-     */
-    static void SetIOMask(Event& evt);
-
-    /**
-     * Helper method used to release mask for WSAEventSelect.
-     * @param evt   Event previously referenced in SetIOMask().
-     */
-    static void ReleaseIOMask(Event& evt);
-
-    /**
      * Increment the count of threads blocked on this event
      */
     void IncrementNumThreads() { IncrementAndFetch(&numThreads); }
