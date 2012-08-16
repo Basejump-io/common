@@ -386,12 +386,15 @@ qcc::String BigNum::get_hex(bool toLower) const
         snprintf(i, 9, fmt, digits[n - 1]);
         str += i;
     }
-    // Trim leading zeroes
-    while (str.size() > 1 && str[0] == '0') {
-        str.erase(0, 1);
-    }
-    if (neg) {
-        str.insert(0, "-");
+    // Trim leading zeroes and set sign
+    size_t nz = str.find_first_not_of("0", 0);
+    if (nz == String::npos) {
+        str = "0";
+    } else if (nz > 0) {
+        str.erase(0, nz);
+        if (neg) {
+            str.insert(0, "-");
+        }
     }
     return str;
 }
