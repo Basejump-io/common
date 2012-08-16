@@ -52,8 +52,11 @@ class ManagedObj {
   private:
 
     struct ManagedCtx {
+        /**
+         * constructor for ManagedCtx
+         */
         ManagedCtx(int32_t refCount) : refCount(refCount) { }
-        int32_t refCount;
+        int32_t refCount; /**< A reference count */
     };
 
     ManagedCtx* context;
