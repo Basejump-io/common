@@ -32,7 +32,7 @@ static bool testNextAlarm(const Timespec& expectedTime, void* context)
 
     bool ret = false;
     triggeredAlarmsLock.Lock();
-    uint32_t startTime = GetTimestamp();
+    uint64_t startTime = GetTimestamp64();
 
     // wait up to 20 seconds for an alarm to go off
     while (triggeredAlarms.empty() && (GetTimestamp() < (startTime + 20000))) {
