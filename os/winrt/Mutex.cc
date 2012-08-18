@@ -27,7 +27,6 @@
 #include <windows.h>
 #include <stdio.h>
 
-#include <qcc/Thread.h>
 #include <qcc/Mutex.h>
 
 /** @internal */
