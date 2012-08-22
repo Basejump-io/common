@@ -15,16 +15,21 @@
  *    limitations under the License.
  ******************************************************************************/
 #include <gtest/gtest.h>
+
+#include <Status.h>
 #include <qcc/Util.h>
+
 #include <qcc/IPAddress.h>
 
 using namespace qcc;
 
-// Note: 'test/IPAddress_test.cc' already exists.
-//       However, it pre-dates the use of googletest framework.
-//
-//       The current file, 'unit_test/IPAddressTest.cc', attempts to replace
-//       the above mentioned file at some point.
+/*
+ * Note: 'test/IPAddress_test.cc' already exists.
+ *       However, it pre-dates the use of googletest framework.
+ *
+ *       The current file, 'unit_test/IPAddressTest.cc', attempts to replace
+ *       the above mentioned file at some point.
+ */
 
 TEST(IPAddressTest, ipv4_to_string) {
     uint8_t localhost[] = { 127, 0, 0, 1 };
@@ -43,15 +48,19 @@ TEST(IPAddressTest, ipv4_to_string) {
 }
 
 TEST(IPAddressTest, string_to_ipv4) {
+    QStatus status = ER_FAIL;
+
     String localhost = String("127.0.0.1");
 
     uint8_t* address_buffer = new uint8_t [IPAddress::IPv4_SIZE];
 
-    QStatus status = IPAddress::StringToIPv4(localhost, address_buffer,
-                                             IPAddress::IPv4_SIZE);
+    status = IPAddress::StringToIPv4(localhost,
+                                     address_buffer,
+                                     IPAddress::IPv4_SIZE);
     EXPECT_EQ(ER_OK, status) <<
     "The function StringToIPv4 was unable to convert the string \"" <<
-    localhost.c_str() << "\" to a byte array.";
+    localhost.c_str() << "\" to a byte array. The status returned was: " <<
+    QCC_StatusText(status);
 
     if (ER_OK == status) {
         uint8_t expected_address_buffer[] = { 127, 0, 0, 1 };
@@ -86,7 +95,8 @@ TEST(IPAddressTest, string_to_ipv4_other_bases_viz_octal_hex) {
                                      IPAddress::IPv4_SIZE);
     EXPECT_EQ(ER_OK, status) <<
     "The function StringToIPv4 was unable to convert the string \"" <<
-    google_public_dns_server_in_octal.c_str() << "\" to a byte array.";
+    google_public_dns_server_in_octal.c_str() << "\" to a byte array. "
+    "The status returned was: " << QCC_StatusText(status);
 
     if (ER_OK == status) {
         // Convert the address_buffer back to a string and compare
@@ -103,9 +113,11 @@ TEST(IPAddressTest, string_to_ipv4_other_bases_viz_octal_hex) {
     }
 
     String open_dns_server_in_decimal = String("208.67.222.222");
-    // decimal digit 208 = 13 * 16 +  0 = 0xD0
-    // decimal digit  67 = 04 * 16 +  3 = 0x43
-    // decimal digit 222 = 13 * 16 + 14 = 0xDE
+    /*
+     * decimal digit 208 = 13 * 16 +  0 = 0xD0
+     * decimal digit  67 = 04 * 16 +  3 = 0x43
+     * decimal digit 222 = 13 * 16 + 14 = 0xDE
+     */
     String open_dns_server_in_hex = String("0xD0.0x43.0xDE.0xDE");
 
     status = IPAddress::StringToIPv4(open_dns_server_in_hex,
@@ -113,7 +125,8 @@ TEST(IPAddressTest, string_to_ipv4_other_bases_viz_octal_hex) {
                                      IPAddress::IPv4_SIZE);
     EXPECT_EQ(ER_OK, status) <<
     "The function StringToIPv4 was unable to convert the string \"" <<
-    open_dns_server_in_hex.c_str() << "\" to a byte array.";
+    open_dns_server_in_hex.c_str() << "\" to a byte array. "
+    "The status returned was: " << QCC_StatusText(status);
 
     if (ER_OK == status) {
         // Convert the address_buffer back to a string and compare
@@ -135,55 +148,57 @@ TEST(IPAddressTest, string_to_ipv4_other_bases_viz_octal_hex) {
 }
 
 TEST(IPAddressTest, string_to_ipv4_negative_test_cases) {
+    QStatus status = ER_FAIL;
+
     String some_ip_address_string = String("some-string-literal-value");
 
     uint8_t* address_buffer = new uint8_t [IPAddress::IPv4_SIZE];
 
     // a bad second argument - NULL buffer pointer
-    EXPECT_EQ(ER_BAD_ARG_2,
-              IPAddress::StringToIPv4(some_ip_address_string, NULL,
-                                      IPAddress::IPv4_SIZE)) <<
+    status = IPAddress::StringToIPv4(some_ip_address_string,
+                                     NULL,
+                                     IPAddress::IPv4_SIZE);
+    EXPECT_EQ(ER_BAD_ARG_2, status) <<
     "The function StringToIPv4 should have complained when passed a NULL value "
-    "as second parameter.";
+    "as second parameter. The status returned was: " << QCC_StatusText(status);
 
-    // The googletest macros seem to cause linker errors when asked to print
-    // static class member variables viz.
-    // qcc::IPAddress::IPv4_SIZE and qcc::IPAddress::IPv6_SIZE
-    // Hence, using the following two constant
-    // while printing the error message.
+    /*
+     * The googletest macros seem to cause linker errors when asked to print
+     * static class member variables viz.
+     * qcc::IPAddress::IPv4_SIZE and qcc::IPAddress::IPv6_SIZE
+     * Hence, using the following two constants
+     * while printing the error message.
+     */
     const size_t ipv4_size = IPAddress::IPv4_SIZE;
     const size_t ipv6_size = IPAddress::IPv6_SIZE;
 
     // a bad third argument - passing 16 octets instead of 4
-    EXPECT_EQ(ER_BAD_ARG_3,
-              IPAddress::StringToIPv4(some_ip_address_string, address_buffer,
-                                      IPAddress::IPv6_SIZE)) <<
+    status = IPAddress::StringToIPv4(some_ip_address_string,
+                                     address_buffer,
+                                     IPAddress::IPv6_SIZE);
+    EXPECT_EQ(ER_BAD_ARG_3, status) <<
     "The function StringToIPv4 should have complained when passed " <<
     ipv6_size << " (an incompatible value), instead of " <<
-    ipv4_size << " as third parameter.";
+    ipv4_size << " as third parameter. The status returned was: " <<
+    QCC_StatusText(status);
 
-    const char* improperly_formatted_ip_address_string_array[] = {
+    const char* improperly_formatted_ip_address[] = {
         ".0.0.1",       // missing the first octet
         "127..0.1",     // missing the second octet
         "127.0..1",     // missing the third octet
         "127.0.0.0.1",  // too many octets
-        "127.0.0.1:443" // reasonable
-                        // ip-address:port, but
-                        // incompatible as an
-                        // ipaddress
+        "127.0.0.1:443" // reasonable ip-address:port, but incompatible as an ipaddress
     };
 
-    for (uint8_t i = 0;
-         i < ArraySize(improperly_formatted_ip_address_string_array);
-         i++) {
-
-        some_ip_address_string = String(
-            improperly_formatted_ip_address_string_array[i]);
-        EXPECT_EQ(ER_PARSE_ERROR,
-                  IPAddress::StringToIPv4(some_ip_address_string,
-                                          address_buffer, IPAddress::IPv4_SIZE)) <<
+    for (uint8_t i = 0; i < ArraySize(improperly_formatted_ip_address); i++) {
+        some_ip_address_string = String(improperly_formatted_ip_address[i]);
+        status = IPAddress::StringToIPv4(some_ip_address_string,
+                                         address_buffer,
+                                         IPAddress::IPv4_SIZE);
+        EXPECT_EQ(ER_PARSE_ERROR, status) <<
         "The function StringToIPv4 should have complained while parsing "
-        "the string \"" << some_ip_address_string.c_str() << "\".";
+        "the string \"" << some_ip_address_string.c_str() << "\". "
+        "The status returned was: " << QCC_StatusText(status);
     }
 
     // Clean-up
