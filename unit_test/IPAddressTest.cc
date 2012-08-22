@@ -15,6 +15,7 @@
  *    limitations under the License.
  ******************************************************************************/
 #include <gtest/gtest.h>
+#include <qcc/Util.h>
 #include <qcc/IPAddress.h>
 
 using namespace qcc;
@@ -161,45 +162,29 @@ TEST(IPAddressTest, string_to_ipv4_negative_test_cases) {
     ipv6_size << " (an incompatible value), instead of " <<
     ipv4_size << " as third parameter.";
 
-    // missing the first octet
-    some_ip_address_string = String(".0.0.1");
-    EXPECT_EQ(ER_PARSE_ERROR,
-              IPAddress::StringToIPv4(some_ip_address_string, address_buffer,
-                                      IPAddress::IPv4_SIZE)) <<
-    "The function StringToIPv4 should have complained while parsing "
-    "the string \"" << some_ip_address_string.c_str() << "\".";
+    const char* improperly_formatted_ip_address_string_array[] = {
+        ".0.0.1",       // missing the first octet
+        "127..0.1",     // missing the second octet
+        "127.0..1",     // missing the third octet
+        "127.0.0.0.1",  // too many octets
+        "127.0.0.1:443" // reasonable
+                        // ip-address:port, but
+                        // incompatible as an
+                        // ipaddress
+    };
 
-    // missing the second octet
-    some_ip_address_string = String("127..0.1");
-    EXPECT_EQ(ER_PARSE_ERROR,
-              IPAddress::StringToIPv4(some_ip_address_string,
-                                      address_buffer, IPAddress::IPv4_SIZE)) <<
-    "The function StringToIPv4 should have complained while parsing "
-    "the string \"" << some_ip_address_string.c_str() << "\".";
+    for (uint8_t i = 0;
+         i < ArraySize(improperly_formatted_ip_address_string_array);
+         i++) {
 
-    // missing the third octet
-    some_ip_address_string = String("127.0..1");
-    EXPECT_EQ(ER_PARSE_ERROR,
-              IPAddress::StringToIPv4(some_ip_address_string,
-                                      address_buffer, IPAddress::IPv4_SIZE)) <<
-    "The function StringToIPv4 should have complained while parsing "
-    "the string \"" << some_ip_address_string.c_str() << "\".";
-
-    // too many octets
-    some_ip_address_string = String("127.0.0.0.1");
-    EXPECT_EQ(ER_PARSE_ERROR,
-              IPAddress::StringToIPv4(some_ip_address_string,
-                                      address_buffer, IPAddress::IPv4_SIZE)) <<
-    "The function StringToIPv4 should have complained while parsing "
-    "the string \"" << some_ip_address_string.c_str() << "\".";
-
-    // reasonable ip-address:port, but incompatible as an ipaddress.
-    some_ip_address_string = String("127.0.0.1:443");
-    EXPECT_EQ(ER_PARSE_ERROR,
-              IPAddress::StringToIPv4(some_ip_address_string,
-                                      address_buffer, IPAddress::IPv4_SIZE)) <<
-    "The function StringToIPv4 should have complained while parsing "
-    "the string \"" << some_ip_address_string.c_str() << "\".";
+        some_ip_address_string = String(
+            improperly_formatted_ip_address_string_array[i]);
+        EXPECT_EQ(ER_PARSE_ERROR,
+                  IPAddress::StringToIPv4(some_ip_address_string,
+                                          address_buffer, IPAddress::IPv4_SIZE)) <<
+        "The function StringToIPv4 should have complained while parsing "
+        "the string \"" << some_ip_address_string.c_str() << "\".";
+    }
 
     // Clean-up
     delete [] address_buffer;
