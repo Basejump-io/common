@@ -87,7 +87,6 @@ env.AppendUnique(CPPDEFINES = ['QCC_OS_GROUP_%s' % env['OS_GROUP'].upper()])
 env.VariantDir('$OBJDIR', 'src', duplicate = 0)
 env.VariantDir('$OBJDIR/os', 'os/${OS_GROUP}', duplicate = 0)
 env.VariantDir('$OBJDIR/crypto', 'crypto/${CRYPTO}', duplicate = 0)
-env.VariantDir('$OBJDIR/test', 'test', duplicate = 0)
 
 # Setup dependent include directories
 hdrs = { 'qcc': env.File(['inc/qcc/Log.h',
@@ -124,10 +123,6 @@ if env['OS_GROUP'] == 'winrt':
 srcs = [ f for f in srcs if basename(str(f)) not in status_src ]
 	
 objs = env.Object(srcs)
-
-# Test programs
-progs = env.SConscript('$OBJDIR/test/SConscript')
-env.Install('$DISTDIR/bin', progs)
 
 # Build unit Tests
 env.SConscript('unit_test/SConscript', variant_dir='$OBJDIR/unittest', duplicate=0)
