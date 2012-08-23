@@ -122,6 +122,15 @@ QStatus Timer::Start()
 {
     QStatus status = ER_OK;
     lock.Lock();
+    while (NULL != _stopTask) {
+        concurrency::task<void>* stopTask = _stopTask;
+        lock.Unlock();
+        stopTask->wait();
+        lock.Lock();
+        if (_stopTask == stopTask) {
+            _stopTask = NULL;
+        }
+    }
     if (!isRunning) {
         for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
             Alarm& a = (Alarm) * it;
@@ -190,19 +199,25 @@ void Timer::TimerCleanupCallback(void* context)
 QStatus Timer::Stop()
 {
     QStatus status = ER_OK;
-    Windows::Foundation::IAsyncAction ^ stopAction = concurrency::create_async([this](concurrency::cancellation_token ct) {
-                                                                                   StopInternal(true);
-                                                                               });
-    if (nullptr != stopAction) {
-        lock.Lock();
-        _stopTask = new concurrency::task<void>(stopAction);
-        if (NULL != _stopTask) {
-            status = ER_OUT_OF_MEMORY;
+    lock.Lock();
+    if (isRunning) {
+        Windows::Foundation::IAsyncAction ^ stopAction = concurrency::create_async([this](concurrency::cancellation_token ct) {
+                                                                                       StopInternal(true);
+                                                                                   });
+        if (nullptr != stopAction) {
+            if (NULL != _stopTask) {
+                delete _stopTask;
+            }
+            _stopTask = new concurrency::task<void>(stopAction);
+            if (NULL == _stopTask) {
+                status = ER_OUT_OF_MEMORY;
+            }
+        } else {
+            status = ER_OS_ERROR;
         }
-        lock.Unlock();
-    } else {
-        status = ER_FAIL;
+        isRunning = !(status == ER_OK);
     }
+    lock.Unlock();
     return status;
 }
 
@@ -212,8 +227,9 @@ QStatus Timer::Join()
     // Wait for any pending stop to complete
     lock.Lock();
     if (NULL != _stopTask) {
+        concurrency::task<void>* stopTask = _stopTask;
         lock.Unlock();
-        _stopTask->wait();
+        stopTask->wait();
         lock.Lock();
     }
     while (_timersCountdownLatch.Current() != 0) {
