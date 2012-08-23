@@ -113,24 +113,8 @@ Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool prev
 
 Timer::~Timer()
 {
-    lock.Lock();
-    // Make sure all live timers are notified of exit
-    for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
-        const Alarm& alarm = *it;
-        if (nullptr != alarm->_timer) {
-            try {
-                alarm->_timer->Cancel();
-            } catch (...) {
-                // don't bubble OS exceptions out
-            }
-        }
-        // Execution here is a sequential flush to notify listeners of exit
-        alarm->listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
-    }
-    alarms.clear();
-    _timerMap.clear();
-    lock.Unlock();
     // Ensure all timers have exited
+    StopInternal(false);
     Join();
 }
 
@@ -206,25 +190,32 @@ void Timer::TimerCleanupCallback(void* context)
 QStatus Timer::Stop()
 {
     QStatus status = ER_OK;
-    lock.Lock();
-    for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
-        const Alarm& alarm = *it;
-        if (nullptr != alarm->_timer) {
-            try {
-                alarm->_timer->Cancel();
-            } catch (...) {
-                // don't bubble OS exceptions out
-            }
+    Windows::Foundation::IAsyncAction ^ stopAction = concurrency::create_async([this](concurrency::cancellation_token ct) {
+                                                                                   StopInternal(true);
+                                                                               });
+    if (nullptr != stopAction) {
+        lock.Lock();
+        _stopTask = new concurrency::task<void>(stopAction);
+        if (NULL != _stopTask) {
+            status = ER_OUT_OF_MEMORY;
         }
+        lock.Unlock();
+    } else {
+        status = ER_FAIL;
     }
-    lock.Unlock();
     return status;
 }
 
 QStatus Timer::Join()
 {
     QStatus status = ER_OK;
+    // Wait for any pending stop to complete
     lock.Lock();
+    if (NULL != _stopTask) {
+        lock.Unlock();
+        _stopTask->wait();
+        lock.Lock();
+    }
     while (_timersCountdownLatch.Current() != 0) {
         lock.Unlock();
         status = _timersCountdownLatch.Wait();
@@ -346,15 +337,14 @@ bool Timer::RemoveAlarm(const AlarmListener& listener, Alarm& alarm)
 {
     bool foundOne = false;
     lock.Lock();
-    for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
+    for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end();) {
         if ((*it)->listener == &listener) {
-            const Alarm a = *it;
-            lock.Unlock();
-            RemoveAlarm(a, true);
+            const Alarm& a = *it;
+            RemoveAlarm(a, false);
             foundOne = true;
-            lock.Lock();
-            // iterator is invalid, re-initialize
             it = alarms.begin();
+        } else {
+            ++it;
         }
     }
     lock.Unlock();
@@ -412,8 +402,16 @@ bool Timer::ThreadHoldsLock()
     return retVal;
 }
 
-OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer)
+OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer), _stopTask(NULL)
 {
+}
+
+OSTimer::~OSTimer()
+{
+    if (NULL != _stopTask) {
+        delete _stopTask;
+        _stopTask = NULL;
+    }
 }
 
 void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
@@ -424,6 +422,26 @@ void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
 void OSTimer::TimerCleanupCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
 {
     _timer->TimerCleanupCallback((void*)timer);
+}
+
+void OSTimer::StopInternal(bool timerExiting)
+{
+    _timer->lock.Lock();
+    for (multiset<Alarm>::iterator it = _timer->alarms.begin(); it != _timer->alarms.end(); ++it) {
+        const Alarm& alarm = *it;
+        if (nullptr != alarm->_timer) {
+            try {
+                alarm->_timer->Cancel();
+            } catch (...) {
+                // don't bubble OS exceptions out
+            }
+        }
+        if (timerExiting) {
+            // Execution here is a sequential flush to notify listeners of exit
+            alarm->listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
+        }
+    }
+    _timer->lock.Unlock();
 }
 
 OSAlarm::OSAlarm() : _timer(nullptr)

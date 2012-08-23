@@ -55,6 +55,7 @@ class TimerThread;
 class AlarmListener {
     friend class Timer;
     friend class TimerThread;
+    friend class OSTimer;
 
   public:
     /**
@@ -76,6 +77,7 @@ class AlarmListener {
 class _Alarm : public OSAlarm {
     friend class Timer;
     friend class TimerThread;
+    friend class OSTimer;
 
   public:
 
