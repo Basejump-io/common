@@ -19,32 +19,30 @@ TARGET=src
 
 all: commonsrc
 
-commonsrc: ASN1.o \
-           BigNum.o \
-           BufferedSink.o \
-           BufferedSource.o \
-           Config.o \
-           Crypto.o \
-           CryptoSRP.o \
-           Debug.o \
-           GUID.o \
-           StreamPump.o \
-           IPAddress.o \
-           KeyBlob.o \
-           LockTrace.o \
-           Logger.o \
-           Makefile \
-           Pipe.o \
-           String.o \
-           ScatterGatherList.o \
-           StringSource.o \
-           SDPRecord.o \
-           Stream.o \
-           StringUtil.o \
-           SocketStream.o \
-           Timer.o \
-           Util.o \
-           XmlElement.o 
+commonsrc: \
+	ASN1.o \
+	BigNum.o \
+	BufferedSink.o \
+	BufferedSource.o \
+	Config.o \
+	Crypto.o \
+	CryptoSRP.o \
+	Debug.o \
+	GUID.o \
+	IPAddress.o \
+	KeyBlob.o \
+	Logger.o \
+	Makefile \
+	Pipe.o \
+	SocketStream.o \
+	Stream.o \
+	StreamPump.o \
+	String.o \
+	StringSource.o \
+	StringUtil.o \
+	ThreadPool.o \
+	Util.o \
+	XmlElement.o 
 
 %.o:%.cc
 	$(CC) $(CXXFLAGS) $(CPPDEFINES) $(INCLUDE) -c -o $@ $<
