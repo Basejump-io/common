@@ -62,12 +62,10 @@ class MyAlarmListener : public AlarmListener {
     }
     void AlarmTriggered(const Alarm& alarm, QStatus reason)
     {
-        if (reason == ER_OK) {
-            triggeredAlarmsLock.Lock();
-            triggeredAlarms.push_back(pair<QStatus, Alarm>(reason, alarm));
-            triggeredAlarmsLock.Unlock();
-            qcc::Sleep(delay);
-        }
+        triggeredAlarmsLock.Lock();
+        triggeredAlarms.push_back(pair<QStatus, Alarm>(reason, alarm));
+        triggeredAlarmsLock.Unlock();
+        qcc::Sleep(delay);
     }
   private:
     const uint32_t delay;
