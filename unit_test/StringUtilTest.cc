@@ -18,6 +18,43 @@
 #include <qcc/Util.h>
 #include <qcc/StringUtil.h>
 
+#include <cmath>
+
+/*
+ * Intentional copy-paste of code from StringUtil.cc
+ *
+ * StringUtil.cc #defines a constant 'NAN' and hides it (static).
+ * The function StringToDouble makes use of 'NAN'. To be able to test the
+ * return values of this function, we need access to 'NAN'.
+ *
+ * One option is to include the .cc file to get access.
+ * This is not really straight-forward to do on all platforms without
+ * causing disturbance.
+ *
+ * Other option is to shamefully copy paste the necessary lines,
+ * acknowledging code duplication and increased test brittleness.
+ */
+#ifndef NAN
+// IEEE-754 quiet NaN constant for systems that lack one.
+static const unsigned long __qcc_nan = 0x7fffffffff;
+#define NAN (*reinterpret_cast<const float*>(&__qcc_nan))
+#endif
+
+/*
+ * In the murky waters of floating point numbers, testing for NaN
+ * is tricky. The only thing that language guarantees is that
+ * NaN is 'unordered'. That is, NaN is:
+ * a. NOT less than anything
+ * b. NOT greater than anything
+ * c. NOT equal to anything, including itself.
+ *
+ * NaN is the only one such entity for which this holds true.
+ *
+ * The combination of the above three characteristics makes is different
+ * from INF and -INF also.
+ */
+#define IS_NAN(fp_val) ((fp_val < 0) || (fp_val > 0) || (fp_val == fp_val)) ? false : true
+
 using namespace qcc;
 
 TEST(StringUtilTest, hex_string_to_byte_array_conversion_off_by_one) {
@@ -225,5 +262,71 @@ TEST(StringUtilTest, int64_to_string_conversion_stress) {
     for (uint16_t i = 0; i < number_of_iterations; i++) {
         some_i64 = (int64_t) Rand64();
         EXPECT_EQ(some_i64, StringToI64(I64ToString(some_i64)));
+    }
+}
+
+
+TEST(StringUtilTest, string_to_double_conversion_negative_testcases) {
+    /*
+     * 'NAN' is a #define and googletest's EXPECT_EQ is a #define as well
+     * So, we can't quite have things viz. EXPECT_EQ(NAN, something_else)
+     *
+     * Even though the function StringToDouble of StringUtil.cc returns
+     * both NAN and -NAN, there is NO way to differentiate between the two.
+     * NaN is 'unordered' and cannot be compared with anything.
+     * Hence just one representation is sufficient.
+     */
+    double nan_representation = NAN;
+
+    bool is_nan = false;
+
+    const char* improperly_formatted_fp_string_array[] = {
+        "", // empty string
+        "A",
+        "0.a",
+        "-a",
+        "-1.A",
+        "0.1EA",
+        "1.0E-a"
+    };
+
+    String improper_fp_string;
+
+    for (uint8_t i = 0;
+         i < ArraySize(improperly_formatted_fp_string_array);
+         i++) {
+        improper_fp_string = String(improperly_formatted_fp_string_array[i]);
+        is_nan = IS_NAN(StringToDouble(improper_fp_string));
+        EXPECT_TRUE(is_nan) <<
+        "The function StringToDouble did not return: " << nan_representation <<
+        ", when the string \"" << improper_fp_string.c_str() << "\" was passed."
+        " The return value was: " << StringToDouble(improper_fp_string);
+    }
+}
+
+TEST(StringUtilTest, string_to_double_conversion) {
+    double known_double_values[] = {
+        3.14159, // pi
+        1.6180339887, // golden ratio
+        -1 * 2.4142135623730950488, // negative silver ratio
+        6.626 * pow(10.0, -34), // plancks constant
+        6.022 * pow(10.0, 23) // avogadro constant
+    };
+
+    const char* string_representation[] = {
+        "3.14159",
+        "16.180339887E-1",
+        "-2.4142135623730950488E0",
+        "0.6626E-33",
+        "6022E20"
+    };
+
+    for (uint8_t i = 0; i < ArraySize(known_double_values); i++) {
+        String double_string = String(string_representation[i]);
+        EXPECT_DOUBLE_EQ(known_double_values[i],
+                         StringToDouble(double_string)) <<
+        "The StringToDouble did not return the expected value " <<
+        known_double_values[i] << " when converting the string \"" <<
+        double_string.c_str() << "\".";
     }
 }
