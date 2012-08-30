@@ -265,16 +265,10 @@ TEST(StringUtilTest, int64_to_string_conversion_stress) {
     }
 }
 
-// ALLJOYN-1332
-TEST(StringUtilTest, DISABLED_string_to_double_conversion_negative_testcases) {
+TEST(StringUtilTest, string_to_double_conversion_negative_testcases) {
     /*
      * 'NAN' is a #define and googletest's EXPECT_EQ is a #define as well
      * So, we can't quite have things viz. EXPECT_EQ(NAN, something_else)
-     *
-     * Even though the function StringToDouble of StringUtil.cc returns
-     * both NAN and -NAN, there is NO way to differentiate between the two.
-     * NaN is 'unordered' and cannot be compared with anything.
-     * Hence just one representation is sufficient.
      */
     double nan_representation = NAN;
 

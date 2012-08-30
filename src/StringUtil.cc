@@ -368,6 +368,7 @@ int64_t qcc::StringToI64(const qcc::String& inStr, unsigned int base, int64_t ba
 
 double qcc::StringToDouble(const qcc::String& inStr)
 {
+    const double decimal_base = 10.0;
     if (!inStr.empty()) {
         double val = 0.0;
         bool neg = false;
@@ -378,10 +379,10 @@ double qcc::StringToDouble(const qcc::String& inStr)
         }
         while ((it != inStr.end()) && (*it != '.') && ((*it != 'e') && (*it != 'E'))) {
             uint8_t v = CharToU8(*it);
-            if (v > 10) {
-                return neg ? -NAN : NAN;
+            if (v >= 10) {
+                return NAN;
             }
-            val *= 10.0;
+            val *= decimal_base;
             val += static_cast<double>(v);
             ++it;
         }
@@ -390,25 +391,39 @@ double qcc::StringToDouble(const qcc::String& inStr)
             ++it;
             while ((it != inStr.end()) && ((*it != 'e') && (*it != 'E'))) {
                 uint8_t v = CharToU8(*it);
-                if (v > 10) {
-                    return neg ? -NAN : NAN;
+                if (v >= 10) {
+                    return NAN;
                 }
-                val *= 10.0;
+                val *= decimal_base;
                 val += static_cast<double>(v);
-                divisor *= 10.0;
+                divisor *= decimal_base;
                 ++it;
             }
             val /= divisor;
         }
         if ((*it == 'e') || (*it == 'E')) {
             ++it;
-            int32_t exp = StringToI32(qcc::String(it, inStr.end() - it));
+            qcc::String exponentString = qcc::String(it, inStr.end() - it);
+
+            // verify that the exponent portion is sane
+            qcc::String::const_iterator expStrIter = exponentString.begin();
+            if (*expStrIter == '-') {
+                ++expStrIter;
+            }
+            while (expStrIter != exponentString.end()) {
+                if (0 > CharToU8(*expStrIter) || 9 < CharToU8(*expStrIter)) {
+                    return NAN;
+                }
+                ++expStrIter;
+            }
+
+            int32_t exp = StringToI32(exponentString);
             while (exp < 0) {
-                val /= 10.0;
+                val /= decimal_base;
                 ++exp;
             }
             while (exp > 0) {
-                val *= 10.0;
+                val *= decimal_base;
                 --exp;
             }
         }
