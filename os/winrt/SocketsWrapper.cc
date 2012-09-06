@@ -26,6 +26,7 @@ using namespace Windows::Foundation;
 namespace qcc {
 namespace winrt {
 
+// Fd map mutex for tracking ref counts
 static qcc::Mutex _fdMapMutex;
 static std::map<void*, int> _fdMap;
 
@@ -37,12 +38,14 @@ static std::map<void*, int> _fdMap;
 static inline void AddObjectReference(Platform::Object ^ obj)
 {
     __abi_IUnknown* pUnk = reinterpret_cast<__abi_IUnknown*>(obj);
+    // Increment reference
     pUnk->__abi_AddRef();
 }
 
 static inline void RemoveObjectReference(Platform::Object ^ obj)
 {
     __abi_IUnknown* pUnk = reinterpret_cast<__abi_IUnknown*>(obj);
+    // Decrement reference
     pUnk->__abi_Release();
 }
 
@@ -51,20 +54,24 @@ uint32_t SocketsWrapper::Socket(AddressFamily addrFamily, SocketType type, Platf
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket || socket->Length != 1) {
             status = ER_BAD_ARG_3;
             break;
         }
 
+        // Create SocketWrapper
         qcc::winrt::SocketWrapper ^ sock = ref new qcc::winrt::SocketWrapper();
         if (nullptr == sock) {
             status = ER_OS_ERROR;
             break;
         }
 
+        // Initialize it
         status = (::QStatus)sock->Init(addrFamily, type);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK == status) {
+            // Store the result
             socket[0] = sock;
         }
         break;
@@ -78,16 +85,19 @@ uint32_t SocketsWrapper::SocketDup(qcc::winrt::SocketWrapper ^ socket, Platform:
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Check dupSocket for invalid values
         if (nullptr == dupSocket || dupSocket->Length != 1) {
             status = ER_BAD_ARG_2;
             break;
         }
 
+        // Duplicate the socket
         status = (::QStatus)socket->SocketDup(dupSocket);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -108,11 +118,13 @@ uint32_t SocketsWrapper::Bind(qcc::winrt::SocketWrapper ^ socket, Platform::Stri
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Bind the socket
         status = (::QStatus)socket->Bind(name, localPort);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -126,11 +138,13 @@ uint32_t SocketsWrapper::Listen(qcc::winrt::SocketWrapper ^ socket, int backlog)
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Start Listening for connections
         status = (::QStatus)socket->Listen(backlog);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -144,26 +158,31 @@ uint32_t SocketsWrapper::Accept(qcc::winrt::SocketWrapper ^ socket, Platform::Wr
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Check remoteAddr for invalid values
         if (nullptr == remoteAddr || remoteAddr->Length != 1) {
             status = ER_BAD_ARG_2;
             break;
         }
 
+        // Check remotePort for invalid values
         if (nullptr == remotePort || remotePort->Length != 1) {
             status = ER_BAD_ARG_3;
             break;
         }
 
+        // Check newSocket for invalid values
         if (nullptr == newSocket || newSocket->Length != 1) {
             status = ER_BAD_ARG_4;
             break;
         }
 
+        // Accept waiting socket
         status = (::QStatus)socket->Accept(remoteAddr, remotePort, newSocket);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -179,16 +198,19 @@ uint32_t SocketsWrapper::Accept(qcc::winrt::SocketWrapper ^ socket, Platform::Wr
     Platform::Array<int> ^ remotePort = ref new Platform::Array<int>(1);
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Check newSocket for invalid values
         if (nullptr == newSocket || newSocket->Length != 1) {
             status = ER_BAD_ARG_2;
             break;
         }
 
+        // Accept waiting socket
         status = (::QStatus)socket->Accept(remoteAddr, remotePort, newSocket);
         break;
     }
@@ -201,11 +223,13 @@ uint32_t SocketsWrapper::SetBlocking(qcc::winrt::SocketWrapper ^ socket, bool bl
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Change the socket blocking mode
         status = (::QStatus)socket->SetBlocking(blocking);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -219,11 +243,13 @@ uint32_t SocketsWrapper::SetNagle(qcc::winrt::SocketWrapper ^ socket, bool useNa
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Set Nagle mode
         status = (::QStatus)socket->SetNagle(useNagle);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -244,11 +270,13 @@ uint32_t SocketsWrapper::Connect(qcc::winrt::SocketWrapper ^ socket, Platform::S
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Connect remote host
         status = (::QStatus)socket->Connect(remoteAddr, remotePort);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -263,16 +291,19 @@ uint32_t SocketsWrapper::SendTo(qcc::winrt::SocketWrapper ^ socket, Platform::St
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Check sent for invalid values
         if (nullptr == sent || sent->Length != 1) {
             status = ER_BAD_ARG_6;
             break;
         }
 
+        // Send the data
         status = (::QStatus)socket->SendTo(remoteAddr, remotePort, buf, len, sent);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -287,16 +318,19 @@ uint32_t SocketsWrapper::RecvFrom(qcc::winrt::SocketWrapper ^ socket, Platform::
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Check received for invalid values
         if (nullptr == received || received->Length != 1) {
             status = ER_BAD_ARG_6;
             break;
         }
 
+        // Receive the data
         status = (::QStatus)socket->RecvFrom(remoteAddr, remotePort, buf, len, received);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -310,16 +344,19 @@ uint32_t SocketsWrapper::Send(qcc::winrt::SocketWrapper ^ socket, const Platform
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Check sent for invalid values
         if (nullptr == sent || sent->Length != 1) {
             status = ER_BAD_ARG_4;
             break;
         }
 
+        // Send the data
         status = (::QStatus)socket->Send(buf, len, sent);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -333,16 +370,19 @@ uint32_t SocketsWrapper::Recv(qcc::winrt::SocketWrapper ^ socket, Platform::Writ
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Check received for invalid values
         if (nullptr == received || received->Length != 1) {
             status = ER_BAD_ARG_4;
             break;
         }
 
+        // Receive the data
         status = (::QStatus)socket->Recv(buf, len, received);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -356,21 +396,25 @@ uint32_t SocketsWrapper::GetLocalAddress(qcc::winrt::SocketWrapper ^ socket, Pla
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Check addr for invalid values
         if (nullptr == addr || addr->Length != 1) {
             status = ER_BAD_ARG_2;
             break;
         }
 
+        // Check port for invalid values
         if (nullptr == port || port->Length != 1) {
             status = ER_BAD_ARG_3;
             break;
         }
 
+        // Get the local address associated with the socket
         status = (::QStatus)socket->GetLocalAddress(addr, port);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -384,11 +428,13 @@ uint32_t SocketsWrapper::Close(qcc::winrt::SocketWrapper ^ socket)
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // This forcibely tears down the socket and cleans up resources
         status = (::QStatus)socket->Close();
         break;
     }
@@ -401,11 +447,13 @@ uint32_t SocketsWrapper::Shutdown(qcc::winrt::SocketWrapper ^ socket)
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // This prevents further read and write operations on the socket
         status = (::QStatus)socket->Shutdown();
         break;
     }
@@ -418,11 +466,13 @@ uint32_t SocketsWrapper::JoinMulticastGroup(qcc::winrt::SocketWrapper ^ socket, 
     ::QStatus status = ER_FAIL;
 
     while (true) {
+        // Check socket for invalid values
         if (nullptr == socket) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Joins socket to the specified host
         status = (::QStatus)socket->JoinMulticastGroup(host);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         break;
@@ -439,31 +489,38 @@ uint32_t SocketsWrapper::SocketPair(Platform::WriteOnlyArray<qcc::winrt::SocketW
     Platform::Array<qcc::winrt::SocketWrapper ^> ^ socketSet = ref new Platform::Array<qcc::winrt::SocketWrapper ^>(2);
 
     while (true) {
+        // Check sockets for invalid values
         if (nullptr == sockets || sockets->Length != 2) {
             status = ER_BAD_ARG_1;
             break;
         }
 
+        // Creates an AF_INET socket
         status = (::QStatus)Socket(AddressFamily::QCC_AF_INET, SocketType::QCC_SOCK_STREAM, refSocket);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK != status) {
             break;
         }
+        // Store the result
         socketSet[0] = refSocket[0];
 
+        // Create an AF_INET socket
         status = (::QStatus)Socket(AddressFamily::QCC_AF_INET, SocketType::QCC_SOCK_STREAM, refSocket);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK != status) {
             break;
         }
+        // Store the result
         socketSet[1] = refSocket[0];
 
+        // Bind the first socket for accepting incoming connections
         status = (::QStatus)Bind(socketSet[0], ipAddr, 0);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK != status) {
             break;
         }
 
+        // Listen for connections
         status = (::QStatus)Listen(socketSet[0], 1);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK != status) {
@@ -479,33 +536,39 @@ uint32_t SocketsWrapper::SocketPair(Platform::WriteOnlyArray<qcc::winrt::SocketW
             break;
         }
 
+        // Connect other end to the server
         status = (::QStatus)Connect(socketSet[1], localAddr[0], localPort[0]);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK != status) {
             break;
         }
 
+        // Get the server connected socket
         status = (::QStatus)Accept(socketSet[0], refSocket);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK != status) {
             break;
         }
+        // Cleanup the bound socket
         socketSet[0]->Close();
+        // Store the result
         socketSet[0] = refSocket[0];
 
-        // Make sockets blocking
+        // Make socket blocking
         status = (::QStatus)SetBlocking(socketSet[0], true);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK != status) {
             break;
         }
 
+        // Make socket blocking
         status = (::QStatus)SetBlocking(socketSet[1], true);
         ADJUST_BAD_ARGUMENT_DOMAIN(status)
         if (ER_OK != status) {
             break;
         }
 
+        // Set the result pair
         sockets[0] = socketSet[0];
         sockets[1] = socketSet[1];
         break;
@@ -526,6 +589,7 @@ int SocketsWrapper::IncrementFDMap(qcc::winrt::SocketWrapper ^ socket)
         AddObjectReference(socket);
         _fdMap[sockfd] = ++count;
     } else {
+        // Increment the ref count
         count = ++_fdMap[sockfd];
     }
 
@@ -542,6 +606,7 @@ int SocketsWrapper::DecrementFDMap(qcc::winrt::SocketWrapper ^ socket)
     _fdMapMutex.Lock();
 
     if (_fdMap.find(sockfd) != _fdMap.end()) {
+        // Decrement the ref count
         count = --_fdMap[sockfd];
     }
 
