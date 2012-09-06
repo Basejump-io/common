@@ -356,6 +356,7 @@ static std::list<IfEntry> NetlinkGetInterfaces(void)
     //
     int sockFd = NetlinkRouteSocket(BUFSIZE);
     if (sockFd < 0) {
+        delete[] buffer;
         return entries;
     }
 
@@ -469,6 +470,10 @@ static std::list<AddrEntry> NetlinkGetAddresses(uint32_t family)
     uint32_t len;
 
     int sockFd = NetlinkRouteSocket(BUFSIZE);
+    if (sockFd < 0) {
+        delete[] buffer;
+        return entries;
+    }
 
     NetlinkSend(sockFd, 0, RTM_GETADDR, family);
     len = NetlinkRecv(sockFd, buffer, BUFSIZE);
