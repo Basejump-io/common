@@ -183,7 +183,7 @@ static int NetlinkRouteSocket(uint32_t bufsize)
     struct sockaddr_nl addr;
     memset(&addr, 0, sizeof(addr));
     addr.nl_family = AF_NETLINK;
-    addr.nl_pid = getpid();
+    addr.nl_pid = 0;
 
     if (bind(sockFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         QCC_LogError(ER_FAIL, ("NetlinkRouteSocket: Can't bind to NETLINK_ROUTE socket: %s", strerror(errno)));
