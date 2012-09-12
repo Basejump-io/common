@@ -298,6 +298,7 @@ QStatus Event::Wait(Event& evt, uint32_t maxWaitMs)
 
 QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledEvents, uint32_t maxWaitMs)
 {
+    static const timeval toZero = { 0, 0 };
     const int MAX_HANDLES = 16;
 
     int numHandles = 0;
@@ -325,6 +326,15 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
                 maxWaitMs = 0;
             } else if ((WAIT_FOREVER == maxWaitMs) || ((evt->timestamp - now) < maxWaitMs)) {
                 maxWaitMs = evt->timestamp - now;
+            }
+        }
+        if ((evt->eventType == IO_READ) || (evt->eventType == IO_WRITE)) {
+            fd_set fds;
+            FD_ZERO(&fds);
+            FD_SET(evt->ioFd, &fds);
+            select(1, evt->eventType == IO_READ ? &fds : NULL, evt->eventType == IO_WRITE ? &fds : NULL, NULL, &toZero);
+            if (FD_ISSET(evt->ioFd, &fds)) {
+                ::SetEvent(evt->ioHandle);
             }
         }
     }
@@ -364,7 +374,7 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
         }
     }
 
-    QStatus status;
+    QStatus status = ER_OK;
     if (somethingSet || (WAIT_TIMEOUT == ret)) {
         status = signaledEvents.empty() ? ER_TIMEOUT : ER_OK;
     } else {
