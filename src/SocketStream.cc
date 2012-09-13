@@ -118,7 +118,7 @@ QStatus SocketStream::Connect(qcc::String& host, uint16_t port)
     QStatus status = qcc::Connect(sock, ipAddr, port);
 
     if (ER_WOULDBLOCK == status) {
-        status = Event::Wait(*sourceEvent, Event::WAIT_FOREVER);
+        status = Event::Wait(*sinkEvent, Event::WAIT_FOREVER);
         if (ER_OK == status) {
             status = qcc::Connect(sock, ipAddr, port);
         }
@@ -132,7 +132,7 @@ QStatus SocketStream::Connect(qcc::String& path)
 {
     QStatus status = qcc::Connect(sock, path.c_str());
     if (ER_WOULDBLOCK == status) {
-        status = Event::Wait(*sourceEvent, Event::WAIT_FOREVER);
+        status = Event::Wait(*sinkEvent, Event::WAIT_FOREVER);
         if (ER_OK == status) {
             status = qcc::Connect(sock, path.c_str());
         }
