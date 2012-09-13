@@ -149,6 +149,11 @@ QStatus AdapterUtil::ForceUpdate()
                             goto exit;
                         }
 
+                        char* p = strchr(szAddress, '%');
+                        if (p) {
+                            *p = '\0';
+                        }
+
                         NetInfo netInfo;
                         netInfo.name = adapterName;
                         netInfo.addr = IPAddress(szAddress);
