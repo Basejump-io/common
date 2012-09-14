@@ -65,6 +65,7 @@ class TimerThread : public Thread {
     QStatus Start(void* arg, ThreadListener* listener);
 
     const Alarm* GetCurrentAlarm() const { return currentAlarm; }
+    void SetCurrentAlarm(const Alarm* alarm) { currentAlarm = alarm; }
 
     int GetIndex() const { return index; }
 
@@ -232,7 +233,7 @@ bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
 {
     bool foundAlarm = false;
     lock.Lock();
-    if (isRunning) {
+    if (isRunning || expireOnExit) {
         if (alarm->periodMs) {
             multiset<Alarm>::iterator it = alarms.begin();
             while (it != alarms.end()) {
@@ -625,6 +626,7 @@ void Timer::ThreadExit(Thread* thread)
             multiset<Alarm>::iterator it = alarms.begin();
             Alarm alarm = *it;
             alarms.erase(it);
+            tt->SetCurrentAlarm(&alarm);
             lock.Unlock();
             tt->hasTimerLock = preventReentrancy;
             if (tt->hasTimerLock) {
@@ -635,6 +637,7 @@ void Timer::ThreadExit(Thread* thread)
                 reentrancyLock.Unlock();
             }
             lock.Lock();
+            tt->SetCurrentAlarm(NULL);
         }
     }
     tt->state = TimerThread::STOPPED;
