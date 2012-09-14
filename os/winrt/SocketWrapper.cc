@@ -528,9 +528,11 @@ uint32_t SocketWrapper::Bind(Platform::String ^ bindName, int localPort)
                     result = ER_OK;
                     break;
                 } catch (Platform::COMException ^ ex) {
+                    result = ER_OS_ERROR;
                     SetLastError(COMExceptionToQStatus(ex->HResult));
                     break;
                 } catch (...) {
+                    result = ER_OS_ERROR;
                     SetLastError(ER_OS_ERROR);
                     break;
                 }
