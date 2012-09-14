@@ -35,12 +35,20 @@ using namespace std;
 
 
 // Non-secure random number generator
+// When running under Windows multiple threads
+// may return the same exact sequence because
+// the same seed can end up being saved in a
+// "per thread" data structure in the C runtime.
 uint8_t qcc::Rand8()
 {
     return (uint8_t)(qcc::Rand16() >> 8);
 }
 
 // Non-secure random number generator
+// When running under Windows multiple threads
+// may return the same exact sequence because
+// the same seed can end up being saved in a
+// "per thread" data structure in the C runtime.
 uint16_t qcc::Rand16()
 {
     static bool seeded = false;
