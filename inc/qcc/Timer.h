@@ -173,8 +173,9 @@ class Timer : public OSTimer, public ThreadListener {
      * @param expireOnExit       If true call all pending alarms when this thread exits.
      * @param concurency         Dispatch up to this number of alarms concurently (using multiple threads).
      * @param prevenReentrancy   Prevent re-entrant call of AlarmTriggered.
+     * @param maxAlarms          Maximum number of outstanding alarms allowed before blocking calls to AddAlarm or 0 for infinite.
      */
-    Timer(const char* name, bool expireOnExit = false, uint32_t concurency = 1, bool preventReentrancy = false);
+    Timer(const char* name, bool expireOnExit = false, uint32_t concurency = 1, bool preventReentrancy = false, uint32_t maxAlarms = 0);
 
     /**
      * Destructor.
@@ -313,7 +314,7 @@ class Timer : public OSTimer, public ThreadListener {
   protected:
 
     Mutex lock;
-    std::multiset<Alarm, std::less<Alarm> >  alarms;
+    std::set<Alarm, std::less<Alarm> >  alarms;
     Alarm* currentAlarm;
     bool expireOnExit;
     std::vector<TimerThread*> timerThreads;
@@ -323,6 +324,7 @@ class Timer : public OSTimer, public ThreadListener {
     bool preventReentrancy;
     Mutex reentrancyLock;
     qcc::String nameStr;
+    const uint32_t maxAlarms;
 };
 
 }

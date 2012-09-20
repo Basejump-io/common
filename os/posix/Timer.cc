@@ -130,7 +130,7 @@ bool _Alarm::operator==(const _Alarm& other) const
     return (alarmTime == other.alarmTime) && (id == other.id);
 }
 
-Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy) :
+Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy, uint32_t maxAlarms) :
     OSTimer(this),
     currentAlarm(NULL),
     expireOnExit(expireOnExit),
@@ -138,7 +138,8 @@ Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool prev
     isRunning(false),
     controllerIdx(0),
     preventReentrancy(preventReentrancy),
-    nameStr(name)
+    nameStr(name),
+    maxAlarms(maxAlarms)
 {
     for (uint32_t i = 0; i < timerThreads.size(); ++i) {
         timerThreads[i] = new TimerThread(nameStr, i, this);
@@ -213,6 +214,14 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     QStatus status = ER_OK;
     lock.Lock();
     if (isRunning) {
+        /* Don't allow an infinite number of alarms to exist on this timer */
+        while (maxAlarms && (alarms.size() >= maxAlarms)) {
+            lock.Unlock();
+            qcc::Sleep(2);
+            lock.Lock();
+        }
+
+        /* Insert the alarm and alert the Timer thread if necessary */
         bool alertThread = alarms.empty() || (alarm < *alarms.begin());
         alarms.insert(alarm);
 
@@ -225,6 +234,7 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     } else {
         status = ER_TIMER_EXITING;
     }
+
     lock.Unlock();
     return status;
 }
@@ -235,7 +245,7 @@ bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
     lock.Lock();
     if (isRunning || expireOnExit) {
         if (alarm->periodMs) {
-            multiset<Alarm>::iterator it = alarms.begin();
+            set<Alarm>::iterator it = alarms.begin();
             while (it != alarms.end()) {
                 if ((*it)->id == alarm->id) {
                     foundAlarm = true;
@@ -245,7 +255,7 @@ bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
                 ++it;
             }
         } else {
-            multiset<Alarm>::iterator it = alarms.find(alarm);
+            set<Alarm>::iterator it = alarms.find(alarm);
             if (it != alarms.end()) {
                 foundAlarm = true;
                 alarms.erase(it);
@@ -279,7 +289,7 @@ QStatus Timer::ReplaceAlarm(const Alarm& origAlarm, const Alarm& newAlarm, bool 
     QStatus status = ER_NO_SUCH_ALARM;
     lock.Lock();
     if (isRunning) {
-        multiset<Alarm>::iterator it = alarms.find(origAlarm);
+        set<Alarm>::iterator it = alarms.find(origAlarm);
         if (it != alarms.end()) {
             alarms.erase(it);
             status = AddAlarm(newAlarm);
@@ -311,7 +321,7 @@ bool Timer::RemoveAlarm(const AlarmListener& listener, Alarm& alarm)
     bool removedOne = false;
     lock.Lock();
     if (isRunning) {
-        for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
+        for (set<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
             if ((*it)->listener == &listener) {
                 alarms.erase(it);
                 removedOne = true;
@@ -524,19 +534,6 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                 }
 
                 /*
-                 * There is an alarm due to be executed now, and we are either
-                 * the controller thread or a worker thread executing now.  in
-                 * either case, we are going to handle the alarm at the head of
-                 * the list.
-                 */
-                QCC_DbgPrintf(("TimerThread::Run(): Alarm due, the current thread is handling it"));
-                multiset<Alarm>::iterator it = timer->alarms.begin();
-                Alarm top = *it;
-                timer->alarms.erase(it);
-                currentAlarm = &top;
-                state = RUNNING;
-
-                /*
                  * If we are the controller, then we are going to have to yield
                  * our role since the alarm may take an arbitrary length of time
                  * to execute.  The next thread that wends its way through this
@@ -549,12 +546,29 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                     isController = false;
                 }
 
+                state = RUNNING;
                 stopEvent.ResetEvent();
                 timer->lock.Unlock();
+
+                /* Get the reentrancy lock if necessary */
                 hasTimerLock = timer->preventReentrancy;
                 if (hasTimerLock) {
                     timer->reentrancyLock.Lock();
                 }
+
+                /*
+                 * There is an alarm due to be executed now, and we are either
+                 * the controller thread or a worker thread executing now.  in
+                 * either case, we are going to handle the alarm at the head of
+                 * the list.
+                 */
+                timer->lock.Lock();
+                set<Alarm>::iterator it = timer->alarms.begin();
+                Alarm top = *it;
+                timer->alarms.erase(it);
+                currentAlarm = &top;
+                timer->lock.Unlock();
+
                 QCC_DbgPrintf(("TimerThread::Run(): ******** AlarmTriggered()"));
                 (top->listener->AlarmTriggered)(top, ER_OK);
                 if (hasTimerLock) {
@@ -623,7 +637,7 @@ void Timer::ThreadExit(Thread* thread)
             /*
              * Note it is possible that the callback will call RemoveAlarm()
              */
-            multiset<Alarm>::iterator it = alarms.begin();
+            set<Alarm>::iterator it = alarms.begin();
             Alarm alarm = *it;
             alarms.erase(it);
             tt->SetCurrentAlarm(&alarm);
