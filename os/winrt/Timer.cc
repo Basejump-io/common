@@ -109,8 +109,8 @@ void OSAlarm::UpdateComputedTime(Timespec absoluteTime)
     }
 }
 
-Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy)
-    : expireOnExit(expireOnExit), timerThreads(concurency), isRunning(false), controllerIdx(0), OSTimer(this)
+Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy, uint32_t maxAlarms)
+    : expireOnExit(expireOnExit), timerThreads(concurency), isRunning(false), controllerIdx(0), OSTimer(this), maxAlarms(maxAlarms)
 {
 }
 
@@ -202,7 +202,7 @@ void Timer::TimerCallback(void* context)
     // Release the API lock
     lock.Unlock();
     if (alarmFound) {
-        // Call the alarm listener associate with this alarm
+        // Call the alarm listener associated with this alarm
         alarm->listener->AlarmTriggered(alarm, ER_OK);
         // Decrement the latch value associated with this alarm (work complete)
         alarm->_latch->Decrement();
@@ -333,7 +333,7 @@ bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
     qcc::Event evt;
     // Grab the timer lock
     lock.Lock();
-    multiset<Alarm>::iterator it = alarms.find(alarm);
+    set<Alarm>::iterator it = alarms.find(alarm);
     // Check if alarm is the list
     if (it != alarms.end()) {
         Alarm a = (Alarm) * it;
@@ -375,7 +375,7 @@ QStatus Timer::ReplaceAlarm(const Alarm& origAlarm, const Alarm& newAlarm, bool 
     // Get the timer lock
     lock.Lock();
     // Check if alarm is the list
-    multiset<Alarm>::iterator it = alarms.find(origAlarm);
+    set<Alarm>::iterator it = alarms.find(origAlarm);
     if (it != alarms.end()) {
         Alarm a = (Alarm) * it;
         // Remove the lookaside
@@ -418,7 +418,7 @@ bool Timer::RemoveAlarm(const AlarmListener& listener, Alarm& alarm)
     // Grab the timer lock
     lock.Lock();
     // Iterate the alarms
-    for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end();) {
+    for (set<Alarm>::iterator it = alarms.begin(); it != alarms.end();) {
         // Check listener for a match
         if ((*it)->listener == &listener) {
             alarm = *it;
