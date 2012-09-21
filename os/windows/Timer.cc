@@ -546,7 +546,6 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
 
                 state = RUNNING;
                 stopEvent.ResetEvent();
-                timer->lock.Unlock();
 
                 /* Get the reentrancy lock if necessary */
                 hasTimerLock = timer->preventReentrancy;
@@ -560,7 +559,6 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                  * either case, we are going to handle the alarm at the head of
                  * the list.
                  */
-                timer->lock.Lock();
                 set<Alarm>::iterator it = timer->alarms.begin();
                 Alarm top = *it;
                 timer->alarms.erase(it);
