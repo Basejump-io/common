@@ -173,7 +173,7 @@ QStatus AdapterUtil::ForceUpdate()
         if (ioctl(sck, SIOCGIFMTU, item) < 0) {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Calling IOCtl: %s", strerror(errno)));
-            goto exit;
+            continue;
         }
 
         netInfo.mtu = item->ifr_mtu;
