@@ -28,6 +28,7 @@
 #include <Status.h>
 #include <list>
 #include <map>
+#include <queue>
 
 #define QCC_MODULE  "TIMER"
 
@@ -146,14 +147,14 @@ QStatus Timer::Start()
     // If between all that lock shuffling, we are already in a start case, ignore the request to Start
     if (!isRunning) {
         // Iterate the set of alarms
-        for (multiset<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
+        for (set<Alarm>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
             Alarm a = (Alarm) * it;
             try {
                 // Create TimeSpan based on computedTimeMillis
                 Windows::Foundation::TimeSpan ts = { a->computedTimeMillis * HUNDRED_NANOSECONDS_PER_MILLISECOND };
                 // Start the timer
-                ThreadPoolTimer ^ tpt = ThreadPoolTimer::CreateTimer(ref new TimerElapsedHandler([&] (ThreadPoolTimer ^ timer) {
-                                                                                                     OSTimer::TimerCallback(timer);
+                ThreadPoolTimer ^ tpt = ThreadPoolTimer::CreateTimer(ref new TimerElapsedHandler([&, a] (ThreadPoolTimer ^ timer) {
+                                                                                                     OSTimer::TimerCallback(timer, (Alarm)a);
                                                                                                  }), ts);
                 // Store the alarm associated with the ThreadPoolTimer that was just created
                 a->_timer = tpt;
@@ -174,19 +175,45 @@ QStatus Timer::Start()
 
 void Timer::TimerCallback(void* context)
 {
+    /*
+     * Most of the time, this dance of putting work on and off the priority_queue would not be needed.
+     * However, these timer callbacks appear to arrive out of order occasionally, especially if the
+     * call to AlarmTriggered takes long enough.
+     *
+     * To preserve the ordering of signals, the alarm is pulled out of the calling context, inserted into the
+     * priority queue, then the timer lock is acquired. Once the timer lock is taken, the lock owner takes the
+     * first alarm in the work queue and works with that alarm.
+     */
+
+    // push the alarm onto the queue
+    _workQueueLock.Lock();
+    std::pair<void*, Alarm&>* inputPair = (std::pair<void*, Alarm&>*)context;
+    _timerWorkQueue.push(inputPair->second);
+    _workQueueLock.Unlock();
+
     void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
     bool alarmFound = false;
     qcc::Alarm alarm;
-    // Grab the reentrancy lock
-    reentrancyLock.Lock();
     // Grab the timer lock
     lock.Lock();
-    // Check if timer is still in the map
-    if (_timerMap.find(context) != _timerMap.end()) {
+    // Grab the reentrancy lock
+    if (this->preventReentrancy) {
+        reentrancyLock.Lock();
+    }
+
+    // take the highest priority alarm off the queue
+    _workQueueLock.Lock();
+    if (!_timerWorkQueue.empty()) {
         alarmFound = true;
+        alarm = _timerWorkQueue.top();
+        _timerWorkQueue.pop();
+    }
+    _workQueueLock.Unlock();
+
+    // Check if timer is still in the map
+    if (alarmFound) {
         // Mark ownership of the timer on this thread
         _timerHasOwnership[timerThreadHandle] = true;
-        alarm = _timerMap[context]; // ThreadPoolTimer -> alarm
         // Increase the latch value for pending work
         alarm->_latch->Increment();
         // Ensure a single alarm can only be once in the map
@@ -198,28 +225,31 @@ void Timer::TimerCallback(void* context)
             // Schedule based on the period. Don't bother chasing the nanoseconds.
             ReplaceAlarm(alarm, newAlarm, false);
         }
-    }
-    // Release the API lock
-    lock.Unlock();
-    if (alarmFound) {
+
+        lock.Unlock();
         // Call the alarm listener associated with this alarm
         alarm->listener->AlarmTriggered(alarm, ER_OK);
+
         // Decrement the latch value associated with this alarm (work complete)
         alarm->_latch->Decrement();
-        // Re-acquire the timer lock
-        lock.Lock();
+
         // If thread still owns the timer, release the reentrancy lock
         if (_timerHasOwnership[timerThreadHandle]) {
             reentrancyLock.Unlock();
         }
+
+        // Re-acquire the API lock
+        lock.Lock();
+
         // Make sure we don't grow the map unbounded
         _timerHasOwnership.erase(timerThreadHandle);
-        // Release the API lock
-        lock.Unlock();
     } else {
         // Release the reentrancy lock since no alarm was found after all
         reentrancyLock.Unlock();
     }
+
+    // Release the API lock
+    lock.Unlock();
 }
 
 // Callback is executed when a timer has successfully been called or cancelled
@@ -244,6 +274,7 @@ QStatus Timer::Stop()
             // Don't leak async operations here if we're being pulsed
             if (NULL != _stopTask) {
                 delete _stopTask;
+                _stopTask = nullptr;
             }
             // Create task
             _stopTask = new concurrency::task<void>(stopAction);
@@ -296,18 +327,25 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     lock.Lock();
     // Check if timer is running
     if (isRunning) {
+        /* Don't allow an infinite number of alarms to exist on this timer */
+        while (maxAlarms && (alarms.size() >= maxAlarms)) {
+            lock.Unlock();
+            qcc::Sleep(2);
+            lock.Lock();
+        }
         try {
             // Create the TimeSpan
             Windows::Foundation::TimeSpan ts = { alarm->computedTimeMillis * HUNDRED_NANOSECONDS_PER_MILLISECOND };
+
+            Alarm a = (Alarm)alarm;
             // Create the timer
-            ThreadPoolTimer ^ tpt = ThreadPoolTimer::CreateTimer(ref new TimerElapsedHandler([&] (ThreadPoolTimer ^ timer) {
-                                                                                                 OSTimer::TimerCallback(timer);
+            ThreadPoolTimer ^ tpt = ThreadPoolTimer::CreateTimer(ref new TimerElapsedHandler([&, a] (ThreadPoolTimer ^ timer) {
+                                                                                                 OSTimer::TimerCallback(timer, (Alarm)a);
                                                                                              }),
                                                                  ts,
                                                                  ref new TimerDestroyedHandler([&](ThreadPoolTimer ^ timer) {
                                                                                                    OSTimer::TimerCleanupCallback(timer);
                                                                                                }));
-            Alarm a = (Alarm)alarm;
             a->_timer = tpt;
             // Store the alarm associated with the new created timer
             _timerMap[(void*)tpt] = a;
@@ -514,10 +552,10 @@ OSTimer::~OSTimer()
     }
 }
 
-void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
+void OSTimer::TimerCallback(Windows::System::Threading::ThreadPoolTimer ^ timer, Alarm& a)
 {
     // Proxy the timer fire callback back into timer
-    _timer->TimerCallback((void*)timer);
+    _timer->TimerCallback((void*)&(std::pair<void*, Alarm&>((void*)timer, a)));  /// create a pair to hand back to the callback
 }
 
 void OSTimer::TimerCleanupCallback(Windows::System::Threading::ThreadPoolTimer ^ timer)
@@ -531,7 +569,7 @@ void OSTimer::StopInternal(bool timerExiting)
     // Grab the timer lock
     _timer->lock.Lock();
     // Iterate the alarms in timer
-    for (multiset<Alarm>::iterator it = _timer->alarms.begin(); it != _timer->alarms.end(); ++it) {
+    for (set<Alarm>::iterator it = _timer->alarms.begin(); it != _timer->alarms.end(); ++it) {
         const Alarm alarm = *it;
         if (nullptr != alarm->_timer) {
             try {
@@ -554,5 +592,12 @@ void OSTimer::StopInternal(bool timerExiting)
 OSAlarm::OSAlarm() : _timer(nullptr)
 {
 }
+
+/// compare Alarm objects for storage in a priority queue.
+bool CompareAlarm::operator()(const Alarm& a1, const Alarm& a2) {
+    if (a2->alarmTime < a1->alarmTime) return true;
+    if (a1->alarmTime == a2->alarmTime && a1->id > a2->id) return true;
+    return false;
+};
 
 }

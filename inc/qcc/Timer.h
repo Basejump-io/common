@@ -78,6 +78,7 @@ class _Alarm : public OSAlarm {
     friend class Timer;
     friend class TimerThread;
     friend class OSTimer;
+    friend class CompareAlarm;
 
   public:
 
