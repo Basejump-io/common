@@ -26,6 +26,7 @@
 
 #include <qcc/platform.h>
 #include <map>
+#include <qcc/Mutex.h>
 #include <qcc/String.h>
 #include <qcc/Stream.h>
 #include <Status.h>
@@ -101,7 +102,7 @@ class Environ {
 
   private:
     std::map<qcc::String, qcc::String> vars;    ///< Environment variable storage.
-
+    qcc::Mutex lock;                            ///< Mutex to make operations thread-safe.
 };
 
 }
