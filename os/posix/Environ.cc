@@ -57,6 +57,7 @@ Environ* Environ::GetAppEnviron(void)
 qcc::String Environ::Find(const qcc::String& key, const char* defaultValue)
 {
     qcc::String val;
+    lock.Lock();
     if (vars.count(key) == 0) {
         char* val = getenv(key.c_str());
         if (val) {
@@ -67,12 +68,14 @@ qcc::String Environ::Find(const qcc::String& key, const char* defaultValue)
     if (val.empty() && defaultValue) {
         val = defaultValue;
     }
+    lock.Unlock();
     return val;
 }
 
 void Environ::Preload(const char* keyPrefix)
 {
     size_t prefixLen = strlen(keyPrefix);
+    lock.Lock();
     for (char** var = environ; *var != NULL; ++var) {
         char* p = *var;
         if (strncmp(p, keyPrefix, prefixLen) == 0) {
@@ -84,17 +87,21 @@ void Environ::Preload(const char* keyPrefix)
             Find(key, NULL);
         }
     }
+    lock.Unlock();
 }
 
 void Environ::Add(const qcc::String& key, const qcc::String& value)
 {
+    lock.Lock();
     vars[key] = value;
+    lock.Unlock();
 }
 
 
 QStatus Environ::Parse(Source& source)
 {
     QStatus status = ER_OK;
+    lock.Lock();
     while (ER_OK == status) {
         qcc::String line;
         status = source.GetLine(line);
@@ -112,5 +119,6 @@ QStatus Environ::Parse(Source& source)
             }
         }
     }
+    lock.Unlock();
     return (ER_NONE == status) ? ER_OK : status;
 }
