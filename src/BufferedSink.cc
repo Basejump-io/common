@@ -68,6 +68,17 @@ QStatus BufferedSink::PushBytes(const void* dataIn, size_t numBytes, size_t& num
     }
 
     size_t curBytes = wrPtr - buf;
+
+    /*
+     * Prevent possible buffer overflow error. If numBytes + curBytes
+     * is larger than max value held by size_t then we have an arithmetic
+     * overflow error. This checks for this error condition.
+     */
+    if (numBytes + curBytes < numBytes) {
+        numSent = 0;
+        return ER_PACKET_TOO_LARGE;
+    }
+
     if (curBytes + numBytes < minChunk) {
         /* data fits in buf */
         memcpy(wrPtr, data, numBytes);
