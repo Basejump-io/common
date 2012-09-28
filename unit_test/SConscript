@@ -43,7 +43,7 @@ else:
     if(env['OS_CONF'] == 'android'):
         # Android include paths
 	if (env.subst('$ANDROID_NDK_VERSION') == '8b'):
-            gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
+            gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
                                       #Using GNU STL instead of STLPORT
                                       '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include',
                                       '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include/backward',
@@ -52,7 +52,7 @@ else:
 	    env.subst('$ANDROID_NDK_VERSION') == '6' or
 	    env.subst('$ANDROID_NDK_VERSION') == '7' or
 	    env.subst('$ANDROID_NDK_VERSION') == '8'):
-            gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
+            gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
                                       #Using GNU STL instead of STLPORT
                                       '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include',
                                       '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include/backward',
@@ -87,7 +87,7 @@ else:
     if(env['OS_CONF'] == 'android'):
         # Android include paths
 	if (env.subst('$ANDROID_NDK_VERSION') == '8b'):
-            unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
+            unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
                                 #Using GNU STL instead of STLPORT
                                 '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include',
                                 '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include/backward',
@@ -98,7 +98,7 @@ else:
 	    env.subst('$ANDROID_NDK_VERSION') == '6' or
 	    env.subst('$ANDROID_NDK_VERSION') == '7' or
 	    env.subst('$ANDROID_NDK_VERSION') == '8'):
-            unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/include',
+            unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
                                 #Using GNU STL instead of STLPORT
                                 '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include',
                                 '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include/backward',
@@ -121,7 +121,7 @@ else:
     unittest_env.Append(LIBPATH = ['./'])
     #the linker must be able to find stlport for android
     if(env['OS_CONF'] == 'android'):
-        unittest_env.Append(LIBPATH = ['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL/arch-arm/usr/lib'])
+        unittest_env.Append(LIBPATH = ['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/lib'])
     
     # using the alljoyn library to test common since the status object file is not
     # compiled till alljoyn_core is compiled.
