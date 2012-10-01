@@ -548,6 +548,7 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
 
                 state = RUNNING;
                 stopEvent.ResetEvent();
+                timer->lock.Unlock();
 
                 /* Get the reentrancy lock if necessary */
                 hasTimerLock = timer->preventReentrancy;
@@ -561,27 +562,34 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                  * either case, we are going to handle the alarm at the head of
                  * the list.
                  */
-                set<Alarm>::iterator it = timer->alarms.begin();
-                Alarm top = *it;
-                timer->alarms.erase(it);
-                currentAlarm = &top;
-                timer->lock.Unlock();
-
-                QCC_DbgPrintf(("TimerThread::Run(): ******** AlarmTriggered()"));
-                (top->listener->AlarmTriggered)(top, ER_OK);
-                if (hasTimerLock) {
-                    timer->reentrancyLock.Unlock();
-                }
                 timer->lock.Lock();
-                currentAlarm = NULL;
+                set<Alarm>::iterator it = timer->alarms.begin();
+                if (it != timer->alarms.end()) {
+                    Alarm top = *it;
+                    timer->alarms.erase(it);
+                    currentAlarm = &top;
+                    timer->lock.Unlock();
 
-                if (0 != top->periodMs) {
-                    top->alarmTime += top->periodMs;
-                    if (top->alarmTime < now) {
-                        top->alarmTime = now;
+                    QCC_DbgPrintf(("TimerThread::Run(): ******** AlarmTriggered()"));
+                    (top->listener->AlarmTriggered)(top, ER_OK);
+                    if (hasTimerLock) {
+                        timer->reentrancyLock.Unlock();
                     }
-                    QCC_DbgPrintf(("TimerThread::Run(): Adding back periodic alarm"));
-                    timer->AddAlarm(top);
+                    timer->lock.Lock();
+                    currentAlarm = NULL;
+
+                    if (0 != top->periodMs) {
+                        top->alarmTime += top->periodMs;
+                        if (top->alarmTime < now) {
+                            top->alarmTime = now;
+                        }
+                        QCC_DbgPrintf(("TimerThread::Run(): Adding back periodic alarm"));
+                        timer->AddAlarm(top);
+                    }
+                } else {
+                    if (hasTimerLock) {
+                        timer->reentrancyLock.Unlock();
+                    }
                 }
             } else {
                 /*
