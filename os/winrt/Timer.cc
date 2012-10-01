@@ -194,13 +194,13 @@ void Timer::TimerCallback(void* context)
     void* timerThreadHandle = reinterpret_cast<void*>(Thread::GetThread());
     bool alarmFound = false;
     qcc::Alarm alarm;
-    // Grab the timer lock
-    lock.Lock();
     // Grab the reentrancy lock
     if (this->preventReentrancy) {
         reentrancyLock.Lock();
     }
 
+    // Grab the timer lock
+    lock.Lock();
     // take the highest priority alarm off the queue
     _workQueueLock.Lock();
     if (!_timerWorkQueue.empty()) {
