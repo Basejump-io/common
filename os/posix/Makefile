@@ -25,7 +25,6 @@ else
 endif
 
 oslib:  \
-	AdapterUtil.o \
 	atomic.o \
 	Environ.o \
 	Event.o \
