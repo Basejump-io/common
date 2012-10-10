@@ -248,16 +248,20 @@ TEST(SocketTest, send_and_receive_with_dummy_fds) {
         String sender_message = String("Sending a list of some dummy fds.");
         // dummy file descriptors
         SocketFd original_list_of_fds[SOCKET_MAX_FILE_DESCRIPTORS];
+        for (uint8_t i = 0; i < ArraySize(original_list_of_fds); i++) {
+            original_list_of_fds[i] = 0;
+        }
 
         AddressFamily addr_family = (0 == Rand8() % 2) ? QCC_AF_INET6 : QCC_AF_INET;
         IPAddress this_host = (QCC_AF_INET6 == addr_family) ? IPAddress("::1") : IPAddress("127.0.0.1");
 
         // Initialize the dummy list of fds
         for (uint8_t i = 0; i < ArraySize(original_list_of_fds); i++) {
-            Socket(addr_family, (0 == Rand8() % 2) ? QCC_SOCK_DGRAM : QCC_SOCK_STREAM, original_list_of_fds[i]);
-            QStatus socket_bound = ER_FAIL;
-            while (ER_OK != socket_bound) {
-                socket_bound = Bind(original_list_of_fds[i], this_host, GetRandomPrivatePortNumber());
+            if (ER_OK == Socket(addr_family, (0 == Rand8() % 2) ? QCC_SOCK_DGRAM : QCC_SOCK_STREAM, original_list_of_fds[i])) {
+                QStatus socket_bound = ER_FAIL;
+                while (ER_OK != socket_bound) {
+                    socket_bound = Bind(original_list_of_fds[i], this_host, GetRandomPrivatePortNumber());
+                }
             }
         }
 
@@ -353,7 +357,11 @@ TEST(SocketTest, send_and_receive_with_dummy_fds) {
 
         // Relinquish the dummy list of fds
         for (uint8_t i = 0; i < ArraySize(original_list_of_fds); i++) {
-            Close(original_list_of_fds[i]);
+            // We only need to close those sockets that are valid. The invalid
+            // ones (i.e. SocketFd 0) cannot be bound in the first place.
+            if(0 != original_list_of_fds[i]) {
+                Close(original_list_of_fds[i]);
+            }
         }
 
         Close(endpoint[0]);
