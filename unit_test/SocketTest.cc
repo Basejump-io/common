@@ -232,7 +232,7 @@ TEST(SocketTest, send_to_and_recv_from_test) {
  *             SocketFd* fdList, size_t maxFds, size_t& recvdFds);
  *
  * implicitly indicate (lack of parameters specifying
- * the other communicatio endpoint) that the socket is 'connected'.
+ * the other communication endpoint) that the socket is 'connected'.
  */
 
 TEST(SocketTest, send_and_receive_with_dummy_fds) {
@@ -359,7 +359,7 @@ TEST(SocketTest, send_and_receive_with_dummy_fds) {
         for (uint8_t i = 0; i < ArraySize(original_list_of_fds); i++) {
             // We only need to close those sockets that are valid. The invalid
             // ones (i.e. SocketFd 0) cannot be bound in the first place.
-            if(0 != original_list_of_fds[i]) {
+            if (0 != original_list_of_fds[i]) {
                 Close(original_list_of_fds[i]);
             }
         }
