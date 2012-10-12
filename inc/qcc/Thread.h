@@ -251,6 +251,11 @@ class Thread {
     uint32_t GetAlertCode() const { return alertCode; }
 
     /**
+     * Reset the alertCode that may have been set by a caller to Alert()
+     */
+    void ResetAlertCode() { alertCode = 0; }
+
+    /**
      * Add an aux ThreadListener.
      * Aux ThreadListeners are called when the thread stops just like the primary ThreadListener
      * (passed in Start). The difference is that aux ThreadListeners can NOT delete the Thread
