@@ -312,8 +312,10 @@ QStatus Thread::Start(void* arg, ThreadListener* listener)
         QCC_LogError(status, ("Thread::Start() [%s]", funcName));
     } else {
         QCC_DbgTrace(("Thread::Start() [%s]", funcName));
-        /*  Reset the stop event so the thread doesn't start out alerted. */
+        /* Reset the stop event so the thread doesn't start out alerted. */
         stopEvent.ResetEvent();
+        /* Reset the thread function exited event, because a thread can be repeatedlly started, stopped and joined. */
+        ::ResetEvent(platformContext);
         /* Create OS thread */
         this->arg = arg;
         this->listener = listener;
