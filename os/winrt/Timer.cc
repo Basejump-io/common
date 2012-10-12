@@ -371,34 +371,36 @@ bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
     qcc::Event evt;
     // Grab the timer lock
     lock.Lock();
-    set<Alarm>::iterator it = alarms.find(alarm);
-    // Check if alarm is the list
-    if (it != alarms.end()) {
-        Alarm a = (Alarm) * it;
-        // Remove the lookaside
-        std::map<void*, qcc::Alarm>::iterator itTimerMap = _timerMap.find((void*)a->_timer);
-        if (itTimerMap != _timerMap.end()) {
-            _timerMap.erase(itTimerMap);
-        }
-        // Cancel the firing (if possible)
-        if (nullptr != a->_timer) {
-            try {
-                a->_timer->Cancel();
-            } catch (...) {
-                // Don't bubble OS exceptions out
-            }
-        }
-        // Wait for triggering to finish if specified
-        while (blockIfTriggered && a->_latch->Current() != 0) {
-            lock.Unlock();
-            a->_latch->Wait();
-            lock.Lock();
-        }
-        // Clear out the alarm if someone didn't erase it before re-acquiring the lock
-        it = alarms.find(a);
+    if (alarms.size() > 0) {
+        set<Alarm>::iterator it = alarms.find(alarm);
+        // Check if alarm is the list
         if (it != alarms.end()) {
-            alarms.erase(it);
-            removed = true;
+            Alarm a = (Alarm) * it;
+            // Remove the lookaside
+            std::map<void*, qcc::Alarm>::iterator itTimerMap = _timerMap.find((void*)a->_timer);
+            if (itTimerMap != _timerMap.end()) {
+                _timerMap.erase(itTimerMap);
+            }
+            // Cancel the firing (if possible)
+            if (nullptr != a->_timer) {
+                try {
+                    a->_timer->Cancel();
+                } catch (...) {
+                    // Don't bubble OS exceptions out
+                }
+            }
+            // Wait for triggering to finish if specified
+            while (blockIfTriggered && a->_latch->Current() != 0) {
+                lock.Unlock();
+                a->_latch->Wait();
+                lock.Lock();
+            }
+            // Clear out the alarm if someone didn't erase it before re-acquiring the lock
+            it = alarms.find(a);
+            if (it != alarms.end()) {
+                alarms.erase(it);
+                removed = true;
+            }
         }
     }
     // Release the timer lock
