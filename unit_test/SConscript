@@ -18,8 +18,12 @@ Import('env')
 
 if(not(env.has_key('GTEST_DIR'))):
     print('GTEST_DIR not specified skipping common unit test build')
+
+elif( env['OS'] == 'darwin' and ( env['CPU'] == 'arm' or env['CPU'] == 'armv7' or env['CPU'] == 'armv7s' ) ):
+    # do not even try Google test if darwin and arm
+    print 'GTEST_DIR ignored when building for OS=darwin CPU=arm, skipping common unit test build'
+
 else:
-    
     gtest_env = env.Clone();
     gtest_dir = gtest_env['GTEST_DIR']
     vars = Variables();
