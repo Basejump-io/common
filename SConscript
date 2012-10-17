@@ -64,11 +64,20 @@ elif env['OS'] == 'linux':
 elif env['OS'] == 'darwin':
     env.AppendUnique(LIBS =['stdc++', 'pthread', 'crypto', 'ssl'])
     if env['CPU'] == 'arm' or env['CPU'] == 'armv7' or env['CPU'] == 'armv7s':
-        env.Append(CPPPATH = ['../common/crypto/openssl/openssl-1.01/include'])    
+        vars = Variables()
+        vars.Add(PathVariable('OPENSSL_ROOT', 'Base OpenSSL directory (darwin only)', os.environ.get('OPENSSL_ROOT')))
+        vars.Update(env)
+        Help(vars.GenerateHelpText(env))
+        if '' == env.subst('$OPENSSL_ROOT'):
+            # Must specify OPENSSL_ROOT for darwin, arm
+            print 'Must specify OPENSSL_ROOT when building for OS=darwin, CPU=arm'
+            Exit()
+        env.Append(CPPPATH = ['$OPENSSL_ROOT/include'])
+        env.Append(LIBPATH = ['$OPENSSL_ROOT/build/' + os.environ.get('CONFIGURATION') + '-' + os.environ.get('PLATFORM_NAME')])
 elif env['OS'] == 'android':
     env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log', 'gcc', 'ssl'])
-    if (env.subst('$ANDROID_NDK_VERSION') == '7' or 
-        env.subst('$ANDROID_NDK_VERSION') == '8' or 
+    if (env.subst('$ANDROID_NDK_VERSION') == '7' or
+        env.subst('$ANDROID_NDK_VERSION') == '8' or
         env.subst('$ANDROID_NDK_VERSION') == '8b'):
         env.AppendUnique(LIBS = ['gnustl_static'])
 elif env['OS'] == 'android_donut':
@@ -104,19 +113,12 @@ if env['OS_GROUP'] == 'windows' or env['OS_GROUP'] == 'win8':
 
 env.Append(CPPPATH = [env.Dir('inc')])
 
-# Build OpenSSL if under iOS
-if env['OS'] == 'darwin':
-    if env['CPU'] == 'arm' or env['CPU'] == 'armv7' or env['CPU'] == 'armv7s':
-        print 'Building openssl for iOS...'
-        env.SConscript('crypto/openssl/openssl-1.01/SConscript', variant_dir='$OBJDIR/openssl/lib', duplicate=0)
-        env.Append(LIBPATH = [os.environ.get('SRCROOT') + '/../common/crypto/openssl/openssl-1.01/build/' + os.environ.get('CONFIGURATION') + '-' + os.environ.get('PLATFORM_NAME')])
-        
 # Build the sources
 status_cpp0x_src = ['Status_CPP0x.cc', 'StatusComment.cc']
 status_src = ['Status.cc']
 
 srcs = env.Glob('$OBJDIR/*.cc') + env.Glob('$OBJDIR/os/*.cc') + env.Glob('$OBJDIR/crypto/*.cc')
-   
+
 if env['OS_GROUP'] == 'winrt':
     srcs = [ f for f in srcs if basename(str(f)) not in status_cpp0x_src ]
 
