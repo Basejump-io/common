@@ -333,7 +333,8 @@ QStatus GetLocalAddress(SocketFd sockfd, IPAddress& addr, uint16_t& port)
             status = ER_OUT_OF_MEMORY;
             break;
         }
-        qcc::IPAddress tempAddr(address);
+        qcc::IPAddress tempAddr;
+        status = tempAddr.SetAddress(address, true);
         addr = tempAddr;
         port = (uint16_t)tempPort[0];
         break;
