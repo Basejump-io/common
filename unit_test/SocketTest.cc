@@ -72,11 +72,11 @@ static void DeliverLine(AddressFamily addr_family, SocketType sock_type, String&
     debug_string = debug_string.append(". ");
 
     QStatus talker_status = ER_FAIL;
-    SocketFd talker = -1;
+    SocketFd talker = INVALID_SOCKET_FD;
     uint16_t talker_mouth = GetRandomPrivatePortNumber();
 
     QStatus listener_status = ER_FAIL;
-    SocketFd listener = -1;
+    SocketFd listener = INVALID_SOCKET_FD;
     uint16_t listener_ear = GetRandomPrivatePortNumber();
 
     debug_string = debug_string.append("Talker socket on port: ");
@@ -97,7 +97,7 @@ static void DeliverLine(AddressFamily addr_family, SocketType sock_type, String&
     QStatus connect_status = (ER_OK == talker_status && ER_OK == listener_status) ? ER_OK : ER_FAIL;
 
     // For the new socketfd returned by Accept()
-    SocketFd listener_earpiece = -1;
+    SocketFd listener_earpiece = INVALID_SOCKET_FD;
 
     if (ER_OK == connect_status && QCC_SOCK_STREAM == sock_type) {
         const int num_backlog_connections = 1;
@@ -249,7 +249,7 @@ TEST(SocketTest, send_and_receive_with_dummy_fds) {
         // dummy file descriptors
         SocketFd original_list_of_fds[SOCKET_MAX_FILE_DESCRIPTORS];
         for (uint8_t i = 0; i < ArraySize(original_list_of_fds); i++) {
-            original_list_of_fds[i] = 0;
+            original_list_of_fds[i] = INVALID_SOCKET_FD;
         }
 
         AddressFamily addr_family = (0 == Rand8() % 2) ? QCC_AF_INET6 : QCC_AF_INET;
@@ -359,7 +359,7 @@ TEST(SocketTest, send_and_receive_with_dummy_fds) {
         for (uint8_t i = 0; i < ArraySize(original_list_of_fds); i++) {
             // We only need to close those sockets that are valid. The invalid
             // ones (i.e. SocketFd 0) cannot be bound in the first place.
-            if (0 != original_list_of_fds[i]) {
+            if (INVALID_SOCKET_FD != original_list_of_fds[i]) {
                 Close(original_list_of_fds[i]);
             }
         }
