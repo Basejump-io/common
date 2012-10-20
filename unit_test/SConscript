@@ -56,6 +56,10 @@ else:
     # tr1::tuple is not avalible for android or darwin
     if(env['OS_CONF'] == 'android' or env['OS_CONF'] == 'darwin'):
         gtest_env.Append(CPPDEFINES = ['GTEST_HAS_TR1_TUPLE=0'])
+    # Microsoft Visual Studio 2012 has a different _VARIADIC_MAX default value.
+    # See: http://blogs.msdn.com/b/vcblog/archive/2011/09/12/10209291.aspx
+    if(env['MSVC_VERSION'] == '11.0'):
+        gtest_env.Append(CPPDEFINES = ['_VARIADIC_MAX=10'])
     #we compile with no rtti and we are not using exceptions. 
     gtest_env.Append(CPPDEFINES = ['GTEST_HAS_RTTI=0'])
     # we replace AllJoyn's include CPPPATH options.  AllJoyn includes stlport that will cause the 
@@ -102,6 +106,8 @@ else:
     
     if(env['OS_CONF'] == 'android' or env['OS_CONF'] == 'darwin'):
         unittest_env.Append(CPPDEFINES = ['GTEST_HAS_TR1_TUPLE=0'])
+    if(env['MSVC_VERSION'] == '11.0'):
+        unittest_env.Append(CPPDEFINES = ['_VARIADIC_MAX=10'])
     # path for alljoyn library file
     unittest_env.Append(LIBPATH = ['$DISTDIR/lib'])
     # gtest library file is placed in same folder as the the object files.
