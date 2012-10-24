@@ -60,6 +60,43 @@ Crypto_ScopedLock::~Crypto_ScopedLock()
     mutex->Unlock();
 }
 
+QStatus Crypto_PseudorandomFunctionCCM(const KeyBlob& secret, const char* label, const qcc::String& seed, uint8_t* out, size_t outLen)
+{
+    QStatus status;
+    uint8_t counter[4] = { 0, 0, 0, 0 };
+    String in((char*)secret.GetData(), secret.GetSize());
+
+    if (!label) {
+        return ER_BAD_ARG_2;
+    }
+    if (!out) {
+        return ER_BAD_ARG_4;
+    }
+    /*
+     * Concatenate the seed with the the secret and label
+     */
+    in += seed;
+    in += label;
+    /*
+     * Construct AES key from the first 16 bytes of the input.
+     */
+    Crypto_AES aes(KeyBlob(in.data(), 16, KeyBlob::AES), Crypto_AES::CCM);
+
+    while (outLen) {
+        uint8_t mac[16];
+        size_t mlen = 0;
+        size_t len =  (std::min)((size_t)16, outLen);
+        KeyBlob nonce(counter, sizeof(counter), KeyBlob::GENERIC);
+        status = aes.Encrypt_CCM(NULL, mac, mlen, nonce, in.data() + 16, in.size() - 16, 16);
+        memcpy(out, mac, len);
+        outLen -= len;
+        out += len;
+        ++counter[0];
+    }
+    in.secure_clear();
+    return status;
+}
+
 QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, const qcc::String& seed, uint8_t* out, size_t outLen)
 {
     if (!label) {
