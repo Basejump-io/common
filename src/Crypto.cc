@@ -74,7 +74,7 @@ QStatus Crypto_PseudorandomFunction(const KeyBlob& secret, const char* label, co
 
     while (outLen) {
         /*
-         * Initialize SHA1 in HMAC mode with the secret
+         * Initialize SHA256 in HMAC mode with the secret
          */
         hash.Init(secret.GetData(), secret.GetSize());
         /*
