@@ -80,7 +80,7 @@ QStatus Crypto_PseudorandomFunctionCCM(const KeyBlob& secret, const char* label,
     /*
      * Construct AES key from the first 16 bytes of the input.
      */
-    Crypto_AES aes(KeyBlob(in.data(), 16, KeyBlob::AES), Crypto_AES::CCM);
+    Crypto_AES aes(KeyBlob((uint8_t*)in.data(), 16, KeyBlob::AES), Crypto_AES::CCM);
 
     while (outLen) {
         uint8_t mac[16];
