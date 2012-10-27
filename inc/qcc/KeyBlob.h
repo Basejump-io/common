@@ -66,15 +66,6 @@ class KeyBlob {
     KeyBlob() : blobType(EMPTY), role(NO_ROLE) { }
 
     /**
-     * Constructor that reproducibly initializes a key blob with data derived from a password.
-     *
-     * @param password  The password to generate the key from.
-     * @param len       Length of the generated key blob
-     * @param initType  The type for the key blob.
-     */
-    KeyBlob(const qcc::String& password, size_t len, const Type initType);
-
-    /**
      * Constructor that initializes the key blob from a byte array.
      *
      * @param key       Pointer to memory containing data to initialize the key blob.
@@ -105,6 +96,15 @@ class KeyBlob {
      * @param blobType  The type for the key blob.
      */
     void Rand(const size_t len, const Type initType);
+
+    /**
+     * Sets a key blob with data derived from a password.
+     *
+     * @param password  The password to generate the key from.
+     * @param len       Length of the generated key blob
+     * @param initType  The type for the key blob.
+     */
+    void Derive(const qcc::String& password, size_t len, const Type initType);
 
     /**
      * Xor a keyblob with another key blob.

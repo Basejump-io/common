@@ -54,12 +54,14 @@ void KeyBlob::Erase()
     }
 }
 
-KeyBlob::KeyBlob(const qcc::String& secret, size_t len, const Type initType) : blobType(initType)
+void KeyBlob::Derive(const qcc::String& secret, size_t len, const Type initType)
 {
-    if (blobType != EMPTY) {
+    if (initType != EMPTY) {
+        Erase();
         size = (uint16_t)len;
         data = new uint8_t[len];
         role = NO_ROLE;
+        blobType = initType;
         uint8_t* p = data;
 
         while (len) {
@@ -84,6 +86,7 @@ KeyBlob::KeyBlob(const qcc::String& secret, size_t len, const Type initType) : b
         size = 0;
         data = NULL;
         role = NO_ROLE;
+        blobType = EMPTY;
     }
 }
 
