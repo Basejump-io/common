@@ -83,17 +83,21 @@ SocketStream::SocketStream(const SocketStream& other) :
 
 SocketStream SocketStream::operator=(const SocketStream& other)
 {
-    if (isConnected) {
-        QCC_LogError(ER_FAIL, ("Cannot assign to a connected SocketStream"));
-        return *this;
+    if (this != &other) {
+        if (isConnected) {
+            QCC_LogError(ER_FAIL, ("Cannot assign to a connected SocketStream"));
+            return *this;
+        }
+        isConnected = other.isConnected;
+        sock = CopySock(other.sock);
+        delete sourceEvent;
+        sourceEvent = new Event(sock, Event::IO_READ, false);
+        delete sinkEvent;
+        sinkEvent = new Event(*sourceEvent, Event::IO_WRITE, false);
+        isDetached = other.isDetached;
+        sendTimeout = other.sendTimeout;
     }
-    isConnected = other.isConnected;
-    sock = CopySock(other.sock);
-    delete sourceEvent;
-    sourceEvent = new Event(sock, Event::IO_READ, false);
-    delete sinkEvent;
-    sinkEvent = new Event(*sourceEvent, Event::IO_WRITE, false);
-    isDetached = other.isDetached;
+
     return *this;
 }
 
