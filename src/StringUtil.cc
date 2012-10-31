@@ -507,6 +507,19 @@ bool qcc::IsDecimalDigit(char c)
     return false;
 }
 
+bool qcc::IsAlpha(char c)
+{
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+        return true;
+    }
+    return false;
+}
+
+bool qcc::IsAlphaNumeric(char c)
+{
+    return IsAlpha(c) || IsDecimalDigit(c);
+}
+
 bool qcc::IsOctalDigit(char c)
 {
     if (c >= '0' && c <= '7') {

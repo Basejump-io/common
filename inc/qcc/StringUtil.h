@@ -234,6 +234,24 @@ char U8ToChar(uint8_t d);
 bool IsDecimalDigit(char c);
 
 /**
+ * Tests if character value is a letter of the alphabet
+ *
+ * @param c            Value to test.
+
+ * @return true iff digit is valid base 10.
+ */
+bool IsAlpha(char c);
+
+/**
+ * Tests if character value is alphanumeric
+ *
+ * @param c            Value to test.
+
+ * @return true iff digit is valid base 10.
+ */
+bool IsAlphaNumeric(char c);
+
+/**
  * Tests if character value is a base 8 digit
  *
  * @param c            Value to test.
