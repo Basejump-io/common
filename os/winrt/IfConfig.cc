@@ -95,7 +95,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
                             entry.m_family = QCC_AF_INET;
                         }
                         entry.m_mtu = 1500;                         // ping -f -l 1472 tells me this size is ok
-                        entry.m_prefixlen = static_cast<uint32_t>(-1);
+                        entry.m_prefixlen = tempEntry->IPInformation->PrefixLength->Value;
                         entry.m_index = static_cast<uint32_t>(-1);
 
                         entries.push_back(entry);
