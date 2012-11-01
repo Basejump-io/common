@@ -238,7 +238,7 @@ bool IsDecimalDigit(char c);
  *
  * @param c            Value to test.
 
- * @return true iff digit is valid base 10.
+ * @return true iff digit is valid letter
  */
 bool IsAlpha(char c);
 
@@ -247,7 +247,7 @@ bool IsAlpha(char c);
  *
  * @param c            Value to test.
 
- * @return true iff digit is valid base 10.
+ * @return true iff digit is an alphanumeric character
  */
 bool IsAlphaNumeric(char c);
 
