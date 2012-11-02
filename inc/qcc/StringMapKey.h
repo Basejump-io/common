@@ -98,54 +98,32 @@ class StringMapKey {
 
 }  // End of qcc namespace
 
-#if (defined _MSC_VER && _MSC_VER == 1500) || defined(QCC_OS_DARWIN)
+
+
 
 namespace std {
-
 /**
  * Functor to compute StrictWeakOrder
  */
 template <>
-struct less<qcc::StringMapKey>{
+struct less<qcc::StringMapKey> {
     inline bool operator()(const qcc::StringMapKey& a, const qcc::StringMapKey& b) const { return ::strcmp(a.c_str(), b.c_str()) < 0; }
 };
+}  // End of std namespace
 
-namespace tr1 {
+
+
+_BEGIN_NAMESPACE_CONTAINER_FOR_HASH
 /**
  * Functor to compute a hash for StringMapKey suitable for use with
  * std::unordered_map, std::unordered_set, std::hash_map, std::hash_set.
  */
 template <>
-struct hash<qcc::StringMapKey>{
+struct hash<qcc::StringMapKey> {
     inline size_t operator()(const qcc::StringMapKey& k) const { return qcc::hash_string(k.c_str()); }
 };
-}
-}
+_END_NAMESPACE_CONTAINER_FOR_HASH
 
-#else
 
-namespace std {
-
-/**
- * Functor to compute StrictWeakOrder
- */
-template <>
-struct less<qcc::StringMapKey>{
-    inline bool operator()(const qcc::StringMapKey& a, const qcc::StringMapKey& b) const { return ::strcmp(a.c_str(), b.c_str()) < 0; }
-};
-}
-
-namespace STL_NAMESPACE_PREFIX {
-/**
- * Functor to compute a hash for StringMapKey suitable for use with
- * std::unordered_map, std::unordered_set, std::hash_map, std::hash_set.
- */
-template <>
-struct hash<qcc::StringMapKey>{
-    inline size_t operator()(const qcc::StringMapKey& k) const { return qcc::hash_string(k.c_str()); }
-};
-
-}
-#endif
 
 #endif

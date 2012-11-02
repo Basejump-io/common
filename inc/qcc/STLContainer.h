@@ -6,7 +6,7 @@
  */
 
 /******************************************************************************
- * Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -25,41 +25,143 @@
 #ifndef _STLCONTAINER_H
 #define _STLCONTAINER_H
 
-#if defined(QCC_OS_ANDROID)
-#include <ext/hash_map>
-#include <ext/hash_set>
-#elif defined(QCC_OS_DARWIN)
-#include <tr1/unordered_map>
-#include <tr1/unordered_set>
-#else
+#if defined(__GNUC__)
+#define GCC_VERSION ((__GNUC__ * 10000) + (__GNUC_MINOR__ * 100) + __GNUC_PATCHLEVEL__)
+#if (GCC_VERSION < 40700L)
+/*
+ * Versions of GCC prior to 4.7.0 have an annoying but intentional bug where
+ * __cplusplus is set to 1 rather than the appropriate date code so that it
+ * would be compatible with Solaris 8.
+ */
+
+#if (GCC_VERSION >= 40600L) && defined(__GXX_EXPERIMENTAL_CXX0X__)
+/*
+ * GCC 4.6.x supports C++11, at least in terms of unordered_map, etc. when the
+ * -std=gnu++0x option is passed in.  Thus, fix the value of __cplusplus.
+ */
+#undef __cplusplus
+#define __cplusplus 201100L
+#endif  // GCC version >= 4.6 and -std=gnu++0x
+#endif  // GCC veersion < 4.7
+#endif  // Using GCC
+
+
+
+/***************************
+ * STANDARD C++11
+ ***************************/
+#if (__cplusplus >= 201100L)
+/*
+ * The compiler is conformant to the C++11 standard.  Use unordered_map,
+ * etc. directly.
+ */
 #include <unordered_map>
 #include <unordered_set>
-#endif
 
-#if defined(QCC_OS_ANDROID)
+#define _BEGIN_NAMESPACE_CONTAINER_FOR_HASH namespace std {
+#define _END_NAMESPACE_CONTAINER_FOR_HASH }
+
+
+#else
 /*
- * For android use hash_map and hash_set since the STL list does not compile with gcc 4.6
- * with the gnu++0x flag which is required for unordered_map and unordered_set.
+ * Compiling with a C++ compiler that predates the C++11 standard.  Need to
+ * map compiler specific arrangements to match the standard arrangement.
  */
+
+
+
+/***************************
+ * DARWIN
+ ***************************/
+#if defined(QCC_OS_DARWIN)
+/*
+ * Darwin (Mac OSX and iOS) currently put unordered_map, etc. under the tr1
+ * subdirectory and place their template classes in the std::tr1 namespace.
+ */
+#include <tr1/unordered_map>
+#include <tr1/unordered_set>
+
+#define _BEGIN_NAMESPACE_CONTAINER_FOR_HASH namespace std { namespace tr1 {
+#define _END_NAMESPACE_CONTAINER_FOR_HASH } }
+
+namespace std {
+/*
+ * Map everything in the std::tr1 namespace to the std namespace.
+ */
+using namespace std::tr1;
+}
+
+
+
+/***************************
+ * MSVC 2008, 2010
+ ***************************/
+#elif defined(_MSC_VER)
+#if (_MSC_VER >= 1500)
+/*
+ * MSVC 2008 and later provide unordered_map, etc. in the standard location.
+ */
+#include <unordered_map>
+#include <unordered_set>
+
+#if (_MSC_VER >= 1600)
+/*
+ * MSVC 2010 actually follows the C++11 standard for unordered_map, etc. but
+ * we are here because it still defined __cplusplus to 199711.
+ */
+#define _BEGIN_NAMESPACE_CONTAINER_FOR_HASH namespace std {
+#define _END_NAMESPACE_CONTAINER_FOR_HASH }
+
+#elif (_MSC_VER >= 1500)
+/*
+ * MSVC 2008 puts unordered_map, etc. in the std::tr1 namespace.
+ */
+#define _BEGIN_NAMESPACE_CONTAINER_FOR_HASH namespace std { namespace tr1 {
+#define _END_NAMESPACE_CONTAINER_FOR_HASH } }
+
+namespace std {
+/*
+ * Map everything in the std::tr1 namespace to the std namespace.
+ */
+using namespace std::tr1;
+}
+
+#endif  // MSVC versions
+
+#endif  // MSVC version >= 2008
+
+
+/***************************
+ * GCC
+ ***************************/
+#elif defined(__GNUC__)
+/*
+ * Older versions of GCC use hash_map, etc. instead of unordered_map,
+ * etc. respectively.  Thus we need to map the class names to unordered_*.
+ * Additionally, the hash_* classes are in the __gnu_cxx namespace.
+ */
+#include <ext/hash_map>
+#include <ext/hash_set>
+
+#define _BEGIN_NAMESPACE_CONTAINER_FOR_HASH namespace __gnu_cxx {
+#define _END_NAMESPACE_CONTAINER_FOR_HASH }
+
 #define unordered_map hash_map
 #define unordered_multimap hash_multimap
 #define unordered_set hash_set
-#define STL_NAMESPACE_PREFIX  __gnu_cxx
+#define unordered_multiset hash_multiset
 
-#elif (defined _MSC_VER && _MSC_VER == 1500) || defined(QCC_OS_DARWIN)
-
+namespace std {
 /*
- * For MSVC2008 unordered_map, unordered_multimap, unordered_set, and hash
- * are found in the tr1 libraries while in new version of MSVC and in GNU
- * the libraries are all found in std namespace.
+ * Map everything in the __gnu_cxx namespace to the std namespace.
  */
-#define STL_NAMESPACE_PREFIX std::tr1
+using namespace __gnu_cxx;
+}
+
 
 #else
+#error Unsupported Compiler/Platform
 
-#define STL_NAMESPACE_PREFIX std
-
-#endif
-
-#endif
-
+#endif  // Platforms for C++ prior to C++11
+#endif  // Standard C++11
+#endif  // _STLCONTAINER_H
