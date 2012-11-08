@@ -335,6 +335,16 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
             select(1, evt->eventType == IO_READ ? &fds : NULL, evt->eventType == IO_WRITE ? &fds : NULL, NULL, &toZero);
             if (FD_ISSET(evt->ioFd, &fds)) {
                 ::SetEvent(evt->ioHandle);
+            } else {
+                /*
+                 * FD_READ network event is level-triggered but not edge-triggered, This means that if the relevant network condition (data is available)
+                 * is still valid after the application calls recv(), the network event is recorded and the associated event object is set.
+                 * This expects the application routine to wait for the event object before it calls recv(). Unfortunately AllJoyn does not
+                 * behave in that way: it may try to pull data one byte at a time; it also does not wait on the event object until recv()
+                 * returns ER_WOULDBLOCK. This causes the problem that sometimes the event handle is signaled, but in fact the socket file
+                 * descriptor is not in signaled state (FD_READ).
+                 */
+                ::ResetEvent(evt->ioHandle);
             }
         }
     }
@@ -376,20 +386,7 @@ QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledE
 
     QStatus status = ER_OK;
     if (somethingSet || (WAIT_TIMEOUT == ret)) {
-        /*
-         * FD_READ network event is level-triggered but not edge-triggered, This means that if the relevant network condition (data is available)
-         * is still valid after the application calls recv(), the network event is recorded and the associated event object is set.
-         * This expects the application routine to wait for the event object before it calls recv(). Unfortunately AllJoyn does not
-         * perform in that way: it may try to pull data one byte at a time; also it also does not wait on the event object until recv()
-         * returns ER_WOULDBLOCK. This causes the problem that sometimes the event handle is signaled, but in fact the socket file
-         * descriptor is not in signaled state (FD_READ). In that case we should return ER_OK and let the application try again.
-         */
-        if (somethingSet && signaledEvents.empty() && WAIT_TIMEOUT != ret) {
-            QCC_DbgPrintf(("somethingSet is set, but signaledEvents is empty"));
-            status = ER_OK;
-        } else {
-            status = signaledEvents.empty() ? ER_TIMEOUT : ER_OK;
-        }
+        status = signaledEvents.empty() ? ER_TIMEOUT : ER_OK;
     } else {
         status = ER_FAIL;
         QCC_LogError(status, ("WaitForMultipleObjectsEx(2) returned 0x%x.", ret));
