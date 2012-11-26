@@ -46,7 +46,8 @@ else:
     gtest_env.Replace(CPPPATH = [gtest_env.Dir('$GTEST_DIR'), gtest_env.Dir('$GTEST_DIR/include')])    
     if(env['OS_CONF'] == 'android'):
         # Android include paths
-	if (env.subst('$ANDROID_NDK_VERSION') == '8b'):
+	if (env.subst('$ANDROID_NDK_VERSION') == '8b' or
+            env.subst('$ANDROID_NDK_VERSION') == '8c'):
             gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
                                       #Using GNU STL instead of STLPORT
                                       '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include',
@@ -90,7 +91,8 @@ else:
 
     if(env['OS_CONF'] == 'android'):
         # Android include paths
-	if (env.subst('$ANDROID_NDK_VERSION') == '8b'):
+	if (env.subst('$ANDROID_NDK_VERSION') == '8b' or
+            env.subst('$ANDROID_NDK_VERSION') == '8c'):
             unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
                                 #Using GNU STL instead of STLPORT
                                 '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include',
