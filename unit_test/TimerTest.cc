@@ -51,7 +51,7 @@ static bool testNextAlarm(const Timespec& expectedTime, void* context)
         uint64_t expectedTimeMs = expectedTime.GetAbsoluteMillis();
         ret = (p.first == ER_OK) && (context == p.second->GetContext()) && (alarmTime >= expectedTimeMs) && (alarmTime < (expectedTimeMs + jitter));
         if (!ret) {
-            printf("Failed Triggered Alarm: status=%s, \na.alarmTime=\t%lu\nexpectedTimeMs=\t%lu\ndiff=\t\t%lu\n",
+            printf("Failed Triggered Alarm: status=%s, \na.alarmTime=\t%" PRIu64 "\nexpectedTimeMs=\t%" PRIu64 "\ndiff=\t\t%" PRIu64 "\n",
                    QCC_StatusText(p.first), alarmTime, expectedTimeMs, (expectedTimeMs - alarmTime));
         }
     }
