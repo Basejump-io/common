@@ -40,15 +40,42 @@
 
 #if defined(__GNUC__)
 
+
+#define GCC_VERSION ((__GNUC__ * 10000) + (__GNUC_MINOR__ * 100) + __GNUC_PATCHLEVEL__)
+#if (GCC_VERSION < 40700L)
+/*
+ * Versions of GCC prior to 4.7.0 have an annoying but intentional bug where
+ * __cplusplus is set to 1 rather than the appropriate date code so that it
+ * would be compatible with Solaris 8.
+ */
+
+#if (GCC_VERSION >= 40600L) && defined(__GXX_EXPERIMENTAL_CXX0X__)
+/*
+ * GCC 4.6.x supports C++11, at least in terms of unordered_map, etc. when the
+ * -std=gnu++0x option is passed in.  Thus, fix the value of __cplusplus.
+ */
+#undef __cplusplus
+#define __cplusplus 201100L
+#endif  // GCC version >= 4.6 and -std=gnu++0x
+#endif  // GCC version < 4.7
+
+
+
 #if (__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1))
 #define QCC_DEPRECATED(func) func __attribute__((deprecated)) /**< mark a function as deprecated in gcc. */
 #else
 #define QCC_DEPRECATED(func) func /**< not all gcc versions support the deprecated attribute. */
 #endif
 
+#define QCC_DLLEXPORT
+
+
 #elif defined(_MSC_VER)
 
 #define QCC_DEPRECATED(func) __declspec(deprecated) func /**< mark a function as deprecated in msvc. */
+
+#define QCC_DLLEXPORT __declspec(dllexport)
+
 
 #else /* Some unknown compiler */
 

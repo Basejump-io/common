@@ -25,26 +25,7 @@
 #ifndef _STLCONTAINER_H
 #define _STLCONTAINER_H
 
-#if defined(__GNUC__)
-#define GCC_VERSION ((__GNUC__ * 10000) + (__GNUC_MINOR__ * 100) + __GNUC_PATCHLEVEL__)
-#if (GCC_VERSION < 40700L)
-/*
- * Versions of GCC prior to 4.7.0 have an annoying but intentional bug where
- * __cplusplus is set to 1 rather than the appropriate date code so that it
- * would be compatible with Solaris 8.
- */
-
-#if (GCC_VERSION >= 40600L) && defined(__GXX_EXPERIMENTAL_CXX0X__)
-/*
- * GCC 4.6.x supports C++11, at least in terms of unordered_map, etc. when the
- * -std=gnu++0x option is passed in.  Thus, fix the value of __cplusplus.
- */
-#undef __cplusplus
-#define __cplusplus 201100L
-#endif  // GCC version >= 4.6 and -std=gnu++0x
-#endif  // GCC veersion < 4.7
-#endif  // Using GCC
-
+#include <qcc/platform.h>
 
 
 /***************************
