@@ -25,7 +25,6 @@
 #include <qcc/platform.h>
 #include <stdlib.h>
 #include <string.h>
-#include <qcc/atomic.h>
 
 namespace qcc {
 

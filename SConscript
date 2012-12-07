@@ -99,15 +99,16 @@ env.VariantDir('$OBJDIR/os', 'os/${OS_GROUP}', duplicate = 0)
 env.VariantDir('$OBJDIR/crypto', 'crypto/${CRYPTO}', duplicate = 0)
 
 # Setup dependent include directories
-hdrs = { 'qcc': env.File(['inc/qcc/Log.h',
-                          'inc/qcc/ManagedObj.h',
-                          'inc/qcc/String.h',
-                          'inc/qcc/atomic.h',
-                          'inc/qcc/SocketWrapper.h',
-                          'inc/qcc/platform.h']),
-         'qcc/${OS_GROUP}': env.File(['inc/qcc/${OS_GROUP}/atomic.h',
-                                      'inc/qcc/${OS_GROUP}/platform_types.h',
-                                      'inc/qcc/${OS_GROUP}/unicode.h']) }
+if env['OS_GROUP'] == 'winrt':
+    hdrs = {}
+else:
+    hdrs = { 'qcc': env.File(['inc/qcc/Log.h',
+                              'inc/qcc/ManagedObj.h',
+                              'inc/qcc/String.h',
+                              'inc/qcc/atomic.h',
+                              'inc/qcc/platform.h']),
+             'qcc/${OS_GROUP}': env.File(['inc/qcc/${OS_GROUP}/atomic.h',
+                                          'inc/qcc/${OS_GROUP}/platform_types.h']) }
 
 if env['OS_GROUP'] == 'windows' or env['OS_GROUP'] == 'win8':
     hdrs['qcc/${OS_GROUP}'] += env.File(['inc/qcc/${OS_GROUP}/mapping.h'])

@@ -29,6 +29,23 @@ else:
     vars = Variables();
     vars.AddVariables(('GTEST_HOME', '', gtest_dir))
     vars.Update(gtest_env)
+
+    if gtest_dir == '/usr':
+        gtest_src_base = os.path.join(gtest_dir, 'src', 'gtest')
+    else:
+        gtest_src_base = gtest_dir
+
+    if(env['OS_CONF'] == 'android'):
+	if env.subst('$ANDROID_NDK_VERSION') in [ '8b', '8c' ]:
+            android_cpp_path = '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6'
+        elif env.subst('$ANDROID_NDK_VERSION') in [ '5', '6', '7',  '8']:
+            android_cpp_path = '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++'
+        else:
+            print 'common unit test build requires NDK v5 or newer'
+            android_cpp_path = None
+    else:
+        android_cpp_path = None
+
     if(env['OS_GROUP'] == 'windows'):
         # gTest does not require the same CPPDEFINES as AllJoyn core.
         gtest_env.Append(CPPDEFINES = ['WIN32', '_LIB'])
@@ -43,76 +60,40 @@ else:
     gtest_env.Append(CPPDEFINES = ['GTEST_HAS_RTTI=0'])
     # we replace AllJoyn's include CPPPATH options.  AllJoyn includes stlport that will cause the 
     # gTest code to not compile as expected at this time
-    gtest_env.Replace(CPPPATH = [gtest_env.Dir('$GTEST_DIR'), gtest_env.Dir('$GTEST_DIR/include')])    
+    gtest_env.Replace(CPPPATH = [ gtest_src_base ])
+    if gtest_dir != '/usr':
+        gtest_env.Append(CPPPATH = [ gtest_env.Dir('$GTEST_DIR/include') ])
     if(env['OS_CONF'] == 'android'):
         # Android include paths
-	if (env.subst('$ANDROID_NDK_VERSION') == '8b' or
-            env.subst('$ANDROID_NDK_VERSION') == '8c'):
-            gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
-                                      #Using GNU STL instead of STLPORT
-                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include',
-                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include/backward',
-                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/libs/armeabi/include'])
-	elif (env.subst('$ANDROID_NDK_VERSION') == '5' or 
-	    env.subst('$ANDROID_NDK_VERSION') == '6' or
-	    env.subst('$ANDROID_NDK_VERSION') == '7' or
-	    env.subst('$ANDROID_NDK_VERSION') == '8'):
-            gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
-                                      #Using GNU STL instead of STLPORT
-                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include',
-                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include/backward',
-                                      '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/libs/armeabi/include'])
-        else:
-            print 'common unit test build requires NDK v5 or newer'
+        gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
+                                  #Using GNU STL instead of STLPORT
+                                  '%s/include' % android_cpp_path,
+                                  '%s/include/backward' % android_cpp_path,
+                                  '%s/libs/armeabi/include' % android_cpp_path])
 
-    gtest_obj = gtest_env.StaticObject(target = 'gtest-all', source = ['$GTEST_DIR/src/gtest-all.cc'])
+    gtest_obj = gtest_env.StaticObject(target = 'gtest-all', source = [ '%s/src/gtest-all.cc' % gtest_src_base ])
     gtest_env.StaticLibrary(target = 'gtest', source = gtest_obj)
-    
-    #tests currently don't need to compile gtest main.
-    #gtest_main_obj = gtest_env.StaticObject(target = '$OBJDIR/gtest_main', source = ['$GTEST_DIR/src/gtest_main.cc'])
-    #gtest_main_lib = gtest_env.StaticLibrary(target = '$OBJDIR/gtest_main', source = gtest_main_obj)
-#    VariantDir('../$OBJDIR/unittest/public', 'public', duplicate=0)
-    #env.SConscript('public/SConscript', variant_dir='../$OBJDIR/unittest/public', duplicate=0)
-    #env.SConscript('internal/SConscript', variant_dir='../$OBJDIR/unittest/internal', duplicate=0)
-    
     
     test_src = env.Glob('*.cc')
 
     unittest_env = env.Clone()
 
     gtest_dir = unittest_env['GTEST_DIR']
-    # use the relative path from the build directory.
-    # include all header files even if they will not be in the public repository.  
-    unittest_env.Replace(CPPPATH = [gtest_dir + '/include', 
-                                '../../../../../../inc',
-                                '../../../../../../../alljoyn_core/inc'])
+    if gtest_dir != '/usr':
+        unittest_env.Append(CPPPATH = [gtest_dir + '/include'])
+
     if(env['OS_GROUP'] == 'windows'):
         unittest_env.Append(CXXFLAGS = ['/EHsc'])
 
     if(env['OS_CONF'] == 'android'):
         # Android include paths
-	if (env.subst('$ANDROID_NDK_VERSION') == '8b' or
-            env.subst('$ANDROID_NDK_VERSION') == '8c'):
-            unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
-                                #Using GNU STL instead of STLPORT
-                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include',
-                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/include/backward',
-                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6/libs/armeabi/include',
-                                '$ANDROID_SRC/external/bluetooth/bluez/include',
-                                '$ANDROID_SRC/external/openssl/include'])
-	elif (env.subst('$ANDROID_NDK_VERSION') == '5' or 
-	    env.subst('$ANDROID_NDK_VERSION') == '6' or
-	    env.subst('$ANDROID_NDK_VERSION') == '7' or
-	    env.subst('$ANDROID_NDK_VERSION') == '8'):
-            unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
-                                #Using GNU STL instead of STLPORT
-                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include',
-                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/include/backward',
-                                '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/libs/armeabi/include',
-                                '$ANDROID_SRC/external/bluetooth/bluez/include',
-                                '$ANDROID_SRC/external/openssl/include'])
-        else:
-            print 'common unit test build requires NDK v5 or newer'
+        unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
+                                     #Using GNU STL instead of STLPORT
+                                     '%s/include' % android_cpp_path,
+                                     '%s/include/backward' % android_cpp_path,
+                                     '%s/libs/armeabi/include' % android_cpp_path,
+                                     '$ANDROID_SRC/external/bluetooth/bluez/include',
+                                     '$ANDROID_SRC/external/openssl/include'])
 
 
         
@@ -132,8 +113,12 @@ else:
     # using the alljoyn library to test common since the status object file is not
     # compiled till alljoyn_core is compiled.
     unittest_env.Prepend(LIBS = ['gtest', 'alljoyn'])
-    
-    obj = unittest_env.Object(test_src);
 
-    unittest_prog = unittest_env.Program('cmtest', obj)
+    status_src, status_hdr = unittest_env.Status('../Status')
+    unittest_env.Append(CPPPATH = [ os.path.dirname(str(status_hdr)) ])
+
+    objs = [ unittest_env.Object(test_src),
+             unittest_env.Object(status_src) ]
+
+    unittest_prog = unittest_env.Program('cmtest', objs)
     unittest_env.Install('$TESTDIR/bin', unittest_prog)
