@@ -6,7 +6,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2012, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -34,10 +34,12 @@
 #include <new>
 
 #include <stdlib.h>
+#include <assert.h>
 
 #include <qcc/atomic.h>
 
 namespace qcc {
+
 
 /**
  * ManagedObj manages heap allocation and reference counting for a template parameter type T.
@@ -51,12 +53,12 @@ template <class T>
 class ManagedObj {
   private:
 
+    static const uint32_t ManagedCtxMagic = (('M') | ('C' << 8) | (('T' << 16)  + ('X' << 24)));
+
     struct ManagedCtx {
-        /**
-         * constructor for ManagedCtx
-         */
-        ManagedCtx(int32_t refCount) : refCount(refCount) { }
-        int32_t refCount; /**< A reference count */
+        ManagedCtx(int32_t refCount) : refCount(refCount), magic(ManagedCtxMagic) { }
+        int32_t refCount;
+        uint32_t magic;
     };
 
     ManagedCtx* context;
@@ -64,8 +66,8 @@ class ManagedObj {
 
   public:
 
-    /** The underlying type */
-    typedef T OBJECT_TYPE;
+    /** The underlying type that is being managed */
+    typedef T ManagedType;
 
     /** Copy constructor */
     ManagedObj<T>(const ManagedObj<T>&copyMe)
@@ -123,13 +125,30 @@ class ManagedObj {
         object = new ((char*)context + offset)T();
     }
 
-    /** Constructor to wrap an existing T in its managed object type */
-    ManagedObj<T>(T * naked)
+    /**
+     * Static method to wrap an existing T that is already managed in its managed object type.
+     * This method is typically called from within a method of the inner T class to provide
+     * a managed object instance that can be passed to methods that required that type.
+     *
+     * @param naked  A unwrapped managed object instance.
+     * @returns      The managed object instance re-wrapped in a ManageObj template class
+     */
+    static ManagedObj<T> wrap(T* naked)
     {
-        const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
-        object = naked;
-        context = (ManagedCtx*)((char*)object - offset);
-        IncRef();
+        static const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+        return ManagedObj<T>((ManagedCtx*)((char*)naked - offset), naked);
+    }
+
+    /**
+     * Static method to convert between managed objects of related types.
+     *
+     * @param other  A managed object instance of a related type.
+     * @returns      A managed object cast to the required type
+     */
+    template <class T2> static ManagedObj<T> cast(T2& other)
+    {
+        static const size_t offset = (sizeof(ManagedCtx) + 7) & ~0x07;
+        return ManagedObj<T>((ManagedCtx*)((char*)other.unwrap() - offset), static_cast<T*>(other.unwrap()));
     }
 
     /**
@@ -333,13 +352,14 @@ class ManagedObj {
      */
     bool operator==(const ManagedObj<T>& other) const { return (object == other.object) || (*object == *other.object); }
 
-
     /**
-     * Returns true if the two managed objects managed the same object
+     * Returns true if the two managed objects managed the same object. This is a more strict
+     * comparison thant the equality operator.
+     *
      * @param other  The other managed object to compare.
      * @return  true if the managed objects refer to the same underlying object.
      */
-    bool iden(const ManagedObj<T>& other) const { return (object == other.object); }
+    template <class T2> bool iden(const ManagedObj<T2>& other) const { return ((ptrdiff_t)object == (ptrdiff_t)other.unwrap()); }
 
     /**
      * Inequality for managed objects is whatever inequality means for @<T@>
@@ -362,7 +382,17 @@ class ManagedObj {
     T& operator*() { return *object; }
 
     /**
-     * Get a pointer to T.
+     * Get a pointer to the managed object T.
+     */
+    T* unwrap() { return object; }
+
+    /**
+     * Get a pointer to the managed object T.
+     */
+    const T* unwrap() const { return object; }
+
+    /**
+     * Get a pointer to T using the dereference operator
      * @return A reference to the managed object T.
      */
     T* operator->() { return object; }
@@ -379,16 +409,6 @@ class ManagedObj {
      */
     const T* operator->() const { return object; }
 
-    /**
-     * Type conversion between managed objects of related types.
-     */
-    template <class T2> T2 cast() {
-        typename T2::OBJECT_TYPE naked = static_cast<typename T2::OBJECT_TYPE>(object);
-
-        T2 result(naked);
-        return result;
-    }
-
     /** Increment the ref count */
     void IncRef()
     {
@@ -400,7 +420,8 @@ class ManagedObj {
     {
         uint32_t refs = DecrementAndFetch(&context->refCount);
         if (0 == refs) {
-            object->T::~T();
+            /* Call the overriden destructor */
+            object->~T();
             context->ManagedCtx::~ManagedCtx();
             free(context);
             context = NULL;
@@ -411,6 +432,14 @@ class ManagedObj {
      * Get the reference count
      */
     int32_t GetRefCount() const { return context ? context->refCount : 0; }
+
+  private:
+
+    ManagedObj<T>(ManagedCtx * context, T * object) : context(context), object(object)
+    {
+        assert(context->magic == ManagedCtxMagic);
+        IncRef();
+    }
 };
 
 

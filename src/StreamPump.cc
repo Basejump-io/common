@@ -39,8 +39,7 @@ StreamPump::StreamPump(Stream* streamA, Stream* streamB, size_t chunkSize, const
 {
     /* Keep the object alive until Run exits */
     if (isManaged) {
-        ManagedObj<StreamPump> pump(this);
-        pump.IncRef();
+        ManagedObj<StreamPump>::wrap(this).IncRef();
     }
 }
 
@@ -48,8 +47,7 @@ QStatus StreamPump::Start()
 {
     QStatus status = Thread::Start();
     if ((status != ER_OK) && isManaged) {
-        ManagedObj<StreamPump> pump(this);
-        pump.DecRef();
+        ManagedObj<StreamPump>::wrap(this).DecRef();
     }
     return status;
 }
@@ -131,8 +129,7 @@ ThreadReturn STDCALL StreamPump::Run(void* args)
     delete[] aToBBuf;
     delete[] bToABuf;
     if (isManaged) {
-        ManagedObj<StreamPump> p(this);
-        p.DecRef();
+        ManagedObj<StreamPump>::wrap(this).DecRef();
     }
     return (ThreadReturn) ER_OK;
 }
