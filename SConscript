@@ -28,7 +28,8 @@ if env['VARIANT'] == 'debug':
         env.PrependENVPath('PATH', env.get('BULLSEYE_BIN'))
         if (not(os.environ.has_key('COVFILE'))):
             print('Error: COVFILE environment variable must be set')
-            Exit()
+            if not GetOption('help'):
+                Exit()
         else:
             env.PrependENVPath('COVFILE', os.environ['COVFILE'])
 
@@ -44,7 +45,8 @@ if env['OS_GROUP'] == 'windows':
         if env['OS'] == 'winxp':
             # Must specify OPENSSL_BASE for winXP
             print 'Must specify OPENSSL_BASE when building for WindowsXP'
-            Exit()
+            if not GetOption('help'):
+                Exit()
         else:
             env.AppendUnique(LIBS = ['bcrypt', 'ncrypt', 'crypt32'])
             env['CRYPTO'] = 'cng'
@@ -71,7 +73,8 @@ elif env['OS'] == 'darwin':
         if '' == env.subst('$OPENSSL_ROOT'):
             # Must specify OPENSSL_ROOT for darwin, arm
             print 'Must specify OPENSSL_ROOT when building for OS=darwin, CPU=arm'
-            Exit()
+            if not GetOption('help'):
+                Exit()
         env.Append(CPPPATH = ['$OPENSSL_ROOT/include'])
         env.Append(LIBPATH = ['$OPENSSL_ROOT/build/' + os.environ.get('CONFIGURATION') + '-' + os.environ.get('PLATFORM_NAME')])
 elif env['OS'] == 'android':
@@ -87,7 +90,8 @@ elif env['OS'] == 'maemo':
     pass
 else:
     print 'Unrecognized OS in common: ' + env.subst('$OS')
-    Exit()
+    if not GetOption('help'):
+        Exit()
 
 
 
