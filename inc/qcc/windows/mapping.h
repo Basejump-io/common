@@ -51,6 +51,13 @@
 #define strtoull _strtoui64
 
 /**
+ * Map strcasecmp to _stricmp
+ *
+ * strcasecmp does not properly map in windows this is needed to insure calls to
+ * strcasecmp(const char *s1, const char *s2) will compile in windows.
+ */
+#define strcasecmp _stricmp
+/**
  * Map fpclassify to _fpclass
  *
  * fpclassify does not properly map in windows this is needed to insure calls to
