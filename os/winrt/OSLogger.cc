@@ -30,6 +30,7 @@
 
 #include <qcc/Mutex.h>
 #include <qcc/winrt/utility.h>
+#include <qcc/winrt/exception.h>
 #include <ctxtcall.h>
 #include <ppltasks.h>
 

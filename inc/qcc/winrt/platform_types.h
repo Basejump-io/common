@@ -57,7 +57,4 @@ typedef UINT_PTR SocketFd;                ///< Socket file descriptor type. */
 #define PRIu64 "I64u"
 #endif
 
-// WinRT doesn't like exceptions without the S bit being set to 1 (failure)
-#define QCC_THROW_EXCEPTION(e) throw ref new Platform::COMException(0x80000000 | (int)(e))
-
 #endif
