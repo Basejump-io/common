@@ -82,7 +82,7 @@ QStatus IfConfig(std::vector<IfConfigEntry>& entries)
                             break;
                         }
                         entry.m_name = strProfileName;
-                        entry.m_flags = IfConfigEntry::UP | IfConfigEntry::MULTICAST;
+                        entry.m_flags = IfConfigEntry::UP | IfConfigEntry::MULTICAST | IfConfigEntry::BROADCAST;
                         qcc::String strAddr = PlatformToMultibyteString(tempEntry->CanonicalName);
                         if (nullptr != tempEntry->CanonicalName && strAddr.empty()) {
                             status = ER_OUT_OF_MEMORY;
