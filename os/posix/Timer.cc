@@ -428,7 +428,7 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
          */
         if (!timer->alarms.empty()) {
             QCC_DbgPrintf(("TimerThread::Run(): Alarms pending"));
-            const Alarm& topAlarm = *(timer->alarms.begin());
+            const Alarm topAlarm = *(timer->alarms.begin());
             int64_t delay = topAlarm->alarmTime - now;
 
             /*
@@ -563,7 +563,11 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                  * the list.
                  */
                 timer->lock.Lock();
-                set<Alarm>::iterator it = timer->alarms.begin();
+                /* Make sure the alarm has not been serviced yet.
+                 * If it has already been serviced by another thread, just ignore
+                 * and go back to the top of the loop.
+                 */
+                set<Alarm>::iterator it = timer->alarms.find(topAlarm);
                 if (it != timer->alarms.end()) {
                     Alarm top = *it;
                     timer->alarms.erase(it);
