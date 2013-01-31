@@ -1,4 +1,4 @@
-# Copyright 2011-2012, Qualcomm Innovation Center, Inc.
+# Copyright 2011-2013, Qualcomm Innovation Center, Inc.
 # 
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -36,7 +36,13 @@ else:
         gtest_src_base = gtest_dir
 
     if(env['OS_CONF'] == 'android'):
-	if env.subst('$ANDROID_NDK_VERSION') in [ '8b', '8c' ]:
+        # Set the ABI based on the CPU
+        if(env['CPU'] == 'arm'):
+            android_eabi = 'armeabi'
+        else:
+            android_eabi = 'x86'
+        # Set the CPP PATH based on NDK version
+        if env.subst('$ANDROID_NDK_VERSION') in [ '8b', '8c' ]:
             android_cpp_path = '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6'
         elif env.subst('$ANDROID_NDK_VERSION') in [ '5', '6', '7',  '8']:
             android_cpp_path = '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++'
@@ -56,6 +62,9 @@ else:
     # tr1::tuple is not avalible for android or darwin
     if(env['OS_CONF'] == 'android' or env['OS_CONF'] == 'darwin'):
         gtest_env.Append(CPPDEFINES = ['GTEST_HAS_TR1_TUPLE=0'])
+    # clone() library function is NOT available on android-x86
+    if(env['OS_CONF'] == 'android' and env['CPU'] == 'x86'):
+        gtest_env.Append(CPPDEFINES = ['GTEST_HAS_CLONE=0'])
     # Microsoft Visual Studio 2012 has a different _VARIADIC_MAX default value.
     # See: http://blogs.msdn.com/b/vcblog/archive/2011/09/12/10209291.aspx
     if(env['MSVC_VERSION'] == '11.0'):
@@ -69,11 +78,11 @@ else:
         gtest_env.Append(CPPPATH = [ gtest_env.Dir('$GTEST_DIR/include') ])
     if(env['OS_CONF'] == 'android'):
         # Android include paths
-        gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
+        gtest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-%s/usr/include' % env['CPU'],
                                   #Using GNU STL instead of STLPORT
                                   '%s/include' % android_cpp_path,
                                   '%s/include/backward' % android_cpp_path,
-                                  '%s/libs/armeabi/include' % android_cpp_path])
+                                  '%s/libs/%s/include' % (android_cpp_path, android_eabi)])
 
     gtest_obj = gtest_env.StaticObject(target = 'gtest-all', source = [ '%s/src/gtest-all.cc' % gtest_src_base ])
     gtest_env.StaticLibrary(target = 'gtest', source = gtest_obj)
@@ -91,11 +100,11 @@ else:
 
     if(env['OS_CONF'] == 'android'):
         # Android include paths
-        unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/include',
+        unittest_env.Append(CPPPATH=['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-%s/usr/include' % env['CPU'],
                                      #Using GNU STL instead of STLPORT
                                      '%s/include' % android_cpp_path,
                                      '%s/include/backward' % android_cpp_path,
-                                     '%s/libs/armeabi/include' % android_cpp_path,
+                                     '%s/libs/%s/include' % (android_cpp_path, android_eabi),
                                      '$ANDROID_SRC/external/bluetooth/bluez/include',
                                      '$ANDROID_SRC/external/openssl/include'])
 
@@ -106,6 +115,8 @@ else:
     
     if(env['OS_CONF'] == 'android' or env['OS_CONF'] == 'darwin'):
         unittest_env.Append(CPPDEFINES = ['GTEST_HAS_TR1_TUPLE=0'])
+    if(env['OS_CONF'] == 'android' and env['CPU'] == 'x86'):
+        unittest_env.Append(CPPDEFINES = ['GTEST_HAS_CLONE=0'])
     if(env['MSVC_VERSION'] == '11.0'):
         unittest_env.Append(CPPDEFINES = ['_VARIADIC_MAX=10'])
     # path for alljoyn library file
@@ -114,7 +125,7 @@ else:
     unittest_env.Append(LIBPATH = ['./'])
     #the linker must be able to find stlport for android
     if(env['OS_CONF'] == 'android'):
-        unittest_env.Append(LIBPATH = ['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-arm/usr/lib'])
+        unittest_env.Append(LIBPATH = ['$ANDROID_NDK/platforms/android-$ANDROID_API_LEVEL_NDK/arch-%s/usr/lib' % env['CPU']])
     
     # using the alljoyn library to test common since the status object file is not
     # compiled till alljoyn_core is compiled.
