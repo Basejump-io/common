@@ -606,6 +606,7 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                 QStatus status = Event::Wait(evt, WORKER_IDLE_TIMEOUT_MS);
                 if (status == ER_TIMEOUT) {
                     QCC_DbgPrintf(("TimerThread::Run(): Worker with nothing to do stopping"));
+                    timer->lock.Lock();
                     state = STOPPING;
                     break;
                 }
