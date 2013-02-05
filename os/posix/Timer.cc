@@ -598,19 +598,29 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
             } else {
                 /*
                  * This is a worker (non-controller) thread with nothing to do
-                 * immediately, so we just stop it until we have a need for it
-                 * to be consuming resources.
+                 * immediately, so we idle for WORKER_IDLE_TIMEOUT_MS and then
+                 * stop it until we have a need for it to be consuming resources.
                  */
+                state = IDLE;
                 QCC_DbgPrintf(("TimerThread::Run(): Worker with nothing to do"));
-                state = STOPPING;
-                break;
+                timer->lock.Unlock();
+                Event evt(WORKER_IDLE_TIMEOUT_MS, 0);
+                QStatus status = Event::Wait(evt, WORKER_IDLE_TIMEOUT_MS);
+                if (status == ER_TIMEOUT) {
+                    QCC_DbgPrintf(("TimerThread::Run(): Worker with nothing to do stopping"));
+                    state = STOPPING;
+                    break;
+                }
+                timer->lock.Lock();
+                stopEvent.ResetEvent();
             }
         } else {
             /*
              * The alarm list is empty, so we only have a need to have a single
              * controller thread running.  If we are that controller, we wait
              * until there is something to do.  If we are not that controller,
-             * we just stop running so we don't consume resources.
+             * we idle for WORKER_IDLE_TIMEOUT_MS and then stop running so
+             * we don't consume resources.
              */
             QCC_DbgPrintf(("TimerThread::Run(): Alarm list is empty"));
             if (isController) {
@@ -622,9 +632,19 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                 timer->lock.Lock();
                 stopEvent.ResetEvent();
             } else {
-                QCC_DbgPrintf(("TimerThread::Run(): non-Controller stopping"));
-                state = STOPPING;
-                break;
+                QCC_DbgPrintf(("TimerThread::Run(): non-Controller idling"));
+                state = IDLE;
+                timer->lock.Unlock();
+                Event evt(WORKER_IDLE_TIMEOUT_MS, 0);
+                QStatus status = Event::Wait(evt, WORKER_IDLE_TIMEOUT_MS);
+                if (status == ER_OK) {
+                    QCC_DbgPrintf(("TimerThread::Run(): non-Controller stopping"));
+                    timer->lock.Lock();
+                    state = STOPPING;
+                    break;
+                }
+                timer->lock.Lock();
+                stopEvent.ResetEvent();
             }
         }
     }
