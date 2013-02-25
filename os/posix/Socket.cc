@@ -220,8 +220,7 @@ QStatus Connect(SocketFd sockfd, const IPAddress& remoteAddr, uint16_t remotePor
         if (ret == -1) {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Connect fcntl (sockfd = %u) to O_NONBLOCK: %d - %s", sockfd, errno, strerror(errno)));
-            /* better to close and error out than to leave in unexpected state */
-            qcc::Close(sockfd);
+            /* Higher level code is responsible for closing the socket */
         }
     }
 
@@ -255,8 +254,7 @@ QStatus Connect(SocketFd sockfd, const char* pathName)
         if (ret == -1) {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Connect fcntl (sockfd = %u) to O_NONBLOCK: %d - %s", sockfd, errno, strerror(errno)));
-            /* better to close and error out than to leave in unexpected state */
-            qcc::Close(sockfd);
+            /* Higher level code is responsible for closing the socket */
         }
     }
     return status;

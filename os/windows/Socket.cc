@@ -817,10 +817,7 @@ QStatus SocketPair(SocketFd(&sockets)[2])
 
 socketPairCleanup:
 
-    if (status != ER_OK) {
-        Close(sockets[0]);
-        Close(sockets[1]);
-    }
+    /* Higher level code is responsible for cleaning up sockets */
 
     return status;
 }

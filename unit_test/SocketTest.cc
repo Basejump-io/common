@@ -167,6 +167,7 @@ static void DeliverLine(AddressFamily addr_family, SocketType sock_type, String&
         Close(listener);
     } else {
         // Some OS-level error occurred
+        Close(talker);
         printf("\n\tATTN: Test run cancelled possibly due to OS-level errors."
                "\n\t      Talker status (socket creation & binding) was %s."
                "\n\t      Listener status (socket creation & binding) was %s.",
@@ -368,6 +369,8 @@ TEST(SocketTest, send_and_receive_with_dummy_fds) {
         Close(endpoint[1]);
     } else {
         // Some OS-level error occurred
+        Close(endpoint[0]);
+        Close(endpoint[1]);
         printf("\n\tATTN: Test run cancelled possibly due to OS-level errors."
                "\n\t      Status (socket pair creation) was %s.", QCC_StatusText(status));
     }
