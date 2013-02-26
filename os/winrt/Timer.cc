@@ -357,8 +357,7 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
             status = ER_FAIL;
         }
     } else {
-        // Just add to the alarms list
-        alarms.insert(alarm);
+        status = ER_TIMER_EXITING;
     }
     // Release the timer lock
     lock.Unlock();
@@ -582,7 +581,7 @@ void OSTimer::StopInternal(bool timerExiting)
             }
         }
         // Check if notification should be sent
-        if (_timer->isRunning && timerExiting) {
+        if (expireOnExit && timerExiting) {
             // Execution here is a sequential flush to notify listeners of exit
             alarm->listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
         }
