@@ -581,7 +581,7 @@ void OSTimer::StopInternal(bool timerExiting)
             }
         }
         // Check if notification should be sent
-        if (expireOnExit && timerExiting) {
+        if (_timer->expireOnExit && timerExiting) {
             // Execution here is a sequential flush to notify listeners of exit
             alarm->listener->AlarmTriggered(alarm, ER_TIMER_EXITING);
         }
