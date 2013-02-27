@@ -530,26 +530,35 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                     /*
                      * Look for an idle or stopped worker to execute alarm callback for us.
                      */
-                    for (size_t i = 0; i < timer->timerThreads.size(); ++i) {
-                        if (i != static_cast<size_t>(index)) {
-                            if (timer->timerThreads[i]->state == TimerThread::IDLE) {
-                                tt = timer->timerThreads[i];
-                                QCC_DbgPrintf(("TimerThread::Run(): Found idle worker at index %d", i));
-                                break;
-                            } else if (timer->timerThreads[i]->state == TimerThread::STOPPED && !timer->timerThreads[i]->IsRunning()) {
-                                tt = timer->timerThreads[i];
-                                QCC_DbgPrintf(("TimerThread::Run(): Found stopped worker at index %d", i));
+                    while (!tt && timer->isRunning && (timer->timerThreads.size() > 1)) {
+                        for (size_t i = 0; i < timer->timerThreads.size(); ++i) {
+                            if (i != static_cast<size_t>(index)) {
+                                if (timer->timerThreads[i]->state == TimerThread::IDLE) {
+                                    tt = timer->timerThreads[i];
+                                    QCC_DbgPrintf(("TimerThread::Run(): Found idle worker at index %d", i));
+                                    break;
+                                } else if (timer->timerThreads[i]->state == TimerThread::STOPPED && !timer->timerThreads[i]->IsRunning()) {
+                                    tt = timer->timerThreads[i];
+                                    QCC_DbgPrintf(("TimerThread::Run(): Found stopped worker at index %d", i));
+                                }
                             }
                         }
+                        if (tt || !timer->isRunning) {
+                            break;
+                        }
+                        timer->lock.Unlock();
+                        Sleep(2);
+                        timer->lock.Lock();
                     }
 
                     /*
                      * If <tt> is non-NULL, then we have located a thread that
                      * will be able to take over the controller role if
                      * required, so either wake it up or start it depending on
-                     * its current state.
+                     * its current state. Also, ensure that the timer has not been
+                     * stopped.
                      */
-                    if (tt) {
+                    if (tt && timer->isRunning) {
                         QCC_DbgPrintf(("TimerThread::Run(): Have timer thread (tt)"));
                         if (tt->state == TimerThread::IDLE) {
                             QCC_DbgPrintf(("TimerThread::Run(): Alert()ing idle timer thread (tt)"));
@@ -638,15 +647,13 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                 state = IDLE;
                 QCC_DbgPrintf(("TimerThread::Run(): Worker with nothing to do"));
                 timer->lock.Unlock();
-                Event evt(WORKER_IDLE_TIMEOUT_MS, 0);
-                QStatus status = Event::Wait(evt, WORKER_IDLE_TIMEOUT_MS);
-                if (status == ER_TIMEOUT) {
+                QStatus status = Event::Wait(Event::neverSet, WORKER_IDLE_TIMEOUT_MS);
+                timer->lock.Lock();
+                if (status == ER_TIMEOUT && timer->controllerIdx != -1) {
                     QCC_DbgPrintf(("TimerThread::Run(): Worker with nothing to do stopping"));
-                    timer->lock.Lock();
                     state = STOPPING;
                     break;
                 }
-                timer->lock.Lock();
                 stopEvent.ResetEvent();
             }
         } else {
@@ -670,15 +677,13 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                 QCC_DbgPrintf(("TimerThread::Run(): non-Controller idling"));
                 state = IDLE;
                 timer->lock.Unlock();
-                Event evt(WORKER_IDLE_TIMEOUT_MS, 0);
-                QStatus status = Event::Wait(evt, WORKER_IDLE_TIMEOUT_MS);
-                if (status == ER_OK) {
+                QStatus status = Event::Wait(Event::neverSet, WORKER_IDLE_TIMEOUT_MS);
+                timer->lock.Lock();
+                if (status == ER_TIMEOUT && timer->controllerIdx != -1) {
                     QCC_DbgPrintf(("TimerThread::Run(): non-Controller stopping"));
-                    timer->lock.Lock();
                     state = STOPPING;
                     break;
                 }
-                timer->lock.Lock();
                 stopEvent.ResetEvent();
             }
         }
