@@ -660,7 +660,7 @@ void Timer::ThreadExit(Thread* thread)
 {
     TimerThread* tt = static_cast<TimerThread*>(thread);
     lock.Lock();
-    if ((tt->GetIndex() == controllerIdx) && expireOnExit) {
+    if ((!isRunning) && expireOnExit) {
         /* Call all alarms */
         while (!alarms.empty()) {
             /*
