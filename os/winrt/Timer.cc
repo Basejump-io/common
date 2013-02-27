@@ -328,33 +328,38 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     // Check if timer is running
     if (isRunning) {
         /* Don't allow an infinite number of alarms to exist on this timer */
-        while (maxAlarms && (alarms.size() >= maxAlarms)) {
+        while (maxAlarms && (alarms.size() >= maxAlarms) && isRunning) {
             lock.Unlock();
             qcc::Sleep(2);
             lock.Lock();
         }
-        try {
-            // Create the TimeSpan
-            Windows::Foundation::TimeSpan ts = { alarm->computedTimeMillis * HUNDRED_NANOSECONDS_PER_MILLISECOND };
+        /* Ensure timer is still running */
+        if (isRunning) {
+            try {
+                // Create the TimeSpan
+                Windows::Foundation::TimeSpan ts = { alarm->computedTimeMillis * HUNDRED_NANOSECONDS_PER_MILLISECOND };
 
-            Alarm a = (Alarm)alarm;
-            // Create the timer
-            ThreadPoolTimer ^ tpt = ThreadPoolTimer::CreateTimer(ref new TimerElapsedHandler([&, a] (ThreadPoolTimer ^ timer) {
-                                                                                                 OSTimer::TimerCallback(timer, (Alarm)a);
-                                                                                             }),
-                                                                 ts,
-                                                                 ref new TimerDestroyedHandler([&](ThreadPoolTimer ^ timer) {
-                                                                                                   OSTimer::TimerCleanupCallback(timer);
-                                                                                               }));
-            a->_timer = tpt;
-            // Store the alarm associated with the new created timer
-            _timerMap[(void*)tpt] = a;
-            // Increment the outstanding timers
-            _timersCountdownLatch.Increment();
-            // Add the alarm to the list
-            alarms.insert(a);
-        } catch (...) {
-            status = ER_FAIL;
+                Alarm a = (Alarm)alarm;
+                // Create the timer
+                ThreadPoolTimer ^ tpt = ThreadPoolTimer::CreateTimer(ref new TimerElapsedHandler([&, a] (ThreadPoolTimer ^ timer) {
+                                                                                                     OSTimer::TimerCallback(timer, (Alarm)a);
+                                                                                                 }),
+                                                                     ts,
+                                                                     ref new TimerDestroyedHandler([&](ThreadPoolTimer ^ timer) {
+                                                                                                       OSTimer::TimerCleanupCallback(timer);
+                                                                                                   }));
+                a->_timer = tpt;
+                // Store the alarm associated with the new created timer
+                _timerMap[(void*)tpt] = a;
+                // Increment the outstanding timers
+                _timersCountdownLatch.Increment();
+                // Add the alarm to the list
+                alarms.insert(a);
+            } catch (...) {
+                status = ER_FAIL;
+            }
+        } else {
+            status = ER_TIMER_EXITING;
         }
     } else {
         status = ER_TIMER_EXITING;

@@ -214,21 +214,25 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     lock.Lock();
     if (isRunning) {
         /* Don't allow an infinite number of alarms to exist on this timer */
-        while (maxAlarms && (alarms.size() >= maxAlarms)) {
+        while (maxAlarms && (alarms.size() >= maxAlarms) && isRunning) {
             lock.Unlock();
             qcc::Sleep(2);
             lock.Lock();
         }
+        /* Ensure timer is still running */
+        if (isRunning) {
+            /* Insert the alarm and alert the Timer thread if necessary */
+            bool alertThread = alarms.empty() || (alarm < *alarms.begin());
+            alarms.insert(alarm);
 
-        /* Insert the alarm and alert the Timer thread if necessary */
-        bool alertThread = alarms.empty() || (alarm < *alarms.begin());
-        alarms.insert(alarm);
-
-        if (alertThread && (controllerIdx >= 0)) {
-            TimerThread* tt = timerThreads[controllerIdx];
-            if (tt->state == TimerThread::IDLE) {
-                status = tt->Alert();
+            if (alertThread && (controllerIdx >= 0)) {
+                TimerThread* tt = timerThreads[controllerIdx];
+                if (tt->state == TimerThread::IDLE) {
+                    status = tt->Alert();
+                }
             }
+        } else {
+            status = ER_TIMER_EXITING;
         }
     } else {
         status = ER_TIMER_EXITING;
