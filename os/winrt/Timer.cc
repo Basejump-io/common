@@ -111,7 +111,7 @@ void OSAlarm::UpdateComputedTime(Timespec absoluteTime)
 }
 
 Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy, uint32_t maxAlarms)
-    : expireOnExit(expireOnExit), timerThreads(concurency), isRunning(false), controllerIdx(0), OSTimer(this), maxAlarms(maxAlarms)
+    : nameStr(name), expireOnExit(expireOnExit), timerThreads(concurency), isRunning(false), controllerIdx(0), OSTimer(this), maxAlarms(maxAlarms)
 {
 }
 
@@ -575,8 +575,10 @@ void OSTimer::StopInternal(bool timerExiting)
     // Grab the timer lock
     _timer->lock.Lock();
     // Iterate the alarms in timer
-    for (set<Alarm>::iterator it = _timer->alarms.begin(); it != _timer->alarms.end(); ++it) {
+    for (set<Alarm>::iterator it = _timer->alarms.begin(); it != _timer->alarms.end();) {
         const Alarm alarm = *it;
+        // *it may be removed by AlarmTriggered() callback, so increase it here
+        ++it;
         if (nullptr != alarm->_timer) {
             try {
                 // Cancel the timer
