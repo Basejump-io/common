@@ -30,6 +30,7 @@ commonsrc: \
 	Debug.o \
 	GUID.o \
 	IPAddress.o \
+	IODispatch.o \
 	KeyBlob.o \
 	Logger.o \
 	Makefile \

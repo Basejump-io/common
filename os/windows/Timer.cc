@@ -241,6 +241,34 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     return status;
 }
 
+QStatus Timer::AddAlarmNonBlocking(const Alarm& alarm)
+{
+    QStatus status = ER_OK;
+    lock.Lock();
+    if (isRunning) {
+        /* Don't allow an infinite number of alarms to exist on this timer */
+        if (maxAlarms && (alarms.size() >= maxAlarms)) {
+            lock.Unlock();
+            return ER_TIMER_FULL;
+        }
+
+        /* Insert the alarm and alert the Timer thread if necessary */
+        bool alertThread = alarms.empty() || (alarm < *alarms.begin());
+        alarms.insert(alarm);
+
+        if (alertThread && (controllerIdx >= 0)) {
+            TimerThread* tt = timerThreads[controllerIdx];
+            if (tt->state == TimerThread::IDLE) {
+                status = tt->Alert();
+            }
+        }
+    } else {
+        status = ER_TIMER_EXITING;
+    }
+    lock.Unlock();
+    return status;
+}
+
 bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
 {
     bool foundAlarm = false;

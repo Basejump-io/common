@@ -369,6 +369,50 @@ QStatus Timer::AddAlarm(const Alarm& alarm)
     return status;
 }
 
+QStatus Timer::AddAlarmNonBlocking(const Alarm& alarm)
+{
+    QStatus status = ER_OK;
+    // Grab the timer lock
+    lock.Lock();
+    // Check if timer is running
+    if (isRunning) {
+        /* Don't allow an infinite number of alarms to exist on this timer */
+        if (maxAlarms && (alarms.size() >= maxAlarms)) {
+            lock.Unlock();
+            return ER_TIMER_FULL;
+        }
+        try {
+            // Create the TimeSpan
+            Windows::Foundation::TimeSpan ts = { alarm->computedTimeMillis * HUNDRED_NANOSECONDS_PER_MILLISECOND };
+
+            Alarm a = (Alarm)alarm;
+            // Create the timer
+            ThreadPoolTimer ^ tpt = ThreadPoolTimer::CreateTimer(ref new TimerElapsedHandler([&, a] (ThreadPoolTimer ^ timer) {
+                                                                                                 OSTimer::TimerCallback(timer, (Alarm)a);
+                                                                                             }),
+                                                                 ts,
+                                                                 ref new TimerDestroyedHandler([&](ThreadPoolTimer ^ timer) {
+                                                                                                   OSTimer::TimerCleanupCallback(timer);
+                                                                                               }));
+            a->_timer = tpt;
+            // Store the alarm associated with the new created timer
+            _timerMap[(void*)tpt] = a;
+            // Increment the outstanding timers
+            _timersCountdownLatch.Increment();
+            // Add the alarm to the list
+            alarms.insert(a);
+        } catch (...) {
+            status = ER_FAIL;
+        }
+    } else {
+        // Just add to the alarms list
+        alarms.insert(alarm);
+    }
+    // Release the timer lock
+    lock.Unlock();
+    return status;
+}
+
 bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
 {
     bool removed = false;

@@ -216,8 +216,21 @@ class Timer : public OSTimer, public ThreadListener {
      * Associate an alarm with a timer.
      *
      * @param alarm     Alarm to add.
+     * @return ER_OK if alarm was added
+     *         ER_TIMER_EXITING if timer is exiting
      */
     QStatus AddAlarm(const Alarm& alarm);
+
+    /**
+     * Associate an alarm with a timer.
+     * Non-blocking version.
+     *
+     * @param alarm     Alarm to add.
+     * @return ER_OK if alarm was added
+     *         ER_TIMER_FULL if timer has maximum allowed alarms
+     *         ER_TIMER_EXITING if timer is exiting
+     */
+    QStatus AddAlarmNonBlocking(const Alarm& alarm);
 
     /**
      * Disassociate an alarm from a timer.
