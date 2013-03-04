@@ -116,7 +116,16 @@ struct IODispatchEntry {
      * Default Unusable entry
      *
      */
-    IODispatchEntry() : readEnable(false), writeEnable(false), readInProgress(false), writeInProgress(false), stopping_state(IO_RUNNING) { }
+    IODispatchEntry() : readCtxt(NULL),
+        writeCtxt(NULL),
+        timeoutCtxt(NULL),
+        exitCtxt(NULL),
+        readEnable(false),
+        writeEnable(false),
+        readInProgress(false),
+        writeInProgress(false),
+        linkTimeout(0),
+        stopping_state(IO_RUNNING) { }
 
     /**
      * Constructor
@@ -131,10 +140,6 @@ struct IODispatchEntry {
      */
     IODispatchEntry(Stream* stream, IOReadListener* readListener, IOWriteListener* writeListener, IOExitListener* exitListener,
                     uint32_t linkTimeout = 0, bool readEnable = true, bool writeEnable = true, bool readInProgress = false, bool writeInProgress = false) :
-        readCtxt(new CallbackContext(stream, IO_READ)),
-        writeCtxt(new CallbackContext(stream, IO_WRITE)),
-        timeoutCtxt(new CallbackContext(stream, IO_TIMEOUT)),
-        exitCtxt(new CallbackContext(stream, IO_EXIT)),
         readListener(readListener),
         writeListener(writeListener),
         exitListener(exitListener),

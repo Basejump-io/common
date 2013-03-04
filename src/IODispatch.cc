@@ -111,8 +111,16 @@ QStatus IODispatch::StartStream(Stream* stream, IOReadListener* readListener, IO
         return ER_BUS_STOPPING;
     }
     lock.Lock();
+    if (dispatchEntries.find(stream) != dispatchEntries.end()) {
+        lock.Unlock();
+        return ER_INVALID_STREAM;
 
+    }
     dispatchEntries[stream] = IODispatchEntry(stream, readListener, writeListener, exitListener);
+    dispatchEntries[stream].readCtxt = new CallbackContext(stream, IO_READ);
+    dispatchEntries[stream].writeCtxt = new CallbackContext(stream, IO_WRITE);
+    dispatchEntries[stream].timeoutCtxt = new CallbackContext(stream, IO_TIMEOUT);
+    dispatchEntries[stream].exitCtxt = new CallbackContext(stream, IO_EXIT);
 
     /* Set reload to false and alert the IODispatch::Run thread */
     reload = false;
@@ -134,7 +142,7 @@ QStatus IODispatch::StopStream(Stream* stream) {
     /* Check if stream is still present in dispatchEntries. */
     if (it == dispatchEntries.end()) {
         lock.Unlock();
-        return ER_NO_SUCH_STREAM;
+        return ER_INVALID_STREAM;
     }
     if (it->second.stopping_state == IO_STOPPED) {
         lock.Unlock();
@@ -275,7 +283,22 @@ void IODispatch::AlarmTriggered(const Alarm& alarm, QStatus reason)
             lock.Unlock();
             return;
         }
-
+        if (it->second.readCtxt) {
+            delete it->second.readCtxt;
+            it->second.readCtxt = NULL;
+        }
+        if (it->second.readCtxt) {
+            delete it->second.writeCtxt;
+            it->second.writeCtxt = NULL;
+        }
+        if (it->second.readCtxt) {
+            delete it->second.exitCtxt;
+            it->second.exitCtxt = NULL;
+        }
+        if (it->second.readCtxt) {
+            delete it->second.timeoutCtxt;
+            it->second.timeoutCtxt = NULL;
+        }
         dispatchEntries.erase(it);
         lock.Unlock();
         break;
@@ -418,7 +441,7 @@ QStatus IODispatch::EnableReadCallback(const Source* source)
     map<Stream*, IODispatchEntry>::iterator it = dispatchEntries.find(lookup);
     if (it == dispatchEntries.end() || (it->second.stopping_state != IO_RUNNING)) {
         lock.Unlock();
-        return ER_NO_SUCH_STREAM;
+        return ER_INVALID_STREAM;
     }
 
     it->second.readEnable = true;
@@ -449,7 +472,7 @@ QStatus IODispatch::DisableReadCallback(const Source* source)
     map<Stream*, IODispatchEntry>::iterator it = dispatchEntries.find(lookup);
     if (it == dispatchEntries.end() || (it->second.stopping_state != IO_RUNNING)) {
         lock.Unlock();
-        return ER_NO_SUCH_STREAM;
+        return ER_INVALID_STREAM;
     }
     it->second.readEnable = false;
     lock.Unlock();
@@ -471,7 +494,7 @@ QStatus IODispatch::EnableWriteCallbackNow(Sink* sink)
     map<Stream*, IODispatchEntry>::iterator it = dispatchEntries.find(lookup);
     if (it == dispatchEntries.end() || (it->second.stopping_state != IO_RUNNING)) {
         lock.Unlock();
-        return ER_NO_SUCH_STREAM;
+        return ER_INVALID_STREAM;
     }
     if (it->second.writeEnable) {
         lock.Unlock();
@@ -504,7 +527,7 @@ QStatus IODispatch::EnableWriteCallback(Sink* sink)
     map<Stream*, IODispatchEntry>::iterator it = dispatchEntries.find(lookup);
     if (it == dispatchEntries.end() || (it->second.stopping_state != IO_RUNNING)) {
         lock.Unlock();
-        return ER_NO_SUCH_STREAM;
+        return ER_INVALID_STREAM;
     }
 
     it->second.writeEnable = true;
@@ -523,7 +546,7 @@ QStatus IODispatch::DisableWriteCallback(const Sink* sink)
     map<Stream*, IODispatchEntry>::iterator it = dispatchEntries.find(lookup);
     if (it == dispatchEntries.end() || (it->second.stopping_state != IO_RUNNING)) {
         lock.Unlock();
-        return ER_NO_SUCH_STREAM;
+        return ER_INVALID_STREAM;
     }
     it->second.writeEnable = false;
 
@@ -545,7 +568,7 @@ QStatus IODispatch::SetLinkTimeout(const Source* source, uint32_t linkTimeout) {
     map<Stream*, IODispatchEntry>::iterator it = dispatchEntries.find(lookup);
     if (it == dispatchEntries.end() || (it->second.stopping_state != IO_RUNNING)) {
         lock.Unlock();
-        return ER_NO_SUCH_STREAM;
+        return ER_INVALID_STREAM;
     }
     timer.RemoveAlarm(it->second.linkTimeoutAlarm, false);
     it->second.linkTimeout = linkTimeout * 1000;                        /* seconds to ms */
@@ -568,7 +591,7 @@ QStatus IODispatch::EnableTimeoutCallback(const Source* source) {
     map<Stream*, IODispatchEntry>::iterator it = dispatchEntries.find(lookup);
     if (it == dispatchEntries.end() || (it->second.stopping_state != IO_RUNNING)) {
         lock.Unlock();
-        return ER_NO_SUCH_STREAM;
+        return ER_INVALID_STREAM;
     }
 
     if (it->second.linkTimeout != 0) {
