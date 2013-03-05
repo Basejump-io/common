@@ -287,15 +287,15 @@ void IODispatch::AlarmTriggered(const Alarm& alarm, QStatus reason)
             delete it->second.readCtxt;
             it->second.readCtxt = NULL;
         }
-        if (it->second.readCtxt) {
+        if (it->second.writeCtxt) {
             delete it->second.writeCtxt;
             it->second.writeCtxt = NULL;
         }
-        if (it->second.readCtxt) {
+        if (it->second.exitCtxt) {
             delete it->second.exitCtxt;
             it->second.exitCtxt = NULL;
         }
-        if (it->second.readCtxt) {
+        if (it->second.timeoutCtxt) {
             delete it->second.timeoutCtxt;
             it->second.timeoutCtxt = NULL;
         }
