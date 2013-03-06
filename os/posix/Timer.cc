@@ -531,8 +531,13 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                      * Look for an idle or stopped worker to execute alarm callback for us.
                      */
                     while (!tt && timer->isRunning && (timer->timerThreads.size() > 1)) {
+                        /* Whether all other timer threads are running/starting. */
+                        bool allOtherThreadsRunning = true;
                         for (size_t i = 0; i < timer->timerThreads.size(); ++i) {
                             if (i != static_cast<size_t>(index)) {
+                                if (timer->timerThreads[i]->state != TimerThread::RUNNING && timer->timerThreads[i]->state != TimerThread::STARTING) {
+                                    allOtherThreadsRunning = false;
+                                }
                                 if (timer->timerThreads[i]->state == TimerThread::IDLE) {
                                     tt = timer->timerThreads[i];
                                     QCC_DbgPrintf(("TimerThread::Run(): Found idle worker at index %d", i));
@@ -543,7 +548,12 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                                 }
                             }
                         }
-                        if (tt || !timer->isRunning) {
+                        if (tt || !timer->isRunning || allOtherThreadsRunning) {
+                            /* Break out of loop if one of the following is true:
+                             * 1. Found an idle/stopped worker.
+                             * 2. Timer has been stopped.
+                             * 3. All other timer threads are currently starting/running(probably processing other alarms).
+                             */
                             break;
                         }
                         timer->lock.Unlock();
