@@ -275,7 +275,7 @@ QStatus Event::Wait(Event& evt, uint32_t maxWaitMs)
 
 QStatus Event::Wait(const vector<Event*>& checkEvents, vector<Event*>& signaledEvents, uint32_t maxWaitMs)
 {
-    const int MAX_HANDLES = 16;
+    const int MAX_HANDLES = 64;
 
     int numHandles = 0;
     HANDLE handles[MAX_HANDLES];
