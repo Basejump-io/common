@@ -62,7 +62,7 @@ Crypto_ScopedLock::~Crypto_ScopedLock()
 
 QStatus Crypto_PseudorandomFunctionCCM(const KeyBlob& secret, const char* label, const qcc::String& seed, uint8_t* out, size_t outLen)
 {
-    QStatus status;
+    QStatus status = ER_OK;
     uint8_t counter[4] = { 0, 0, 0, 0 };
     String in((char*)secret.GetData(), secret.GetSize());
 
