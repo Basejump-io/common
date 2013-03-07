@@ -1,4 +1,4 @@
-# Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
+# Copyright 2010 - 2013 Qualcomm Innovation Center, Inc.
 # 
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -85,8 +85,6 @@ elif env['OS'] == 'android':
         env.subst('$ANDROID_NDK_VERSION') == '8c' or
         env.subst('$ANDROID_NDK_VERSION') == '8d'):
         env.AppendUnique(LIBS = ['gnustl_static'])
-elif env['OS'] == 'android_donut':
-    env.AppendUnique(LIBS = ['m', 'c', 'stdc++', 'crypto', 'log'])
 elif env['OS'] == 'maemo':
     pass
 else:

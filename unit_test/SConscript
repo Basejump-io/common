@@ -44,10 +44,10 @@ else:
         # Set the CPP PATH based on NDK version
         if env.subst('$ANDROID_NDK_VERSION') in [ '8b', '8c', '8d' ]:
             android_cpp_path = '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++/4.6'
-        elif env.subst('$ANDROID_NDK_VERSION') in [ '5', '6', '7',  '8']:
+        elif env.subst('$ANDROID_NDK_VERSION') in [ '7',  '8']:
             android_cpp_path = '$ANDROID_NDK/sources/cxx-stl/gnu-libstdc++'
         else:
-            print 'common unit test build requires NDK v5 or newer'
+            print 'common unit test build requires NDK v7 or newer'
             android_cpp_path = None
     else:
         android_cpp_path = None
