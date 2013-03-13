@@ -325,20 +325,18 @@ void IfConfigByFamily(uint32_t family, std::vector<IfConfigEntry>& entries)
     delete [] parray;
 }
 
+extern void WinsockCheck();
+
 QStatus IfConfig(std::vector<IfConfigEntry>& entries)
 {
     QCC_DbgPrintf(("IfConfig(): The Windows way"));
 
     //
-    // It turns out that there is a reference counted call to WSAStartup in our
-    // sockets abstraction.  If you don't have a socket initialized in the
-    // Windows version, you don't have an initialized winsock.  This is a
-    // problem for IfConfig() because it doesn't use a socket, but it makes
-    // calls to getnameinfo() which requires that winsock be initialized.
+    // It turns out that there are calls to functions that depend on winsock
+    // made here.  We need to make sure that winsock is initialized before
+    // making those calls.  Socket.cc has a convenient function to do this.
     //
-    // Rather than trying to undo all of that reference counting, we
-    // just make sure to hold onto a socket while we are in this call.
-    //
+    WinsockCheck();
     IfConfigByFamily(AF_INET, entries);
     IfConfigByFamily(AF_INET6, entries);
     return ER_OK;
