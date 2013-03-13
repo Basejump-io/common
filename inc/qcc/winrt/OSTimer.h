@@ -63,7 +63,7 @@ class OSTimer {
     qcc::Timer* _timer;
     std::map<void*, qcc::Alarm> _timerMap;
     qcc::_CountDownLatch _timersCountdownLatch;
-    std::map<void*, bool> _timerHasOwnership;
+    void* _reentrancyLockOwner;
     concurrency::task<void>* _stopTask;
     Mutex _workQueueLock;
     std::priority_queue<qcc::Alarm, std::vector<qcc::Alarm>, CompareAlarm> _timerWorkQueue;

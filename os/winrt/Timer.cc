@@ -111,7 +111,8 @@ void OSAlarm::UpdateComputedTime(Timespec absoluteTime)
 }
 
 Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool preventReentrancy, uint32_t maxAlarms)
-    : nameStr(name), expireOnExit(expireOnExit), timerThreads(concurency), isRunning(false), controllerIdx(0), OSTimer(this), maxAlarms(maxAlarms)
+    : nameStr(name), expireOnExit(expireOnExit), timerThreads(concurency), isRunning(false), controllerIdx(0),
+    preventReentrancy(preventReentrancy), OSTimer(this), maxAlarms(maxAlarms)
 {
 }
 
@@ -212,8 +213,10 @@ void Timer::TimerCallback(void* context)
 
     // Check if timer is still in the map
     if (alarmFound) {
-        // Mark ownership of the timer on this thread
-        _timerHasOwnership[timerThreadHandle] = true;
+        if (this->preventReentrancy) {
+            //Mark ownership of the reentrancy lock.
+            _reentrancyLockOwner = timerThreadHandle;
+        }
         // Increase the latch value for pending work
         alarm->_latch->Increment();
         // Ensure a single alarm can only be once in the map
@@ -232,24 +235,26 @@ void Timer::TimerCallback(void* context)
 
         // Decrement the latch value associated with this alarm (work complete)
         alarm->_latch->Decrement();
-
-        // If thread still owns the timer, release the reentrancy lock
-        if (_timerHasOwnership[timerThreadHandle]) {
-            reentrancyLock.Unlock();
-        }
-
         // Re-acquire the API lock
         lock.Lock();
-
-        // Make sure we don't grow the map unbounded
-        _timerHasOwnership.erase(timerThreadHandle);
+        // If thread still owns the reentrancyLock, release the reentrancy lock
+        if (_reentrancyLockOwner == timerThreadHandle) {
+            _reentrancyLockOwner = NULL;
+            // Release the API lock before releasing the reentrancy lock to avoid deadlock.
+            lock.Unlock();
+            reentrancyLock.Unlock();
+        } else {
+            // Release the API lock
+            lock.Unlock();
+        }
     } else {
+        // Release the API lock
+        lock.Unlock();
         // Release the reentrancy lock since no alarm was found after all
-        reentrancyLock.Unlock();
+        if (this->preventReentrancy) {
+            reentrancyLock.Unlock();
+        }
     }
-
-    // Release the API lock
-    lock.Unlock();
 }
 
 // Callback is executed when a timer has successfully been called or cancelled
@@ -405,8 +410,7 @@ QStatus Timer::AddAlarmNonBlocking(const Alarm& alarm)
             status = ER_FAIL;
         }
     } else {
-        // Just add to the alarms list
-        alarms.insert(alarm);
+        status = ER_TIMER_EXITING;
     }
     // Release the timer lock
     lock.Unlock();
@@ -557,14 +561,12 @@ void Timer::EnableReentrancy()
     // Grab the timer lock
     lock.Lock();
     // Check for thread handle in ownership map
-    if (_timerHasOwnership.find(timerThreadHandle) != _timerHasOwnership.end()) {
+    if (_reentrancyLockOwner == timerThreadHandle) {
         // Does thread own lock?
-        if (_timerHasOwnership[timerThreadHandle]) {
-            // Unlock the reentrant lock
-            reentrancyLock.Unlock();
-            // Mark thread as not owning the lock
-            _timerHasOwnership[timerThreadHandle] = false;
-        }
+        // Unlock the reentrant lock
+        reentrancyLock.Unlock();
+        // Mark thread as not owning the lock
+        _reentrancyLockOwner = NULL;
     } else {
         QCC_DbgPrintf(("Invalid call to Timer::EnableReentrancy from thread %s; only allowed from %s", Thread::GetThreadName(), nameStr.c_str()));
     }
@@ -579,9 +581,9 @@ bool Timer::ThreadHoldsLock()
     lock.Lock();
     bool retVal = false;
     // Does the thread own the lock?
-    if (_timerHasOwnership.find(timerThreadHandle) != _timerHasOwnership.end()) {
+    if (_reentrancyLockOwner == timerThreadHandle) {
         // Store ownership state
-        retVal = _timerHasOwnership[timerThreadHandle];
+        retVal = true;
     }
     // Release the timer lock
     lock.Unlock();
@@ -589,7 +591,7 @@ bool Timer::ThreadHoldsLock()
     return retVal;
 }
 
-OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer), _stopTask(NULL)
+OSTimer::OSTimer(qcc::Timer* timer) : _timer(timer), _reentrancyLockOwner(NULL), _stopTask(NULL)
 {
 }
 

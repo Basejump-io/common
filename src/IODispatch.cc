@@ -198,10 +198,7 @@ QStatus IODispatch::JoinStream(Stream* stream) {
 }
 void IODispatch::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
-    timer.EnableReentrancy();
     lock.Lock();
-
-
     /* Find the stream associated with this alarm */
     CallbackContext* ctxt = static_cast<CallbackContext*>(alarm->GetContext());
     Stream* stream = ctxt->stream;
