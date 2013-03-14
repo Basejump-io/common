@@ -16,6 +16,8 @@ import os
 
 Import('env')
 
+returnValue = []
+
 if(not(env.has_key('GTEST_DIR'))):
     print('GTEST_DIR not specified skipping common unit test build')
 
@@ -138,4 +140,6 @@ else:
              unittest_env.Object(status_src) ]
 
     unittest_prog = unittest_env.Program('cmtest', objs)
-    unittest_env.Install('$TESTDIR/bin', unittest_prog)
+    returnValue = unittest_env.Install('$TESTDIR/bin', unittest_prog)
+
+Return('returnValue')
