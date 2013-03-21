@@ -323,7 +323,7 @@ class IODispatch : public Thread, public AlarmListener {
      * This is used to ensure that a source/sink event is not deleted while the main thread
      * is waiting on it.
      */
-    int32_t crit;
+    bool crit;
 };
 
 
