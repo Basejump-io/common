@@ -141,9 +141,7 @@ Timer::Timer(const char* name, bool expireOnExit, uint32_t concurency, bool prev
     nameStr(name),
     maxAlarms(maxAlarms)
 {
-    for (uint32_t i = 0; i < timerThreads.size(); ++i) {
-        timerThreads[i] = new TimerThread(nameStr, i, this);
-    }
+    /* Timer thread objects will be created when required */
 }
 
 Timer::~Timer()
@@ -151,8 +149,10 @@ Timer::~Timer()
     Stop();
     Join();
     for (uint32_t i = 0; i < timerThreads.size(); ++i) {
-        delete timerThreads[i];
-        timerThreads[i] = NULL;
+        if (timerThreads[i] != NULL) {
+            delete timerThreads[i];
+            timerThreads[i] = NULL;
+        }
     }
 }
 
@@ -163,11 +163,14 @@ QStatus Timer::Start()
     if (!isRunning) {
         controllerIdx = 0;
         isRunning = true;
+        if (timerThreads[0] == NULL) {
+            timerThreads[0] = new TimerThread(nameStr, 0, this);
+        }
         status = timerThreads[0]->Start(NULL, this);
         isRunning = false;
         if (status == ER_OK) {
             uint64_t startTs = GetTimestamp64();
-            while (timerThreads[0]->state != TimerThread::IDLE) {
+            while (timerThreads[0] && (timerThreads[0]->state != TimerThread::IDLE)) {
                 if ((startTs + 5000) < GetTimestamp64()) {
                     status = ER_FAIL;
                     break;
@@ -192,9 +195,12 @@ QStatus Timer::Stop()
     lock.Unlock();
     for (size_t i = 0; i < timerThreads.size(); ++i) {
         lock.Lock();
-        QStatus tStatus = timerThreads[i]->Stop();
+        if (timerThreads[i] != NULL) {
+            QStatus tStatus = timerThreads[i]->Stop();
+            status = (status == ER_OK) ? tStatus : status;
+        }
         lock.Unlock();
-        status = (status == ER_OK) ? tStatus : status;
+
     }
     return status;
 }
@@ -202,10 +208,18 @@ QStatus Timer::Stop()
 QStatus Timer::Join()
 {
     QStatus status = ER_OK;
+    lock.Lock();
     for (size_t i = 0; i < timerThreads.size(); ++i) {
-        QStatus tStatus = timerThreads[i]->Join();
-        status = (status == ER_OK) ? tStatus : status;
+        if (timerThreads[i] != NULL) {
+            lock.Unlock();
+            QStatus tStatus = timerThreads[i]->Join();
+            lock.Lock();
+            status = (status == ER_OK) ? tStatus : status;
+        }
+
+
     }
+    lock.Unlock();
     return status;
 }
 
@@ -301,7 +315,7 @@ bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
              * RemoveAlarm must not return until this alarm is finished.
              */
             for (size_t i = 0; i < timerThreads.size(); ++i) {
-                if (timerThreads[i] == Thread::GetThread()) {
+                if ((timerThreads[i] == NULL) || (timerThreads[i] == Thread::GetThread())) {
                     continue;
                 }
                 const Alarm* curAlarm = timerThreads[i]->GetCurrentAlarm();
@@ -309,6 +323,9 @@ bool Timer::RemoveAlarm(const Alarm& alarm, bool blockIfTriggered)
                     lock.Unlock();
                     qcc::Sleep(2);
                     lock.Lock();
+                    if (timerThreads[i] == NULL) {
+                        break;
+                    }
                     curAlarm = timerThreads[i]->GetCurrentAlarm();
                 }
             }
@@ -333,7 +350,7 @@ QStatus Timer::ReplaceAlarm(const Alarm& origAlarm, const Alarm& newAlarm, bool 
              * RemoveAlarm must not return until this alarm is finished.
              */
             for (size_t i = 0; i < timerThreads.size(); ++i) {
-                if (timerThreads[i] == Thread::GetThread()) {
+                if ((timerThreads[i] == NULL) || (timerThreads[i] == Thread::GetThread())) {
                     continue;
                 }
                 const Alarm* curAlarm = timerThreads[i]->GetCurrentAlarm();
@@ -341,6 +358,9 @@ QStatus Timer::ReplaceAlarm(const Alarm& origAlarm, const Alarm& newAlarm, bool 
                     lock.Unlock();
                     qcc::Sleep(2);
                     lock.Lock();
+                    if (timerThreads[i] == NULL) {
+                        break;
+                    }
                     curAlarm = timerThreads[i]->GetCurrentAlarm();
                 }
             }
@@ -369,7 +389,7 @@ bool Timer::RemoveAlarm(const AlarmListener& listener, Alarm& alarm)
          */
         if (!removedOne) {
             for (size_t i = 0; i < timerThreads.size(); ++i) {
-                if (timerThreads[i] == Thread::GetThread()) {
+                if ((timerThreads[i] == NULL) || (timerThreads[i] == Thread::GetThread())) {
                     continue;
                 }
                 const Alarm* curAlarm = timerThreads[i]->GetCurrentAlarm();
@@ -377,6 +397,9 @@ bool Timer::RemoveAlarm(const AlarmListener& listener, Alarm& alarm)
                     lock.Unlock();
                     qcc::Sleep(5);
                     lock.Lock();
+                    if (timerThreads[i] == NULL) {
+                        break;
+                    }
                     curAlarm = timerThreads[i]->GetCurrentAlarm();
                 }
             }
@@ -476,10 +499,43 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
             if ((delay > 0) && (isController || (delay < WORKER_IDLE_TIMEOUT_MS))) {
                 QCC_DbgPrintf(("TimerThread::Run(): Next alarm delay == %d", delay));
                 state = IDLE;
-                timer->lock.Unlock();
-                Event evt(static_cast<uint32_t>(delay), 0);
-                Event::Wait(evt);
-                timer->lock.Lock();
+
+                QStatus status = ER_TIMEOUT;
+                if (isController) {
+                    /* Since there is delay for the alarm, the controller will first wait for the other
+                     * threads to exit and delete their objects.
+                     * If a new alarm is added, the controller thread will be alerted and the status
+                     * from Event::Wait will be ER_ALERTED_THREAD, causing the loop to be exited.
+                     */
+                    for (size_t i = 0; i < timer->timerThreads.size(); ++i) {
+                        if (i != static_cast<size_t>(index) && timer->timerThreads[i] != NULL) {
+
+                            while ((timer->timerThreads[i]->state != TimerThread::STOPPED || timer->timerThreads[i]->IsRunning()) && timer->isRunning && status == ER_TIMEOUT && delay > WORKER_IDLE_TIMEOUT_MS) {
+                                timer->lock.Unlock();
+                                status = Event::Wait(Event::neverSet, WORKER_IDLE_TIMEOUT_MS);
+                                timer->lock.Lock();
+                                GetTimeNow(&now);
+                                delay = topAlarm->alarmTime - now;
+                            }
+
+                            if (status == ER_ALERTED_THREAD || status == ER_STOPPING_THREAD || !timer->isRunning || delay <= WORKER_IDLE_TIMEOUT_MS) {
+                                break;
+                            }
+                            if (timer->timerThreads[i]->state == TimerThread::STOPPED && !timer->timerThreads[i]->IsRunning()) {
+                                delete timer->timerThreads[i];
+                                timer->timerThreads[i] = NULL;
+                                QCC_DbgPrintf(("TimerThread::Run(): Deleted unused worker thread %d", i));
+                            }
+                        }
+                    }
+
+                }
+                if (status == ER_TIMEOUT) {
+                    timer->lock.Unlock();
+                    Event evt(static_cast<uint32_t>(delay), 0);
+                    Event::Wait(evt);
+                    timer->lock.Lock();
+                }
                 stopEvent.ResetEvent();
             } else if (isController || (delay <= 0)) {
                 QCC_DbgPrintf(("TimerThread::Run(): Next alarm is due now"));
@@ -504,7 +560,7 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                 }
 
                 TimerThread* tt = NULL;
-
+                int nullIdx = -1;
                 /*
                  * There may be several threads wandering through this code.
                  * One of them is acting as the controller, whose job it is to
@@ -533,8 +589,16 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                     while (!tt && timer->isRunning && (timer->timerThreads.size() > 1)) {
                         /* Whether all other timer threads are running/starting. */
                         bool allOtherThreadsRunning = true;
+
                         for (size_t i = 0; i < timer->timerThreads.size(); ++i) {
                             if (i != static_cast<size_t>(index)) {
+                                if (timer->timerThreads[i] == NULL) {
+                                    if (nullIdx == -1) {
+                                        nullIdx = i;
+                                    }
+                                    allOtherThreadsRunning = false;
+                                    continue;
+                                }
                                 if (timer->timerThreads[i]->state != TimerThread::RUNNING && timer->timerThreads[i]->state != TimerThread::STARTING) {
                                     allOtherThreadsRunning = false;
                                 }
@@ -548,11 +612,12 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                                 }
                             }
                         }
-                        if (tt || !timer->isRunning || allOtherThreadsRunning) {
+                        if (tt || !timer->isRunning || allOtherThreadsRunning || nullIdx != -1) {
                             /* Break out of loop if one of the following is true:
                              * 1. Found an idle/stopped worker.
-                             * 2. Timer has been stopped.
-                             * 3. All other timer threads are currently starting/running(probably processing other alarms).
+                             * 2. A NULL entry was found
+                             * 3. Timer has been stopped.
+                             * 4. All other timer threads are currently starting/running(probably processing other alarms).
                              */
                             break;
                         }
@@ -561,26 +626,37 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
                         timer->lock.Lock();
                     }
 
-                    /*
-                     * If <tt> is non-NULL, then we have located a thread that
-                     * will be able to take over the controller role if
-                     * required, so either wake it up or start it depending on
-                     * its current state. Also, ensure that the timer has not been
-                     * stopped.
-                     */
-                    if (tt && timer->isRunning) {
-                        QCC_DbgPrintf(("TimerThread::Run(): Have timer thread (tt)"));
-                        if (tt->state == TimerThread::IDLE) {
-                            QCC_DbgPrintf(("TimerThread::Run(): Alert()ing idle timer thread (tt)"));
-                            QStatus status = tt->Alert();
-                            if (status != ER_OK) {
-                                QCC_LogError(status, ("Error alerting timer thread %s", tt->GetName()));
-                            }
-                        } else if (tt->state == TimerThread::STOPPED) {
-                            QCC_DbgPrintf(("TimerThread::Run(): Start()ing stopped timer thread (tt)"));
-                            QStatus status = tt->Start(NULL, timer);
-                            if (status != ER_OK) {
-                                QCC_LogError(status, ("Error starting timer thread %s", tt->GetName()));
+
+                    if (timer->isRunning) {
+                        if (!tt && nullIdx != -1) {
+                            /* If <tt> is NULL and we have located an index in the timerThreads vector
+                             * that is NULL, allocate memory so we can start this thread
+                             */
+                            timer->timerThreads[nullIdx] = new TimerThread(timer->nameStr, nullIdx, timer);
+                            tt = timer->timerThreads[nullIdx];
+                            QCC_DbgPrintf(("TimerThread::Run(): Created timer thread %d", nullIdx));
+                        }
+                        if (tt) {
+                            /*
+                             * If <tt> is non-NULL, then we have located a thread that
+                             * will be able to take over the controller role if
+                             * required, so either wake it up or start it depending on
+                             * its current state. Also, ensure that the timer has not been
+                             * stopped.
+                             */
+                            QCC_DbgPrintf(("TimerThread::Run(): Have timer thread (tt)"));
+                            if (tt->state == TimerThread::IDLE) {
+                                QCC_DbgPrintf(("TimerThread::Run(): Alert()ing idle timer thread (tt)"));
+                                QStatus status = tt->Alert();
+                                if (status != ER_OK) {
+                                    QCC_LogError(status, ("Error alerting timer thread %s", tt->GetName()));
+                                }
+                            } else if (tt->state == TimerThread::STOPPED) {
+                                QCC_DbgPrintf(("TimerThread::Run(): Start()ing stopped timer thread (tt)"));
+                                QStatus status = tt->Start(NULL, timer);
+                                if (status != ER_OK) {
+                                    QCC_LogError(status, ("Error starting timer thread %s", tt->GetName()));
+                                }
                             }
                         }
                     }
@@ -676,12 +752,42 @@ ThreadReturn STDCALL TimerThread::Run(void* arg)
              */
             QCC_DbgPrintf(("TimerThread::Run(): Alarm list is empty"));
             if (isController) {
-                QCC_DbgPrintf(("TimerThread::Run(): Controller going idle"));
+                /* Since there are no alarms, the controller will first wait for the other
+                 * threads to exit and delete their objects.
+                 * If a new alarm is added, the controller thread will be alerted and the status
+                 * from Event::Wait will be ER_ALERTED_THREAD, causing the loop to be exited.
+                 */
                 state = IDLE;
-                timer->lock.Unlock();
-                Event evt(Event::WAIT_FOREVER, 0);
-                Event::Wait(evt);
-                timer->lock.Lock();
+                QStatus status = ER_TIMEOUT;
+                for (size_t i = 0; i < timer->timerThreads.size(); ++i) {
+                    if (i != static_cast<size_t>(index) && timer->timerThreads[i] != NULL) {
+
+                        while ((timer->timerThreads[i]->state != TimerThread::STOPPED || timer->timerThreads[i]->IsRunning()) && timer->isRunning && status == ER_TIMEOUT) {
+                            timer->lock.Unlock();
+                            status = Event::Wait(Event::neverSet, WORKER_IDLE_TIMEOUT_MS);
+                            timer->lock.Lock();
+                        }
+                        if (status == ER_ALERTED_THREAD || status == ER_STOPPING_THREAD || !timer->isRunning) {
+                            break;
+                        }
+                        if (timer->timerThreads[i]->state == TimerThread::STOPPED && !timer->timerThreads[i]->IsRunning()) {
+                            delete timer->timerThreads[i];
+                            timer->timerThreads[i] = NULL;
+                            QCC_DbgPrintf(("TimerThread::Run(): Deleted unused worker thread %d", i));
+                        }
+
+                    }
+                }
+
+                QCC_DbgPrintf(("TimerThread::Run(): Controller going idle"));
+                if (status == ER_TIMEOUT) {
+                    /* The controller has successfully deleted objects of all other worker threads.
+                     * and has not been alerted/stopped.
+                     */
+                    timer->lock.Unlock();
+                    Event::Wait(Event::neverSet);
+                    timer->lock.Lock();
+                }
                 stopEvent.ResetEvent();
             } else {
                 QCC_DbgPrintf(("TimerThread::Run(): non-Controller idling"));
