@@ -116,10 +116,10 @@ struct less<qcc::StringMapKey> {
 _BEGIN_NAMESPACE_CONTAINER_FOR_HASH
 /**
  * Functor to compute a hash for StringMapKey suitable for use with
- * std::unordered_map, std::unordered_set, std::hash_map, std::hash_set.
+ * std::std::tr1::unordered_map, std::unordered_set, std::hash_map, std::hash_set.
  */
 template <>
-struct hash<qcc::StringMapKey> {
+struct tr1::hash<qcc::StringMapKey> {
     inline size_t operator()(const qcc::StringMapKey& k) const { return qcc::hash_string(k.c_str()); }
 };
 _END_NAMESPACE_CONTAINER_FOR_HASH

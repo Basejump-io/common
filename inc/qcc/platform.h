@@ -48,7 +48,7 @@
 
 #if (GCC_VERSION >= 40600L) && defined(__GXX_EXPERIMENTAL_CXX0X__)
 /*
- * GCC 4.6.x supports C++11, at least in terms of unordered_map, etc. when the
+ * GCC 4.6.x supports C++11, at least in terms of std::tr1::unordered_map, etc. when the
  * -std=gnu++0x option is passed in.  Thus, fix the value of __cplusplus.
  */
 #undef __cplusplus
